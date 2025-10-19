@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Assumptions;
 
 import syrincs.a_domain.Tone;
 import syrincs.a_domain.hindemith.HindemithChord;
-import syrincs.c_adapters.JdkMidiOutputAdapter;
+import syrincs.c_adapters.midi.JdkMidiOutputAdapter;
 
 import javax.sound.midi.MidiDevice;
 import java.util.List;

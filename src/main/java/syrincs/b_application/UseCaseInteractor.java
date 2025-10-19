@@ -6,10 +6,14 @@ import syrincs.a_domain.Tone;
 import syrincs.a_domain.hindemith.ChordAnalysis;
 import syrincs.b_application.ports.HindemithChordRepositoryPort;
 import syrincs.b_application.ports.MidiOutputPort;
+import syrincs.a_domain.rhythm.Pattern;
+import syrincs.a_domain.rhythm.RhythmSpec;
+import syrincs.a_domain.rhythm.VoiceSpec;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiUnavailableException;
+import javax.sound.midi.Sequence;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
@@ -25,6 +29,7 @@ public class UseCaseInteractor {
     private final HindemithChordRepositoryPort repository;
     private final Logger LOGGER = Logger.getLogger(UseCaseInteractor.class.getName());
     private List<HindemithChord> hindemithChords;
+    private final ValidatePatternsUseCase validate;
 
 
     public UseCaseInteractor(MidiOutputPort midiOutput, HindemithChordRepositoryPort repository) {
@@ -36,6 +41,7 @@ public class UseCaseInteractor {
         this.persistUseCase = new PersistHindemithChordUseCase(repository);
         this.getHindemithChordsFromDbUseCase = new GetHindemithChordsFromDbUseCase(repository);
         this.send = new SendToMidiUseCase(midiOutput);
+        this.validate = new ValidatePatternsUseCase();
     }
 
     public List<HindemithChord> findChordsFor(List<Integer> numNotes, List<Integer> groups, Integer rootNote) {
@@ -60,6 +66,10 @@ public class UseCaseInteractor {
                 .getAllOfRootNoteGroupsAndNumNotes(rootNote, groups, numNotes, range);
         LOGGER.log(Level.INFO, "{0} chords loaded (range<=%d).".formatted(range), acc.size());
         return acc;
+    }
+
+    public void validatePattern(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices){
+        validate.validate(pattern, spec, voices);
     }
 
 
@@ -134,4 +144,8 @@ public class UseCaseInteractor {
         }
     }
 
+    // Rhythm: play an arbitrary javax.sound.midi.Sequence on a device (or default)
+    public void playSequence(Sequence sequence, String deviceNameSubstring) throws Exception {
+        send.playSequence(sequence, deviceNameSubstring);
+    }
 }

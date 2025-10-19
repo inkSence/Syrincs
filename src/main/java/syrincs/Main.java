@@ -3,7 +3,7 @@ package syrincs;
 
 import picocli.CommandLine;
 import syrincs.b_application.UseCaseInteractor;
-import syrincs.c_adapters.JdkMidiOutputAdapter;
+import syrincs.c_adapters.midi.JdkMidiOutputAdapter;
 import syrincs.c_adapters.cli.RootCmd;
 import syrincs.c_adapters.postgres.PostgresHindemithChordRepository;
 
@@ -20,6 +20,7 @@ public class Main {
 
         // Filter out DB-related CLI flags before passing to PicoCli so they don't appear in help
         String[] filtered = filterDbArgs(args);
+
 
         // If root-level help requested, print extended help including subcommand usages and exit
         if (isRootHelpRequest(filtered)) {
@@ -77,6 +78,12 @@ public class Main {
                 System.out.println();
                 System.out.println("Subcommand 'play chords' usage:");
                 chords.usage(System.out);
+            }
+            CommandLine rhythm = play.getSubcommands().get("rhythm");
+            if (rhythm != null) {
+                System.out.println();
+                System.out.println("Subcommand 'play rhythm' usage:");
+                rhythm.usage(System.out);
             }
         }
     }

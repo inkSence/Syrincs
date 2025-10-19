@@ -7,6 +7,7 @@ import syrincs.a_domain.Tone;
 import javax.sound.midi.MidiDevice;
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiUnavailableException;
+import javax.sound.midi.Sequence;
 
 /**
  * Application port for sending tones to a MIDI output and discovering outputs.
@@ -21,4 +22,6 @@ public interface MidiOutputPort {
             throws MidiUnavailableException, InvalidMidiDataException, InterruptedException;
 
     void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration);
+
+    void playSequence(Sequence sequence, String deviceNameSubstring) throws Exception;
 }

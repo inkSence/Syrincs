@@ -13,6 +13,39 @@ public final class AppConfig {
 
     private AppConfig() { }
 
+    /** Resolve default MIDI output device name from env or user config file. */
+    public static String loadDefaultMidiOutputName() {
+        // 1) Environment variables (in order)
+        String[] keys = new String[]{
+                "SYRINCS_MIDI_DEVICE", // preferred
+                "SYRINCS_MIDI_OUT",
+                "HINDEMITH_MIDI_DEVICE",
+                "MIDI_OUT"
+        };
+        for (String k : keys) {
+            String v = System.getenv(k);
+            if (v != null && !v.isBlank()) return v.trim();
+        }
+        // 2) User config file: ~/.syrincs/config.properties with key midi.device or syrincs.midi.device
+        try {
+            java.nio.file.Path home = java.nio.file.Path.of(System.getProperty("user.home", ""));
+            if (home != null) {
+                java.nio.file.Path cfg = home.resolve(".syrincs").resolve("config.properties");
+                if (java.nio.file.Files.isRegularFile(cfg)) {
+                    java.util.Properties p = new java.util.Properties();
+                    try (java.io.Reader r = java.nio.file.Files.newBufferedReader(cfg)) {
+                        p.load(r);
+                    }
+                    String v = p.getProperty("midi.device");
+                    if (v == null || v.isBlank()) v = p.getProperty("syrincs.midi.device");
+                    if (v != null && !v.isBlank()) return v.trim();
+                }
+            }
+        } catch (Exception ignored) {}
+        // 3) not found
+        return null;
+    }
+
     /** Simple DTO for database configuration. */
     public static final class DbConfig {
         public final String url;

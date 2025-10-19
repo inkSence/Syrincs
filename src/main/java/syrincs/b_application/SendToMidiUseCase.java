@@ -8,6 +8,7 @@ import syrincs.b_application.ports.MidiOutputPort;
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiUnavailableException;
+import javax.sound.midi.Sequence;
 
 public class SendToMidiUseCase {
     private final MidiOutputPort midiOutput;
@@ -34,5 +35,9 @@ public class SendToMidiUseCase {
         long elapsed = System.currentTimeMillis() - start;
         long sleep = duration - elapsed;
         if (sleep > 0) Thread.sleep(sleep);
+    }
+
+    public void playSequence(Sequence sequence, String deviceNameSubstring) throws Exception {
+        midiOutput.playSequence(sequence, deviceNameSubstring);
     }
 }

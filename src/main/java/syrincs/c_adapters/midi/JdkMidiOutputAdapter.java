@@ -1,7 +1,6 @@
-package syrincs.c_adapters;
+package syrincs.c_adapters.midi;
 
 import syrincs.a_domain.chord.Chord;
-import syrincs.a_domain.hindemith.HindemithChord;
 import syrincs.a_domain.Tone;
 import syrincs.b_application.ports.MidiOutputPort;
 
@@ -96,6 +95,45 @@ public class JdkMidiOutputAdapter implements MidiOutputPort {
         }
     }
 
+    @Override
+    public void playSequence(Sequence sequence, String deviceNameSubstring) throws Exception {
+        if (sequence == null) throw new IllegalArgumentException("sequence must not be null");
+
+        MidiDevice.Info target = null;
+        if (deviceNameSubstring != null && !deviceNameSubstring.isBlank()) {
+            target = findOutputByName(deviceNameSubstring);
+            if (target == null) {
+                throw new IllegalArgumentException("Unknown MIDI device: '" + deviceNameSubstring + "'");
+            }
+        } else {
+            target = autoSelectDefaultOutput();
+            if (target == null) {
+                throw new IllegalArgumentException("No suitable MIDI output device found. Set env SYRINCS_MIDI_DEVICE or pass --device.");
+            }
+        }
+
+        Sequencer sequencer = MidiSystem.getSequencer(false); // not connected to default Synth
+        boolean openedSeq = false;
+        MidiDevice device = MidiSystem.getMidiDevice(target);
+        boolean openedDev = false;
+        try {
+            if (!sequencer.isOpen()) { sequencer.open(); openedSeq = true; }
+            if (!device.isOpen()) { device.open(); openedDev = true; }
+            Transmitter seqTx = sequencer.getTransmitter();
+            Receiver devRx = device.getReceiver();
+            seqTx.setReceiver(devRx);
+
+            sequencer.setSequence(sequence);
+            sequencer.start();
+            while (sequencer.isRunning()) {
+                Thread.sleep(10);
+            }
+        } finally {
+            try { if (openedSeq && sequencer.isOpen()) sequencer.close(); } catch (Exception ignored) {}
+            try { if (openedDev && device.isOpen()) device.close(); } catch (Exception ignored) {}
+        }
+    }
+
     private void sendChordViaReceiver(Receiver receiver, Chord chord, int channel, long duration) throws InvalidMidiDataException, InterruptedException {
         if (receiver == null) throw new IllegalArgumentException("receiver must not be null");
         if (chord == null) throw new IllegalArgumentException("chord must not be null");
@@ -118,8 +156,6 @@ public class JdkMidiOutputAdapter implements MidiOutputPort {
             receiver.send(on, now);
         }
 
-
-
         // Hold duration
         if (durationMs > 0) Thread.sleep(durationMs);
 
@@ -134,13 +170,23 @@ public class JdkMidiOutputAdapter implements MidiOutputPort {
         }
     }
 
-    // Prefer Roland piano if present, otherwise the first available MIDI OUT
+    // Resolve default: env/config override → preferred brand hints → first available OUT
     private MidiDevice.Info autoSelectDefaultOutput() {
+        // 1) Env/config
+        try {
+            String preferred = syrincs.d_frameworksAndDrivers.AppConfig.loadDefaultMidiOutputName();
+            if (preferred != null && !preferred.isBlank()) {
+                MidiDevice.Info byCfg = findOutputByName(preferred);
+                if (byCfg != null) return byCfg;
+            }
+        } catch (Throwable ignored) {}
+        // 2) Preferred brand hints
         String[] needles = {"Roland Digital Piano", "DP603"};
         for (String n : needles) {
             MidiDevice.Info info = findOutputByName(n);
             if (info != null) return info;
         }
+        // 3) Fallback: first OUT
         MidiDevice.Info[] outs = listMidiOutputs();
         return outs.length > 0 ? outs[0] : null;
     }

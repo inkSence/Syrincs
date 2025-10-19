@@ -6,14 +6,24 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import picocli.CommandLine.ParentCommand;
 import syrincs.a_domain.Tone;
-import syrincs.a_domain.hindemith.HindemithChord;
 import syrincs.b_application.UseCaseInteractor;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiUnavailableException;
+import java.io.FileReader;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
+
+import syrincs.a_domain.rhythm.PatternHeader;
+import syrincs.a_domain.rhythm.RhythmSpec;
+import syrincs.a_domain.rhythm.VoiceSpec;
+import syrincs.c_adapters.RhythmFileParser;
+import syrincs.c_adapters.midi.SequenceBuilder;
 
 /**
  * PicoCli-based command tree for Syrincs. This coexists with the legacy CliController for now.
@@ -60,6 +70,12 @@ public class RootCmd implements Runnable {
                 System.out.println("Subcommand 'play chords' usage:");
                 chords.usage(System.out);
             }
+            CommandLine rhythm = play.getSubcommands().get("rhythm");
+            if (rhythm != null) {
+                System.out.println();
+                System.out.println("Subcommand 'play rhythm' usage:");
+                rhythm.usage(System.out);
+            }
         }
     }
 
@@ -77,7 +93,7 @@ public class RootCmd implements Runnable {
         }
     }
 
-    @Command(name = "play", description = "Play a single note (default) or use subcommands 'note' and 'chords'", subcommands = { PlayCmd.NoteCmd.class, PlayChordsCmd.class })
+    @Command(name = "play", description = "Play a single note (default) or use subcommands 'note', 'chords' and 'rhythm'", subcommands = { PlayCmd.NoteCmd.class, PlayChordsCmd.class, PlayCmd.RhythmCmd.class })
     public static class PlayCmd implements Callable<Integer> {
         @ParentCommand RootCmd parent;
 
@@ -104,6 +120,97 @@ public class RootCmd implements Runnable {
                 var interactor = parentPlay.parent.interactor;
                 interactor.sendToneToDevice(new Tone(100L, note, vel), null);
                 return 0;
+            }
+        }
+
+        @Command(name = "rhythm", description = "Parse RDL-0, validate, build MIDI sequence, and play it on device")
+        public static class RhythmCmd implements Callable<Integer> {
+            @ParentCommand PlayCmd parentPlay;
+
+            @Option(names = "--sig", description = "time signature, e.g. 4/4", defaultValue = "4/4")
+            String sig;
+            @Option(names = "--tempo", description = "tempo BPM", defaultValue = "120")
+            int tempo;
+            @Option(names = "--ppq", description = "pulses per quarter note", defaultValue = "480")
+            int ppq;
+            @Option(names = "--res-per-beat", description = "resolution per beat (e.g. 4 => 16ths)", defaultValue = "4")
+            int resPerBeat;
+            @Option(names = "--bars", description = "number of bars", defaultValue = "1")
+            int bars;
+            @Option(names = "--in", description = "RDL-0 input file (if omitted, read from STDIN)")
+            String inFile;
+
+            // Voice overrides
+            @Option(names = "--channel-kick", description = "MIDI channel for kick (0-15)")
+            Integer channelKick;
+            @Option(names = "--note-kick", description = "MIDI note for kick")
+            Integer noteKick;
+            @Option(names = "--vel-kick", description = "velocity for kick (0-127)")
+            Integer velKick;
+            @Option(names = "--channel-snare", description = "MIDI channel for snare (0-15)")
+            Integer channelSnare;
+            @Option(names = "--note-snare", description = "MIDI note for snare")
+            Integer noteSnare;
+            @Option(names = "--vel-snare", description = "velocity for snare (0-127)")
+            Integer velSnare;
+
+            @Option(names = "--gate", description = "gate percent (0-100) for both voices", defaultValue = "50")
+            int gate;
+
+            @Option(names = "--device", description = "MIDI device name substring (optional; falls back to default from env/config)")
+            String device;
+
+            Reader openReader() throws Exception {
+                if (inFile != null && !inFile.isBlank()) return new FileReader(inFile);
+                return new InputStreamReader(System.in);
+            }
+
+            int[] parseSig() {
+                String[] xy = sig.split("/");
+                if (xy.length != 2) throw new IllegalArgumentException("Invalid --sig: '"+sig+"'");
+                int n = Integer.parseInt(xy[0].trim());
+                int d = Integer.parseInt(xy[1].trim());
+                return new int[]{n,d};
+            }
+
+            @Override public Integer call() {
+                try (Reader r = openReader()) {
+                    var parser = new RhythmFileParser();
+                    var res = parser.parse(r);
+
+                    PatternHeader h = res.header;
+                    int[] nm = parseSig();
+                    int timeNum = h.timeNum != null ? h.timeNum : nm[0];
+                    int timeDen = h.timeDen != null ? h.timeDen : nm[1];
+                    int tempoBpm = h.tempo != null ? h.tempo : this.tempo;
+                    int ppqV = h.ppq != null ? h.ppq : this.ppq;
+                    int rpb = h.resPerBeat != null ? h.resPerBeat : this.resPerBeat;
+                    int barsV = h.bars != null ? h.bars : this.bars;
+                    RhythmSpec spec = new RhythmSpec(timeNum, timeDen, tempoBpm, ppqV, rpb, barsV);
+
+                    int g = Math.max(0, Math.min(100, gate));
+                    VoiceSpec kick = new VoiceSpec("kick", 10, 36, 90, g);
+                    VoiceSpec snare = new VoiceSpec("snare", 10, 38, 90, g);
+                    Map<String, RhythmFileParser.VoiceDecl> pvoices = res.voices;
+                    RhythmFileParser.VoiceDecl kd = pvoices.get("kick");
+                    RhythmFileParser.VoiceDecl sd = pvoices.get("snare");
+                    if (kd != null) kick = new VoiceSpec("kick", kd.channel, kd.note, kd.vel, g);
+                    if (sd != null) snare = new VoiceSpec("snare", sd.channel, sd.note, sd.vel, g);
+                    kick = kick.withOverrides(channelKick, noteKick, velKick, g);
+                    snare = snare.withOverrides(channelSnare, noteSnare, velSnare, g);
+
+                    var voices = new ArrayList<VoiceSpec>();
+                    voices.add(kick); voices.add(snare);
+
+                    var interactor = parentPlay.parent.interactor;
+                    interactor.validatePattern(res.pattern, spec, voices);
+                    var seq = new SequenceBuilder().build(res.pattern, spec, voices);
+                    interactor.playSequence(seq, device);
+                    return 0;
+                } catch (Exception e) {
+                    System.err.println("[ERROR] " + e.getMessage());
+                    return 1;
+                }
             }
         }
     }
