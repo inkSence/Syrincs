@@ -8,10 +8,11 @@ import javax.sound.midi.*;
 import java.util.ArrayList;
 import java.util.List;
 
+
 /**
  * Frameworks & Drivers implementation of MidiOutputPort using the JDK javax.sound.midi API.
  */
-public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_application.ports.MidiDeviceQueryPort {
+public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_application.ports.MidiDeviceQueryPort  {
 
 
     private MidiDevice.Info findOutputInfoBySubstring(String nameSubstring) {
@@ -25,7 +26,7 @@ public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_applicati
                 : null;
         if (info == null) {
             // Centralized auto-selection previously in Main
-            info = autoSelectDefaultOutput();
+            info = DeviceResolver.autoSelectDefaultOutput();
         }
         if (info == null) {
             throw new MidiUnavailableException("No suitable MIDI output device found" +
@@ -42,7 +43,7 @@ public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_applicati
                     ? findOutputInfoBySubstring(deviceNameSubstring)
                     : null;
             if (info == null) {
-                info = autoSelectDefaultOutput();
+                info = DeviceResolver.autoSelectDefaultOutput();
             }
             if (info == null) {
                 System.out.println("[MIDI] No suitable output device found" +
@@ -105,15 +106,6 @@ public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_applicati
             off.setMessage(ShortMessage.NOTE_OFF, channel, pitch, 0);
             receiver.send(off, now);
         }
-    }
-
-    // Resolve default: env/config override → preferred brand hints → first available OUT
-    private MidiDevice.Info[] listOutputInfos() {
-        return DeviceResolver.listOutputInfos();
-    }
-
-    private MidiDevice.Info autoSelectDefaultOutput() {
-        return DeviceResolver.autoSelectDefaultOutput();
     }
 
     private void send(Tone tone, MidiDevice.Info info, int channel) throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {

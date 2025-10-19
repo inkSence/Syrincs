@@ -46,6 +46,34 @@ public final class AppConfig {
         return null;
     }
 
+    /** Resolve default RDL-0 rhythm file path from system property, env, or user config file. */
+    public static String loadDefaultRhythmFilePath() {
+        // 1) JVM system property for testability and convenience
+        String prop = System.getProperty("syrincs.rhythm.file");
+        if (prop != null && !prop.isBlank()) return prop.trim();
+        // 2) Environment variable
+        String env = System.getenv("SYRINCS_RHYTHM_FILE");
+        if (env != null && !env.isBlank()) return env.trim();
+        // 3) User config file: ~/.syrincs/config.properties with keys rhythm.file or syrincs.rhythm.file
+        try {
+            java.nio.file.Path home = java.nio.file.Path.of(System.getProperty("user.home", ""));
+            if (home != null) {
+                java.nio.file.Path cfg = home.resolve(".syrincs").resolve("config.properties");
+                if (java.nio.file.Files.isRegularFile(cfg)) {
+                    java.util.Properties p = new java.util.Properties();
+                    try (java.io.Reader r = java.nio.file.Files.newBufferedReader(cfg)) {
+                        p.load(r);
+                    }
+                    String v = p.getProperty("rhythm.file");
+                    if (v == null || v.isBlank()) v = p.getProperty("syrincs.rhythm.file");
+                    if (v != null && !v.isBlank()) return v.trim();
+                }
+            }
+        } catch (Exception ignored) {}
+        // 4) not found
+        return null;
+    }
+
     /** Simple DTO for database configuration. */
     public static final class DbConfig {
         public final String url;

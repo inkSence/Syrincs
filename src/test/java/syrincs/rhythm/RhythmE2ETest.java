@@ -155,4 +155,23 @@ public class RhythmE2ETest {
         List<FakeSequencePlayer.EventRec> events = seqFake.getEvents();
         assertFalse(events.isEmpty());
     }
+    
+    @Test
+    public void play_withoutIn_usesDefaultFile_viaSysProp() throws Exception {
+        File f = writeTemp(RDL);
+        System.setProperty("syrincs.rhythm.file", f.getAbsolutePath());
+        try {
+            FakeMidiOutputPort fakeMidi = new FakeMidiOutputPort();
+            FakeSequencePlayer seqFake = new FakeSequencePlayer();
+            int code = new CommandLine(buildRootWithFake(fakeMidi, seqFake)).execute("play", "rhythm",
+                    "--ppq", "480", "--res-per-beat", "4", "--tempo", "120", "--bars", "1",
+                    "--note-kick", "36", "--note-snare", "38", "--channel-kick", "10", "--channel-snare", "10",
+                    "--vel-kick", "90", "--vel-snare", "90", "--gate", "50"
+            );
+            assertEquals(0, code);
+            assertFalse(seqFake.getEvents().isEmpty());
+        } finally {
+            System.clearProperty("syrincs.rhythm.file");
+        }
+    }
 }

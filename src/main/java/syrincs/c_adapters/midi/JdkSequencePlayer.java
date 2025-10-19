@@ -44,16 +44,4 @@ public class JdkSequencePlayer implements SequencePlayer {
         }
     }
 
-    private MidiDevice.Info findOutputByName(String nameSubstring) {
-        return DeviceResolver.findOutputInfoBySubstring(nameSubstring);
-    }
-
-    // Resolve default: env/config override → preferred brand hints → first available OUT
-    private MidiDevice.Info autoSelectDefaultOutput() {
-        return DeviceResolver.autoSelectDefaultOutput();
-    }
-
-    private MidiDevice.Info[] listMidiOutputs() {
-        return DeviceResolver.listOutputInfos();
-    }
 }
