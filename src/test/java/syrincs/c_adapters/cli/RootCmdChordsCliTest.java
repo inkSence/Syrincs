@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * We assert that `syrincs play chords` parses suboptions the same way (defaults and partial overrides)
  * by verifying that UseCaseInteractor.playChords(...) is invoked with the expected arguments.
  */
-public class CliControllerTest {
+public class RootCmdChordsCliTest {
 
     /** Minimal fake repo: not used by the capturing interactor override but required for construction. */
     static class DummyRepo implements HindemithChordRepositoryPort {
@@ -42,19 +42,29 @@ public class CliControllerTest {
      * Capturing interactor that overrides playChords(range overload) to record parsed values.
      */
     static class CapturingInteractor extends UseCaseInteractor {
-        List<Integer> numNotes; List<Integer> groups; Integer root; Integer range; Long duration; String device; int calls;
+        List<Integer> numNotes; List<Integer> groups; Integer root; Integer range; Long duration; String device; Integer channel; int calls;
         public CapturingInteractor(MidiOutputPort midi, HindemithChordRepositoryPort repo) {
-            super(midi, repo, new PlaybackRhythmUseCase((p,s,v,d)->{}));
+            super(
+                new syrincs.b_application.SendToMidiUseCase(midi),
+                new syrincs.b_application.ValidatePatternsUseCase(),
+                new PlaybackRhythmUseCase((p,s,v,d)->{}),
+                repo,
+                new syrincs.b_application.GenerateChordsUseCase(new syrincs.a_domain.chord.NoteCombinator(), new syrincs.a_domain.hindemith.ChordAnalysis(), 3),
+                new syrincs.b_application.AnalyseChordByHindemithUseCase(),
+                new syrincs.b_application.GetHindemithChordsFromDbUseCase(repo),
+                new syrincs.b_application.PersistHindemithChordUseCase(repo)
+            );
         }
         @Override
         public void playChords(List<Integer> numNotes, List<Integer> groups, Integer rootNote, Integer range,
-                               Long durationMs, String deviceNameSubstring) {
+                               Long durationMs, String deviceNameSubstring, Integer channelZeroBased) {
             this.numNotes = List.copyOf(numNotes);
             this.groups = List.copyOf(groups);
             this.root = rootNote;
             this.range = range;
             this.duration = durationMs;
             this.device = deviceNameSubstring;
+            this.channel = channelZeroBased;
             this.calls++;
         }
     }
@@ -118,5 +128,18 @@ public class CliControllerTest {
         assertEquals(List.of(1,2), interactor.groups);
         assertEquals(72, interactor.root);
         assertEquals(24, interactor.range);
+    }
+
+    @Test
+    void playChords_channel_option_maps_1_to_16_to_zero_based() {
+        var midiFake = new FakeMidiOutputPort();
+        var interactor = new CapturingInteractor(midiFake, new DummyRepo());
+        var root = buildRoot(interactor, midiFake);
+
+        int code = new CommandLine(root).execute("play", "chords", "--channel", "10");
+        assertEquals(0, code);
+        assertEquals(1, interactor.calls);
+        assertNotNull(interactor.channel);
+        assertEquals(9, interactor.channel); // 10 (user) -> 9 (zero-based)
     }
 }

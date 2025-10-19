@@ -31,7 +31,8 @@ public class RhythmFileParser {
 
     public Result parse(Reader reader) throws IOException, ParseException {
         BufferedReader br = new BufferedReader(reader);
-        PatternHeader header = new PatternHeader();
+        // collect header values immutably
+        Integer timeNum = null, timeDen = null, tempo = null, ppq = null, resPerBeat = null, bars = null;
         Pattern pattern = new Pattern();
         Map<String, VoiceDecl> voices = new LinkedHashMap<>();
         Map<String, List<Boolean>> tmpPatterns = new LinkedHashMap<>();
@@ -50,16 +51,16 @@ public class RhythmFileParser {
                 String v = raw.substring(5).trim();
                 String[] xy = v.split("/");
                 if (xy.length != 2) throw new ParseException(lineNo, "Invalid time signature: '"+v+"'");
-                header.timeNum = parseIntStrict(xy[0].trim(), lineNo, "time numerator");
-                header.timeDen = parseIntStrict(xy[1].trim(), lineNo, "time denominator");
+                timeNum = parseIntStrict(xy[0].trim(), lineNo, "time numerator");
+                timeDen = parseIntStrict(xy[1].trim(), lineNo, "time denominator");
             } else if (raw.startsWith("tempo:")) {
-                header.tempo = parseIntStrict(raw.substring(7).trim(), lineNo, "tempo");
+                tempo = parseIntStrict(raw.substring(7).trim(), lineNo, "tempo");
             } else if (raw.startsWith("ppq:")) {
-                header.ppq = parseIntStrict(raw.substring(4).trim(), lineNo, "ppq");
+                ppq = parseIntStrict(raw.substring(4).trim(), lineNo, "ppq");
             } else if (raw.startsWith("res-per-beat:")) {
-                header.resPerBeat = parseIntStrict(raw.substring(14).trim(), lineNo, "res-per-beat");
+                resPerBeat = parseIntStrict(raw.substring(14).trim(), lineNo, "res-per-beat");
             } else if (raw.startsWith("bars:")) {
-                header.bars = parseIntStrict(raw.substring(6).trim(), lineNo, "bars");
+                bars = parseIntStrict(raw.substring(6).trim(), lineNo, "bars");
             } else if (raw.startsWith("voice ")) {
                 // voice <ident>  note=36 channel=10 vel=90
                 String rest = raw.substring(6).trim();
@@ -102,6 +103,7 @@ public class RhythmFileParser {
             pattern.put(e.getKey(), arr);
         }
 
+        PatternHeader header = new PatternHeader(timeNum, timeDen, tempo, ppq, resPerBeat, bars);
         return new Result(header, pattern, voices);
     }
 

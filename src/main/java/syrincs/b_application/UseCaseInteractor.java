@@ -5,13 +5,10 @@ import syrincs.a_domain.hindemith.HindemithChord;
 import syrincs.a_domain.Tone;
 import syrincs.a_domain.hindemith.ChordAnalysis;
 import syrincs.b_application.ports.HindemithChordRepositoryPort;
-import syrincs.b_application.ports.MidiOutputPort;
 import syrincs.a_domain.rhythm.Pattern;
 import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
 
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiUnavailableException;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
@@ -31,17 +28,22 @@ public class UseCaseInteractor {
     private final PlaybackRhythmUseCase rhythmPlayback;
 
 
-    public UseCaseInteractor(MidiOutputPort midiOutput, HindemithChordRepositoryPort repository, PlaybackRhythmUseCase playRhythm) {
-        this.repository = repository;
-        this.generateChordsUseCase = new GenerateChordsUseCase(
-                new NoteCombinator(), new ChordAnalysis(), 3
-        );
-        this.analyseChordByHindemithUseCase = new AnalyseChordByHindemithUseCase();
-        this.persistUseCase = new PersistHindemithChordUseCase(repository);
-        this.getHindemithChordsFromDbUseCase = new GetHindemithChordsFromDbUseCase(repository);
-        this.send = new SendToMidiUseCase(midiOutput);
-        this.validate = new ValidatePatternsUseCase();
-        this.rhythmPlayback = playRhythm;
+    public UseCaseInteractor(SendToMidiUseCase send,
+                             ValidatePatternsUseCase validate,
+                             PlaybackRhythmUseCase playRhythm,
+                             HindemithChordRepositoryPort repository,
+                             GenerateChordsUseCase generateChordsUseCase,
+                             AnalyseChordByHindemithUseCase analyseChordByHindemithUseCase,
+                             GetHindemithChordsFromDbUseCase getHindemithChordsFromDbUseCase,
+                             PersistHindemithChordUseCase persistUseCase) {
+        this.send = Objects.requireNonNull(send);
+        this.validate = Objects.requireNonNull(validate);
+        this.rhythmPlayback = Objects.requireNonNull(playRhythm);
+        this.repository = Objects.requireNonNull(repository);
+        this.generateChordsUseCase = Objects.requireNonNull(generateChordsUseCase);
+        this.analyseChordByHindemithUseCase = Objects.requireNonNull(analyseChordByHindemithUseCase);
+        this.getHindemithChordsFromDbUseCase = Objects.requireNonNull(getHindemithChordsFromDbUseCase);
+        this.persistUseCase = Objects.requireNonNull(persistUseCase);
     }
 
     public List<HindemithChord> findChordsFor(List<Integer> numNotes, List<Integer> groups, Integer rootNote) {
@@ -72,12 +74,12 @@ public class UseCaseInteractor {
         validate.validate(pattern, spec, voices);
     }
 
-    public void sendToneToDevice(Tone tone, String deviceNameSubstring) throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
+    public void sendToneToDevice(Tone tone, String deviceNameSubstring) {
         // Application layer should not print; delegate to adapter
         send.sendToneToDevice(tone, deviceNameSubstring);
     }
 
-    public void sendChordToDevice(HindemithChord hindemithChord, String deviceNameSubstring, Long duration) throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
+    public void sendChordToDevice(HindemithChord hindemithChord, String deviceNameSubstring, Long duration) {
         send.sendChordToDevice(hindemithChord, deviceNameSubstring, duration);
 
     }
@@ -107,29 +109,32 @@ public class UseCaseInteractor {
         repository.truncate();
     }
 
-    // Play the chords using the MIDI output adapter
     public void playChords(List<Integer> numNotes, List<Integer> groups, Integer rootNote,
-                           Long durationMs, String deviceNameSubstring)
-            throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
-        var chords = findChordsFor(numNotes, groups, rootNote);
-        if (chords == null || chords.isEmpty()) {
-            return;
-        }
-        for (var hc : chords) {
-            sendChordToDevice(hc, deviceNameSubstring, durationMs);
-        }
+                           Long durationMs, String deviceNameSubstring) {
+        playChords(numNotes, groups, rootNote, null, durationMs, deviceNameSubstring, null);
     }
 
     // Overload: also filter by range
     public void playChords(List<Integer> numNotes, List<Integer> groups, Integer rootNote, Integer range,
-                           Long durationMs, String deviceNameSubstring)
-            throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
-        var chords = findChordsFor(numNotes, groups, rootNote, range);
+                           Long durationMs, String deviceNameSubstring) {
+        playChords(numNotes, groups, rootNote, range, durationMs, deviceNameSubstring, null);
+    }
+
+    // New overload: optional channel (zero-based) for chord playback
+    public void playChords(List<Integer> numNotes, List<Integer> groups, Integer rootNote, Integer range,
+                           Long durationMs, String deviceNameSubstring, Integer channelZeroBased) {
+        var chords = (range == null)
+                ? findChordsFor(numNotes, groups, rootNote)
+                : findChordsFor(numNotes, groups, rootNote, range);
         if (chords == null || chords.isEmpty()) {
             return;
         }
         for (var hc : chords) {
-            sendChordToDevice(hc, deviceNameSubstring, durationMs);
+            if (channelZeroBased == null) {
+                sendChordToDevice(hc, deviceNameSubstring, durationMs);
+            } else {
+                send.sendChordToDevice(hc, deviceNameSubstring, durationMs, channelZeroBased);
+            }
         }
     }
 

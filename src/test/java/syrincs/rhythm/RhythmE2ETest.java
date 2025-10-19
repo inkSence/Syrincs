@@ -40,13 +40,29 @@ public class RhythmE2ETest {
     }
 
     private RootCmd buildRootWithFake(FakeMidiOutputPort fakeMidi, FakeSequencePlayer seqFake) {
-        var interactor = new UseCaseInteractor(fakeMidi, new DummyRepo(), new PlaybackRhythmUseCase(new RhythmPlaybackService(new SequenceBuilder(), seqFake)));
+        var send = new syrincs.b_application.SendToMidiUseCase(fakeMidi);
+        var validate = new syrincs.b_application.ValidatePatternsUseCase();
+        var rhythmUC = new PlaybackRhythmUseCase(new RhythmPlaybackService(new SequenceBuilder(), seqFake));
+        var repo = new DummyRepo();
+        var generate = new syrincs.b_application.GenerateChordsUseCase(new syrincs.a_domain.chord.NoteCombinator(), new syrincs.a_domain.hindemith.ChordAnalysis(), 3);
+        var analyze = new syrincs.b_application.AnalyseChordByHindemithUseCase();
+        var get = new syrincs.b_application.GetHindemithChordsFromDbUseCase(repo);
+        var persist = new syrincs.b_application.PersistHindemithChordUseCase(repo);
+        var interactor = new UseCaseInteractor(send, validate, rhythmUC, repo, generate, analyze, get, persist);
         return new RootCmd(interactor, fakeMidi);
         }
 
     private RootCmd buildRootWithRealAdapter() {
         var real = new JdkMidiOutputAdapter();
-        var interactor = new UseCaseInteractor(real, new DummyRepo(), new PlaybackRhythmUseCase(new RhythmPlaybackService(new SequenceBuilder(), new syrincs.c_adapters.midi.JdkSequencePlayer())));
+        var send = new syrincs.b_application.SendToMidiUseCase(real);
+        var validate = new syrincs.b_application.ValidatePatternsUseCase();
+        var rhythmUC = new PlaybackRhythmUseCase(new RhythmPlaybackService(new SequenceBuilder(), new syrincs.c_adapters.midi.JdkSequencePlayer()));
+        var repo = new DummyRepo();
+        var generate = new syrincs.b_application.GenerateChordsUseCase(new syrincs.a_domain.chord.NoteCombinator(), new syrincs.a_domain.hindemith.ChordAnalysis(), 3);
+        var analyze = new syrincs.b_application.AnalyseChordByHindemithUseCase();
+        var get = new syrincs.b_application.GetHindemithChordsFromDbUseCase(repo);
+        var persist = new syrincs.b_application.PersistHindemithChordUseCase(repo);
+        var interactor = new UseCaseInteractor(send, validate, rhythmUC, repo, generate, analyze, get, persist);
         return new RootCmd(interactor, real);
     }
 
@@ -91,9 +107,9 @@ public class RhythmE2ETest {
             if (e.on) {
                 assertTrue(e.tick % 120 == 0, "On tick multiple of 120");
                 if (e.note == 36) {
-                    assertEquals(10, e.channel); assertEquals(90, e.velocity);
+                    assertEquals(9, e.channel); assertEquals(90, e.velocity);
                 } else if (e.note == 38) {
-                    assertEquals(10, e.channel); assertEquals(90, e.velocity);
+                    assertEquals(9, e.channel); assertEquals(90, e.velocity);
                 } else {
                     fail("Unexpected note: "+e.note);
                 }

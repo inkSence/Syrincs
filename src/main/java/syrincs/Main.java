@@ -2,7 +2,7 @@
 package syrincs;
 
 import picocli.CommandLine;
-import syrincs.b_application.UseCaseInteractor;
+import syrincs.b_application.*;
 import syrincs.c_adapters.midi.JdkMidiOutputAdapter;
 import syrincs.b_application.PlaybackRhythmUseCase;
 import syrincs.c_adapters.midi.SequenceBuilder;
@@ -21,7 +21,15 @@ public class Main {
         var dbCfg = syrincs.d_frameworksAndDrivers.AppConfig.loadDbConfig(args);
         var repo = new PostgresHindemithChordRepository(dbCfg.url, dbCfg.user, dbCfg.password);
         var rhythmPlayback = new PlaybackRhythmUseCase(new RhythmPlaybackService(new SequenceBuilder(), new JdkSequencePlayer()));
-        var interactor = new UseCaseInteractor(midiAdapter, repo, rhythmPlayback);
+
+        // Build application use-cases (Composition Root)
+        var send = new SendToMidiUseCase(midiAdapter);
+        var validate = new ValidatePatternsUseCase();
+        var generate = new GenerateChordsUseCase(new syrincs.a_domain.chord.NoteCombinator(), new syrincs.a_domain.hindemith.ChordAnalysis(), 3);
+        var analyze = new AnalyseChordByHindemithUseCase();
+        var get = new GetHindemithChordsFromDbUseCase(repo);
+        var persist = new PersistHindemithChordUseCase(repo);
+        var interactor = new UseCaseInteractor(send, validate, rhythmPlayback, repo, generate, analyze, get, persist);
 
         // Filter out DB-related CLI flags before passing to PicoCli so they don't appear in help
         String[] filtered = filterDbArgs(args);

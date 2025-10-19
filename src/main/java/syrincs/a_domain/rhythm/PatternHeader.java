@@ -1,10 +1,13 @@
 package syrincs.a_domain.rhythm;
 
-public class PatternHeader {
-    public Integer timeNum; // optional in source; defaults elsewhere
-    public Integer timeDen;
-    public Integer tempo;
-    public Integer ppq;
-    public Integer resPerBeat;
-    public Integer bars;
-}
+/**
+ * Immutable header values parsed from RDL-0. All fields are optional; defaults are applied later.
+ */
+public record PatternHeader(
+        Integer timeNum,
+        Integer timeDen,
+        Integer tempo,
+        Integer ppq,
+        Integer resPerBeat,
+        Integer bars
+) {}

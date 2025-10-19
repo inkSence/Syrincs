@@ -2,41 +2,55 @@ package syrincs.c_adapters.midi;
 
 import syrincs.a_domain.chord.Chord;
 import syrincs.a_domain.Tone;
+import syrincs.b_application.errors.MidiPortException;
 import syrincs.b_application.ports.MidiOutputPort;
 
 import javax.sound.midi.*;
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Frameworks & Drivers implementation of MidiOutputPort using the JDK javax.sound.midi API.
  */
 public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_application.ports.MidiDeviceQueryPort  {
 
+    private static final Logger LOG = Logger.getLogger(JdkMidiOutputAdapter.class.getName());
 
     private MidiDevice.Info findOutputInfoBySubstring(String nameSubstring) {
         return DeviceResolver.findOutputInfoBySubstring(nameSubstring);
     }
 
     @Override
-    public void sendToneToDevice(Tone tone, String deviceNameSubstring) throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
-        MidiDevice.Info info = (deviceNameSubstring != null && !deviceNameSubstring.isEmpty())
-                ? findOutputInfoBySubstring(deviceNameSubstring)
-                : null;
-        if (info == null) {
-            // Centralized auto-selection previously in Main
-            info = DeviceResolver.autoSelectDefaultOutput();
+    public void sendToneToDevice(Tone tone, String deviceNameSubstring) {
+        try {
+            MidiDevice.Info info = (deviceNameSubstring != null && !deviceNameSubstring.isEmpty())
+                    ? findOutputInfoBySubstring(deviceNameSubstring)
+                    : null;
+            if (info == null) {
+                info = DeviceResolver.autoSelectDefaultOutput();
+            }
+            if (info == null) {
+                String msg = "No suitable MIDI output device found" +
+                        (deviceNameSubstring != null ? " for substring '" + deviceNameSubstring + "'" : "");
+                LOG.warning(msg);
+                throw new MidiPortException(msg);
+            }
+            send(tone, info, 0);
+        } catch (MidiUnavailableException | InvalidMidiDataException | InterruptedException e) {
+            LOG.log(Level.WARNING, "Failed to send tone: " + e.getMessage(), e);
+            throw new MidiPortException("Failed to send tone: " + e.getMessage(), e);
         }
-        if (info == null) {
-            throw new MidiUnavailableException("No suitable MIDI output device found" +
-                    (deviceNameSubstring != null ? " for substring '" + deviceNameSubstring + "'" : ""));
-        }
-        send(tone, info, 0);
     }
 
     @Override
-    public void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration) {
+    public void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration) throws MidiPortException {
+        sendChordToDevice(chord, deviceNameSubstring, duration, 0);
+    }
+
+    @Override
+    public void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration, int channelZeroBased) throws MidiPortException {
         if (chord == null) return;
         try {
             MidiDevice.Info info = (deviceNameSubstring != null && !deviceNameSubstring.isEmpty())
@@ -46,9 +60,10 @@ public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_applicati
                 info = DeviceResolver.autoSelectDefaultOutput();
             }
             if (info == null) {
-                System.out.println("[MIDI] No suitable output device found" +
-                        (deviceNameSubstring != null ? " for substring '" + deviceNameSubstring + "'" : ""));
-                return;
+                String msg = "No suitable MIDI output device found" +
+                        (deviceNameSubstring != null ? " for substring '" + deviceNameSubstring + "'" : "");
+                LOG.warning(msg);
+                throw new MidiPortException(msg);
             }
 
             MidiDevice device = MidiSystem.getMidiDevice(info);
@@ -57,17 +72,20 @@ public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_applicati
                 if (!device.isOpen()) { device.open(); openedHere = true; }
                 Receiver receiver = device.getReceiver();
                 try {
-                    sendChordViaReceiver(receiver, chord, 0, duration);
+                    sendChordViaReceiver(receiver, chord, channelZeroBased, duration);
                 } finally {
                     try { receiver.close(); } catch (Exception ignored) {}
                 }
             } finally {
                 if (openedHere && device.isOpen()) device.close();
             }
-        } catch (Exception e) {
-            // Do not propagate checked exceptions: the port method does not declare throws.
-            // Log to console to aid debugging in a console tool.
-            System.out.println("[MIDI] Failed to send chord: " + e.getMessage());
+        } catch (MidiUnavailableException | InvalidMidiDataException e) {
+            LOG.log(Level.WARNING, "Failed to send chord: " + e.getMessage(), e);
+            throw new MidiPortException("Failed to send chord: " + e.getMessage(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.log(Level.WARNING, "Sending chord interrupted", e);
+            throw new MidiPortException("Sending chord interrupted", e);
         }
     }
 

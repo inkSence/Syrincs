@@ -8,8 +8,6 @@ import picocli.CommandLine.ParentCommand;
 import syrincs.a_domain.Tone;
 import syrincs.b_application.UseCaseInteractor;
 
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiUnavailableException;
 import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -74,11 +72,16 @@ public class RootCmd implements Runnable {
         @ParentCommand RootCmd parent;
 
         @Override
-        public Integer call() throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
-            // Default behavior for 'syrincs play' -> same as 'syrincs play note' with defaults
-            var interactor = parent.interactor;
-            interactor.sendToneToDevice(new Tone(100L, 60, 0.5), null);
-            return 0;
+        public Integer call() {
+            try {
+                // Default behavior for 'syrincs play' -> same as 'syrincs play note' with defaults
+                var interactor = parent.interactor;
+                interactor.sendToneToDevice(new Tone(100L, 60, 0.5), null);
+                return 0;
+            } catch (Exception e) {
+                System.err.println("[ERROR] " + e.getMessage());
+                return 1;
+            }
         }
 
         @Command(name = "note", description = "Play a single note (defaults: note=60, vel=0.5, ms=100)")
@@ -92,10 +95,15 @@ public class RootCmd implements Runnable {
             double vel;
 
             @Override
-            public Integer call() throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
-                var interactor = parentPlay.parent.interactor;
-                interactor.sendToneToDevice(new Tone(100L, note, vel), null);
-                return 0;
+            public Integer call() {
+                try {
+                    var interactor = parentPlay.parent.interactor;
+                    interactor.sendToneToDevice(new Tone(100L, note, vel), null);
+                    return 0;
+                } catch (Exception e) {
+                    System.err.println("[ERROR] " + e.getMessage());
+                    return 1;
+                }
             }
         }
 
@@ -117,13 +125,13 @@ public class RootCmd implements Runnable {
             String inFile;
 
             // Voice overrides
-            @Option(names = "--channel-kick", description = "MIDI channel for kick (0-15)")
+            @Option(names = "--channel-kick", description = "MIDI channel for kick (1-16)")
             Integer channelKick;
             @Option(names = "--note-kick", description = "MIDI note for kick")
             Integer noteKick;
             @Option(names = "--vel-kick", description = "velocity for kick (0-127)")
             Integer velKick;
-            @Option(names = "--channel-snare", description = "MIDI channel for snare (0-15)")
+            @Option(names = "--channel-snare", description = "MIDI channel for snare (1-16)")
             Integer channelSnare;
             @Option(names = "--note-snare", description = "MIDI note for snare")
             Integer noteSnare;
@@ -178,12 +186,12 @@ public class RootCmd implements Runnable {
 
                     PatternHeader h = res.header;
                     int[] nm = parseSig();
-                    int timeNum = h.timeNum != null ? h.timeNum : nm[0];
-                    int timeDen = h.timeDen != null ? h.timeDen : nm[1];
-                    int tempoBpm = h.tempo != null ? h.tempo : this.tempo;
-                    int ppqV = h.ppq != null ? h.ppq : this.ppq;
-                    int rpb = h.resPerBeat != null ? h.resPerBeat : this.resPerBeat;
-                    int barsV = h.bars != null ? h.bars : this.bars;
+                    int timeNum = h.timeNum() != null ? h.timeNum() : nm[0];
+                    int timeDen = h.timeDen() != null ? h.timeDen() : nm[1];
+                    int tempoBpm = h.tempo() != null ? h.tempo() : this.tempo;
+                    int ppqV = h.ppq() != null ? h.ppq() : this.ppq;
+                    int rpb = h.resPerBeat() != null ? h.resPerBeat() : this.resPerBeat;
+                    int barsV = h.bars() != null ? h.bars() : this.bars;
                     RhythmSpec spec = new RhythmSpec(timeNum, timeDen, tempoBpm, ppqV, rpb, barsV);
 
                     int g = Math.max(0, Math.min(100, gate));
@@ -194,8 +202,17 @@ public class RootCmd implements Runnable {
                     RhythmFileParser.VoiceDecl sd = pvoices.get("snare");
                     if (kd != null) kick = new VoiceSpec("kick", kd.channel, kd.note, kd.vel, g);
                     if (sd != null) snare = new VoiceSpec("snare", sd.channel, sd.note, sd.vel, g);
-                    kick = kick.withOverrides(channelKick, noteKick, velKick, g);
-                    snare = snare.withOverrides(channelSnare, noteSnare, velSnare, g);
+                    int chKick = syrincs.c_adapters.cli.ChannelMapper.toZeroBased(channelKick, kick.channel);
+                    int chSnare = syrincs.c_adapters.cli.ChannelMapper.toZeroBased(channelSnare, snare.channel);
+                    kick = new VoiceSpec("kick", chKick, kick.note, kick.velocity, g);
+                    snare = new VoiceSpec("snare", chSnare, snare.note, snare.velocity, g);
+                    // apply note/vel overrides if present
+                    if (noteKick != null || velKick != null) {
+                        kick = new VoiceSpec("kick", kick.channel, noteKick != null ? noteKick : kick.note, velKick != null ? velKick : kick.velocity, g);
+                    }
+                    if (noteSnare != null || velSnare != null) {
+                        snare = new VoiceSpec("snare", snare.channel, noteSnare != null ? noteSnare : snare.note, velSnare != null ? velSnare : snare.velocity, g);
+                    }
 
                     var voices = new ArrayList<VoiceSpec>();
                     voices.add(kick); voices.add(snare);
@@ -228,13 +245,22 @@ public class RootCmd implements Runnable {
         @Option(names = "range", description = "Max chord span (maxNote - minNote), default: 24", defaultValue = "24")
         int range;
 
+        @Option(names = "--channel", description = "MIDI channel (1-16)")
+        Integer channel;
+
         @Override
-        public Integer call() throws Exception {
-            var interactor = parentPlay.parent.interactor;
-            List<Integer> nn = (numNotes == null || numNotes.length == 0) ? List.of(3,4,5) : Arrays.stream(numNotes).boxed().toList();
-            List<Integer> gr = (groups   == null || groups.length   == 0) ? List.of(1,2,3,4,5,6,7,8,9) : Arrays.stream(groups).boxed().toList();
-            interactor.playChords(nn, gr, rootNote, range, 200L, null);
-            return 0;
+        public Integer call() {
+            try {
+                var interactor = parentPlay.parent.interactor;
+                List<Integer> nn = (numNotes == null || numNotes.length == 0) ? List.of(3,4,5) : Arrays.stream(numNotes).boxed().toList();
+                List<Integer> gr = (groups   == null || groups.length   == 0) ? List.of(1,2,3,4,5,6,7,8,9) : Arrays.stream(groups).boxed().toList();
+                Integer chZero = (channel == null ? null : syrincs.c_adapters.cli.ChannelMapper.toZeroBased(channel, 0));
+                interactor.playChords(nn, gr, rootNote, range, 200L, null, chZero);
+                return 0;
+            } catch (Exception e) {
+                System.err.println("[ERROR] " + e.getMessage());
+                return 1;
+            }
         }
     }
 
