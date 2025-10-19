@@ -11,9 +11,7 @@ import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
 
 import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiUnavailableException;
-import javax.sound.midi.Sequence;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
@@ -28,11 +26,12 @@ public class UseCaseInteractor {
     private final SendToMidiUseCase send;
     private final HindemithChordRepositoryPort repository;
     private final Logger LOGGER = Logger.getLogger(UseCaseInteractor.class.getName());
-    private List<HindemithChord> hindemithChords;
+    private List<syrincs.a_domain.hindemith.HindemithChord> hindemithChords;
     private final ValidatePatternsUseCase validate;
+    private final PlaybackRhythmUseCase rhythmPlayback;
 
 
-    public UseCaseInteractor(MidiOutputPort midiOutput, HindemithChordRepositoryPort repository) {
+    public UseCaseInteractor(MidiOutputPort midiOutput, HindemithChordRepositoryPort repository, PlaybackRhythmUseCase playRhythm) {
         this.repository = repository;
         this.generateChordsUseCase = new GenerateChordsUseCase(
                 new NoteCombinator(), new ChordAnalysis(), 3
@@ -42,6 +41,7 @@ public class UseCaseInteractor {
         this.getHindemithChordsFromDbUseCase = new GetHindemithChordsFromDbUseCase(repository);
         this.send = new SendToMidiUseCase(midiOutput);
         this.validate = new ValidatePatternsUseCase();
+        this.rhythmPlayback = playRhythm;
     }
 
     public List<HindemithChord> findChordsFor(List<Integer> numNotes, List<Integer> groups, Integer rootNote) {
@@ -68,21 +68,12 @@ public class UseCaseInteractor {
         return acc;
     }
 
-    public void validatePattern(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices){
+    public void validatePattern(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws ValidatePatternsUseCase.ValidationException {
         validate.validate(pattern, spec, voices);
     }
 
-
-    public MidiDevice.Info[] listMidiOutputs() {
-        return send.listMidiOutputs();
-    }
-
-    public MidiDevice.Info findOutputByName(String nameSubstring) {
-        return send.findOutputByName(nameSubstring);
-    }
-
     public void sendToneToDevice(Tone tone, String deviceNameSubstring) throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
-        System.out.printf("[MIDI] Playing note %d.", (int) tone.getMidiPitch());
+        // Application layer should not print; delegate to adapter
         send.sendToneToDevice(tone, deviceNameSubstring);
     }
 
@@ -99,7 +90,7 @@ public class UseCaseInteractor {
         hindemithChords = getHindemithChordsFromDbUseCase.loadHindemithChordsWithGroups(rootNote, groups);
     }
 
-    public ChordAnalysis.Result analyzeChordByHindemith(List<Integer> midiNotes) {
+    public syrincs.a_domain.hindemith.ChordAnalysis.Result analyzeChordByHindemith(List<Integer> midiNotes) {
         return analyseChordByHindemithUseCase.analyze(midiNotes);
     }
 
@@ -122,7 +113,6 @@ public class UseCaseInteractor {
             throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
         var chords = findChordsFor(numNotes, groups, rootNote);
         if (chords == null || chords.isEmpty()) {
-            System.out.println("[MIDI] No chords available after loading.");
             return;
         }
         for (var hc : chords) {
@@ -136,7 +126,6 @@ public class UseCaseInteractor {
             throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
         var chords = findChordsFor(numNotes, groups, rootNote, range);
         if (chords == null || chords.isEmpty()) {
-            System.out.println("[MIDI] No chords available after loading.");
             return;
         }
         for (var hc : chords) {
@@ -144,8 +133,9 @@ public class UseCaseInteractor {
         }
     }
 
-    // Rhythm: play an arbitrary javax.sound.midi.Sequence on a device (or default)
-    public void playSequence(Sequence sequence, String deviceNameSubstring) throws Exception {
-        send.playSequence(sequence, deviceNameSubstring);
+    // Rhythm: domain-driven playback via RhythmPlaybackPort (no javax types leaking)
+    public void playRhythm(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring) throws Exception {
+        validate.validate(pattern, spec, voices);
+        rhythmPlayback.playRhythm(pattern, spec, voices, deviceNameSubstring);
     }
 }

@@ -31,20 +31,17 @@ public class SequenceBuilder {
         track.add(new MidiEvent(tempoMsg, 0));
 
         int stepTicks = spec.stepTicks();
-        int gateTicksKick = Math.round(stepTicks * (voices.get(0).gatePercent / 100f));
-        int gateTicksSnare = Math.round(stepTicks * (voices.get(1).gatePercent / 100f));
-        if (gateTicksKick < 1) gateTicksKick = 1;
-        if (gateTicksSnare < 1) gateTicksSnare = 1;
 
         Map<String, boolean[]> vmap = pattern.voices();
         for (VoiceSpec v : voices) {
             boolean[] steps = vmap.get(v.name);
             if (steps == null) continue;
+            int gateTicks = Math.round(stepTicks * (v.gatePercent / 100f));
+            if (gateTicks < 1) gateTicks = 1;
             for (int idx = 0; idx < steps.length; idx++) {
                 if (!steps[idx]) continue;
                 long startTick = (long) idx * stepTicks;
-                int gate = v.name.equalsIgnoreCase("kick") ? gateTicksKick : gateTicksSnare;
-                long endTick = startTick + gate;
+                long endTick = startTick + gateTicks;
                 // Note On
                 ShortMessage on = new ShortMessage();
                 on.setMessage(ShortMessage.NOTE_ON, v.channel, v.note, v.velocity);

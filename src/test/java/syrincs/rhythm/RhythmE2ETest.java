@@ -5,6 +5,9 @@ import picocli.CommandLine;
 import syrincs.b_application.UseCaseInteractor;
 import syrincs.b_application.ports.HindemithChordRepositoryPort;
 import syrincs.c_adapters.midi.JdkMidiOutputAdapter;
+import syrincs.b_application.PlaybackRhythmUseCase;
+import syrincs.c_adapters.midi.SequenceBuilder;
+import syrincs.c_adapters.midi.RhythmPlaybackService;
 import syrincs.c_adapters.cli.RootCmd;
 
 import java.io.ByteArrayOutputStream;
@@ -36,14 +39,15 @@ public class RhythmE2ETest {
         @Override public List<syrincs.a_domain.hindemith.HindemithChord> findByRootNoteAndGroupsAndNumNotesAndRange(int rootNote, Collection<Integer> groups, Collection<Integer> numNotes, int range) { return List.of(); }
     }
 
-    private RootCmd buildRootWithFake(FakeMidiOutputPort fake) {
-        var interactor = new UseCaseInteractor(fake, new DummyRepo());
-        return new RootCmd(interactor);
+    private RootCmd buildRootWithFake(FakeMidiOutputPort fakeMidi, FakeSequencePlayer seqFake) {
+        var interactor = new UseCaseInteractor(fakeMidi, new DummyRepo(), new PlaybackRhythmUseCase(new RhythmPlaybackService(new SequenceBuilder(), seqFake)));
+        return new RootCmd(interactor, fakeMidi);
         }
 
     private RootCmd buildRootWithRealAdapter() {
-        var interactor = new UseCaseInteractor(new JdkMidiOutputAdapter(), new DummyRepo());
-        return new RootCmd(interactor);
+        var real = new JdkMidiOutputAdapter();
+        var interactor = new UseCaseInteractor(real, new DummyRepo(), new PlaybackRhythmUseCase(new RhythmPlaybackService(new SequenceBuilder(), new syrincs.c_adapters.midi.JdkSequencePlayer())));
+        return new RootCmd(interactor, real);
     }
 
     private File writeTemp(String content) throws Exception {
@@ -68,8 +72,9 @@ public class RhythmE2ETest {
     @Test
     public void play_happyPath_buildsCorrectEvents() throws Exception {
         File f = writeTemp(RDL);
-        FakeMidiOutputPort fake = new FakeMidiOutputPort();
-        int code = new CommandLine(buildRootWithFake(fake)).execute("play", "rhythm",
+        FakeMidiOutputPort fakeMidi = new FakeMidiOutputPort();
+        FakeSequencePlayer seqFake = new FakeSequencePlayer();
+        int code = new CommandLine(buildRootWithFake(fakeMidi, seqFake)).execute("play", "rhythm",
                 "--in", f.getAbsolutePath(),
                 "--device", "FAKE",
                 "--ppq", "480", "--res-per-beat", "4", "--tempo", "120", "--bars", "1",
@@ -77,7 +82,7 @@ public class RhythmE2ETest {
                 "--vel-kick", "90", "--vel-snare", "90", "--gate", "50"
         );
         assertEquals(0, code);
-        List<FakeMidiOutputPort.EventRec> events = fake.getEvents();
+        List<FakeSequencePlayer.EventRec> events = seqFake.getEvents();
         long hits = 4+2; // kick 4 + snare 2
         assertEquals(hits*2, events.size());
         long last = -1;
@@ -94,7 +99,7 @@ public class RhythmE2ETest {
                 }
             }
         }
-        java.util.Map<String, FakeMidiOutputPort.EventRec> lastOn = new java.util.HashMap<>();
+        java.util.Map<String, FakeSequencePlayer.EventRec> lastOn = new java.util.HashMap<>();
         for (var e : events) {
             String key = e.channel+":"+e.note;
             if (e.on) lastOn.put(key, e); else {
@@ -117,7 +122,7 @@ public class RhythmE2ETest {
         ByteArrayOutputStream berr = new ByteArrayOutputStream();
         PrintStream oldErr = System.err; System.setErr(new PrintStream(berr));
         try {
-            int code = new CommandLine(buildRootWithFake(new FakeMidiOutputPort())).execute("play", "rhythm", "--in", f.getAbsolutePath());
+            int code = new CommandLine(buildRootWithFake(new FakeMidiOutputPort(), new FakeSequencePlayer())).execute("play", "rhythm", "--in", f.getAbsolutePath());
             assertNotEquals(0, code);
             assertTrue(berr.toString().toLowerCase().contains("missing voice"));
         } finally { System.setErr(oldErr); }
@@ -138,15 +143,16 @@ public class RhythmE2ETest {
     @Test
     public void play_withoutDevice_usesDefaultWithFakePort() throws Exception {
         File f = writeTemp(RDL);
-        FakeMidiOutputPort fake = new FakeMidiOutputPort();
-        int code = new CommandLine(buildRootWithFake(fake)).execute("play", "rhythm",
+        FakeMidiOutputPort fakeMidi = new FakeMidiOutputPort();
+        FakeSequencePlayer seqFake = new FakeSequencePlayer();
+        int code = new CommandLine(buildRootWithFake(fakeMidi, seqFake)).execute("play", "rhythm",
                 "--in", f.getAbsolutePath(),
                 "--ppq", "480", "--res-per-beat", "4", "--tempo", "120", "--bars", "1",
                 "--note-kick", "36", "--note-snare", "38", "--channel-kick", "10", "--channel-snare", "10",
                 "--vel-kick", "90", "--vel-snare", "90", "--gate", "50"
         );
         assertEquals(0, code);
-        List<FakeMidiOutputPort.EventRec> events = fake.getEvents();
+        List<FakeSequencePlayer.EventRec> events = seqFake.getEvents();
         assertFalse(events.isEmpty());
     }
 }

@@ -4,6 +4,10 @@ package syrincs;
 import picocli.CommandLine;
 import syrincs.b_application.UseCaseInteractor;
 import syrincs.c_adapters.midi.JdkMidiOutputAdapter;
+import syrincs.b_application.PlaybackRhythmUseCase;
+import syrincs.c_adapters.midi.SequenceBuilder;
+import syrincs.c_adapters.midi.RhythmPlaybackService;
+import syrincs.c_adapters.midi.JdkSequencePlayer;
 import syrincs.c_adapters.cli.RootCmd;
 import syrincs.c_adapters.postgres.PostgresHindemithChordRepository;
 
@@ -16,7 +20,8 @@ public class Main {
         var midiAdapter = new JdkMidiOutputAdapter();
         var dbCfg = syrincs.d_frameworksAndDrivers.AppConfig.loadDbConfig(args);
         var repo = new PostgresHindemithChordRepository(dbCfg.url, dbCfg.user, dbCfg.password);
-        var interactor = new UseCaseInteractor(midiAdapter, repo);
+        var rhythmPlayback = new PlaybackRhythmUseCase(new RhythmPlaybackService(new SequenceBuilder(), new JdkSequencePlayer()));
+        var interactor = new UseCaseInteractor(midiAdapter, repo, rhythmPlayback);
 
         // Filter out DB-related CLI flags before passing to PicoCli so they don't appear in help
         String[] filtered = filterDbArgs(args);
@@ -24,12 +29,12 @@ public class Main {
 
         // If root-level help requested, print extended help including subcommand usages and exit
         if (isRootHelpRequest(filtered)) {
-            var root = new CommandLine(new RootCmd(interactor));
-            printExtendedHelp(root);
+            // Let PicoCLI handle standard help uniformly
+            new CommandLine(new RootCmd(interactor, midiAdapter)).usage(System.out);
             return;
         }
 
-        var cmd = new CommandLine(new RootCmd(interactor));
+        var cmd = new CommandLine(new RootCmd(interactor, midiAdapter));
         int exitCode = cmd.execute(filtered);
         if (exitCode != 0) {
             System.exit(exitCode);
@@ -42,11 +47,8 @@ public class Main {
         for (String a : args) {
             if (a == null) continue;
             String lower = a.toLowerCase();
-            if (lower.startsWith("--db-url=") || lower.startsWith("--db-user=") || lower.startsWith("--db-pass=")) {
-                // skip
-            } else {
-                out.add(a);
-            }
+            boolean startsWith = lower.startsWith("--db-url=") || lower.startsWith("--db-user=") || lower.startsWith("--db-pass=");
+            if (!startsWith) out.add(a);
         }
         return out.toArray(String[]::new);
     }
@@ -58,33 +60,4 @@ public class Main {
         return "-h".equals(a0) || "--help".equals(a0);
     }
 
-    private static void printExtendedHelp(CommandLine root) {
-        // Print root usage
-        root.usage(System.out);
-        // Also show usage for 'play', 'play note' and 'play chords'
-        CommandLine play = root.getSubcommands().get("play");
-        if (play != null) {
-            System.out.println();
-            System.out.println("Subcommand 'play' usage:");
-            play.usage(System.out);
-            CommandLine note = play.getSubcommands().get("note");
-            if (note != null) {
-                System.out.println();
-                System.out.println("Subcommand 'play note' usage:");
-                note.usage(System.out);
-            }
-            CommandLine chords = play.getSubcommands().get("chords");
-            if (chords != null) {
-                System.out.println();
-                System.out.println("Subcommand 'play chords' usage:");
-                chords.usage(System.out);
-            }
-            CommandLine rhythm = play.getSubcommands().get("rhythm");
-            if (rhythm != null) {
-                System.out.println();
-                System.out.println("Subcommand 'play rhythm' usage:");
-                rhythm.usage(System.out);
-            }
-        }
-    }
 }

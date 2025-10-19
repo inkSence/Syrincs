@@ -8,8 +8,9 @@ import org.junit.jupiter.api.Assumptions;
 import syrincs.a_domain.Tone;
 import syrincs.a_domain.hindemith.HindemithChord;
 import syrincs.c_adapters.midi.JdkMidiOutputAdapter;
+import syrincs.b_application.ports.MidiDeviceQueryPort;
+import syrincs.b_application.ports.dto.MidiEndpoint;
 
-import javax.sound.midi.MidiDevice;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,26 +18,29 @@ import static org.junit.jupiter.api.Assertions.*;
 class SendToMidiUseCaseTest {
 
     private SendToMidiUseCase sendToMidiUseCase;
+    private MidiDeviceQueryPort queryPort;
 
     @BeforeEach
     void setUp() {
-        sendToMidiUseCase = new SendToMidiUseCase(new JdkMidiOutputAdapter());
+        var adapter = new JdkMidiOutputAdapter();
+        sendToMidiUseCase = new SendToMidiUseCase(adapter);
+        queryPort = adapter; // adapter implements MidiDeviceQueryPort
     }
 
     @Test
     @DisplayName("Sende Akkord, falls Roland/DP603 verfügbar (sonst überspringen)")
     void sendChordIfRolandPresent() {
         String[] needles = {"Roland Digital Piano", "DP603", "Roland"};
-        MidiDevice.Info target = null;
+        MidiEndpoint target = null;
         for (String needle : needles) {
-            target = sendToMidiUseCase.findOutputByName(needle);
+            target = queryPort.findOutput(needle);
             if (target != null) break;
         }
 
         Assumptions.assumeTrue(target != null,
                 "[MIDI] No Roland/DP603 output found. Skipping chord send test.");
 
-        final String deviceName = target.getName();
+        final String deviceName = target.name();
         System.out.println("[MIDI] Found target output: " + deviceName + " -> attempting to send a chord");
 
         // C major triad within safe MIDI range
@@ -50,13 +54,13 @@ class SendToMidiUseCaseTest {
     @Test
     @DisplayName("Liste der MIDI-Outputs kann abgefragt werden")
     void listOutputsDoesNotThrow() {
-        MidiDevice.Info[] outs = sendToMidiUseCase.listMidiOutputs();
+        var outs = queryPort.listOutputs();
         assertNotNull(outs, "Device list should not be null");
 
-        for (MidiDevice.Info info : outs) {
-            System.out.println("[MIDI] Output device: " + info.getName()
-                    + " | " + info.getDescription()
-                    + " | " + info.getVendor());
+        for (var ep : outs) {
+            System.out.println("[MIDI] Output device: " + ep.name()
+                    + " | in=" + ep.in()
+                    + " | out=" + ep.out());
         }
     }
 
@@ -64,16 +68,16 @@ class SendToMidiUseCaseTest {
     @DisplayName("Sende Note, falls Roland/DP603 verfügbar (sonst überspringen)")
     void sendNoteIfRolandPresent() {
         String[] needles = {"Roland Digital Piano", "DP603", "Roland"};
-        MidiDevice.Info target = null;
+        MidiEndpoint target = null;
         for (String needle : needles) {
-            target = sendToMidiUseCase.findOutputByName(needle);
+            target = queryPort.findOutput(needle);
             if (target != null) break;
         }
 
         Assumptions.assumeTrue(target != null,
                 "[MIDI] No Roland/DP603 output found. Skipping send test.");
 
-        final String deviceName = target.getName();
+        final String deviceName = target.name();
 
         System.out.println("[MIDI] Found target output: " + deviceName + " -> attempting to send a note");
 

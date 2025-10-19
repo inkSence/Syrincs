@@ -23,7 +23,6 @@ import syrincs.a_domain.rhythm.PatternHeader;
 import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
 import syrincs.c_adapters.RhythmFileParser;
-import syrincs.c_adapters.midi.SequenceBuilder;
 
 /**
  * PicoCli-based command tree for Syrincs. This coexists with the legacy CliController for now.
@@ -43,40 +42,17 @@ import syrincs.c_adapters.midi.SequenceBuilder;
 )
 public class RootCmd implements Runnable {
     final UseCaseInteractor interactor;
+    final syrincs.b_application.ports.MidiDeviceQueryPort deviceQuery;
 
-    public RootCmd(UseCaseInteractor interactor) {
+    public RootCmd(UseCaseInteractor interactor, syrincs.b_application.ports.MidiDeviceQueryPort deviceQuery) {
         this.interactor = interactor;
+        this.deviceQuery = deviceQuery;
     }
 
     @Override
     public void run() {
-        // Show root usage and also explicitly show help for 'play', 'play note' and 'play chords' subcommands
-        CommandLine root = new CommandLine(this);
-        root.usage(System.out);
-        CommandLine play = root.getSubcommands().get("play");
-        if (play != null) {
-            System.out.println();
-            System.out.println("Subcommand 'play' usage:");
-            play.usage(System.out);
-            CommandLine note = play.getSubcommands().get("note");
-            if (note != null) {
-                System.out.println();
-                System.out.println("Subcommand 'play note' usage:");
-                note.usage(System.out);
-            }
-            CommandLine chords = play.getSubcommands().get("chords");
-            if (chords != null) {
-                System.out.println();
-                System.out.println("Subcommand 'play chords' usage:");
-                chords.usage(System.out);
-            }
-            CommandLine rhythm = play.getSubcommands().get("rhythm");
-            if (rhythm != null) {
-                System.out.println();
-                System.out.println("Subcommand 'play rhythm' usage:");
-                rhythm.usage(System.out);
-            }
-        }
+        // Keep help simple; PicoCLI standard help is enough
+        new CommandLine(this).usage(System.out);
     }
 
     @Command(name = "list", description = "List MIDI outputs")
@@ -85,9 +61,9 @@ public class RootCmd implements Runnable {
 
         @Override
         public Integer call() {
-            var interactor = parent.interactor;
-            for (var i : interactor.listMidiOutputs()) {
-                System.out.printf("[MIDI] %s | %s | %s%n", i.getName(), i.getDescription(), i.getVendor());
+            var query = parent.deviceQuery;
+            for (var ep : query.listOutputs()) {
+                System.out.printf("%s | %s | %s%n", ep.name(), ep.in() ? "In" : "-", ep.out() ? "Out" : "-");
             }
             return 0;
         }
@@ -203,9 +179,7 @@ public class RootCmd implements Runnable {
                     voices.add(kick); voices.add(snare);
 
                     var interactor = parentPlay.parent.interactor;
-                    interactor.validatePattern(res.pattern, spec, voices);
-                    var seq = new SequenceBuilder().build(res.pattern, spec, voices);
-                    interactor.playSequence(seq, device);
+                    interactor.playRhythm(res.pattern, spec, voices, device);
                     return 0;
                 } catch (Exception e) {
                     System.err.println("[ERROR] " + e.getMessage());
