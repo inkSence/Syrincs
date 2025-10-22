@@ -138,7 +138,6 @@ public class UseCaseInteractor {
         }
     }
 
-    // Rhythm: domain-driven playback via RhythmPlaybackPort (no javax types leaking)
     public void playRhythm(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring) throws Exception {
         validate.validate(pattern, spec, voices);
         rhythmPlayback.playRhythm(pattern, spec, voices, deviceNameSubstring);

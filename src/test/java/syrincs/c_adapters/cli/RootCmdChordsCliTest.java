@@ -7,7 +7,7 @@ import syrincs.b_application.UseCaseInteractor;
 import syrincs.b_application.ports.HindemithChordRepositoryPort;
 import syrincs.b_application.ports.MidiDeviceQueryPort;
 import syrincs.b_application.ports.MidiOutputPort;
-import syrincs.rhythm.FakeMidiOutputPort;
+import syrincs.a_domain.rhythm.FakeMidiOutputPort;
 
 import java.util.Collection;
 import java.util.List;

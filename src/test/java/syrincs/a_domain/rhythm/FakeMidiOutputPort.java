@@ -1,4 +1,4 @@
-package syrincs.rhythm;
+package syrincs.a_domain.rhythm;
 
 import syrincs.a_domain.Tone;
 import syrincs.a_domain.chord.Chord;

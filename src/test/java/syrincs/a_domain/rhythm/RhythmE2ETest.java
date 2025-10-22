@@ -1,4 +1,4 @@
-package syrincs.rhythm;
+package syrincs.a_domain.rhythm;
 
 import org.junit.jupiter.api.Test;
 import picocli.CommandLine;

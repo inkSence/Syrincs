@@ -121,7 +121,7 @@ public class RootCmd implements Runnable {
             int resPerBeat;
             @Option(names = "--bars", description = "number of bars", defaultValue = "1")
             int bars;
-            @Option(names = "--in", description = "RDL-0 input file. If omitted: use default (syrincs.rhythm.file | SYRINCS_RHYTHM_FILE | ~/.syrincs/config.properties), else read from STDIN if piped; otherwise try data/beat.rdl.")
+            @Option(names = "--in", description = "RDL-0 input file", defaultValue = "data/beat.rdl")
             String inFile;
 
             // Voice overrides
@@ -141,34 +141,14 @@ public class RootCmd implements Runnable {
             @Option(names = "--gate", description = "gate percent (0-100) for both voices", defaultValue = "50")
             int gate;
 
-            @Option(names = "--device", description = "MIDI device name substring (optional; falls back to default from env/config)")
+            @Option(names = "--device", description = "MIDI device name substring")
             String device;
 
             Reader openReader() throws Exception {
-                // 1) Explicit file flag
-                if (inFile != null && !inFile.isBlank()) return new FileReader(inFile);
-
-                // 2) Configured default file (system property, env, or user config)
-                String def = syrincs.d_frameworksAndDrivers.AppConfig.loadDefaultRhythmFilePath();
-                if (def != null && !def.isBlank()) {
-                    java.nio.file.Path p = java.nio.file.Path.of(def);
-                    if (java.nio.file.Files.isRegularFile(p)) return new FileReader(p.toFile());
-                    throw new IllegalArgumentException("Configured default rhythm file not found: " + def);
+                if (inFile != null && !inFile.isBlank()) {
+                    return new FileReader(inFile);
                 }
-
-                // 3) If input is piped (non-interactive), read from STDIN
-                if (System.console() == null) {
-                    return new InputStreamReader(System.in);
-                }
-
-                // 4) Fallback to repository default file if present
-                java.nio.file.Path repoDefault = java.nio.file.Path.of("data", "beat.rdl");
-                if (java.nio.file.Files.isRegularFile(repoDefault)) {
-                    return new FileReader(repoDefault.toFile());
-                }
-
-                // 5) No input source available -> instruct user
-                throw new IllegalArgumentException("No RDL-0 input provided. Use --in <file>, pipe via STDIN, or set default via SYRINCS_RHYTHM_FILE / -Dsyrincs.rhythm.file or ~/.syrincs/config.properties (rhythm.file).");
+                throw new IllegalArgumentException("No rhythm input file.");
             }
 
             int[] parseSig() {
@@ -283,7 +263,7 @@ public class RootCmd implements Runnable {
         }
     }
 
-    @Command(name = "analyze", aliases = {"analyse"}, description = "Analyze chord by Hindemith")
+    @Command(name = "analyse", aliases = {"analyze"}, description = "Analyse chord by Hindemith")
     public static class AnalyzeCmd implements Callable<Integer> {
         @ParentCommand RootCmd parent;
 

@@ -44,27 +44,18 @@ final class DeviceResolver {
     }
 
     static MidiDevice.Info autoSelectDefaultOutput() {
-        // 1) Env/config
-        try {
-            String preferred = syrincs.d_frameworksAndDrivers.AppConfig.loadDefaultMidiOutputName();
-            if (preferred != null && !preferred.isBlank()) {
-                MidiDevice.Info byCfg = findOutputInfoBySubstring(preferred);
-                if (byCfg != null) return byCfg;
-            }
-        } catch (Throwable ignored) {}
-        // 2) Preferred brand hints
         String[] needles = {"Roland Digital Piano", "DP603"};
         for (String n : needles) {
             MidiDevice.Info info = findOutputInfoBySubstring(n);
             if (info != null) return info;
         }
-        // 3) Fallback: first OUT
+        // Fallback: first OUT
         MidiDevice.Info[] outs = listOutputInfos();
         return outs.length > 0 ? outs[0] : null;
     }
 
     static MidiDevice.Info resolveOutput(String deviceNameSubstring) {
-        MidiDevice.Info target = null;
+        MidiDevice.Info target;
         if (deviceNameSubstring != null && !deviceNameSubstring.isBlank()) {
             target = findOutputInfoBySubstring(deviceNameSubstring);
         } else {

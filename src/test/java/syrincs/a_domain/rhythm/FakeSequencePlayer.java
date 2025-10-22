@@ -1,4 +1,4 @@
-package syrincs.rhythm;
+package syrincs.a_domain.rhythm;
 
 import syrincs.c_adapters.midi.SequencePlayer;
 
