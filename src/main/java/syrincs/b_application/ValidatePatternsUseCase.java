@@ -13,7 +13,7 @@ public class ValidatePatternsUseCase {
         // non null
         if (pattern == null) throw new ValidationException("Pattern is null");
         if (spec == null) throw new ValidationException("RhythmSpec is null");
-        if (voices == null || voices.isEmpty()) throw new ValidationException("No voices specified");
+        if (voices == null || voices.isEmpty()) throw new ValidationException("Missing voice declarations");
         VoiceSpec kick = find(voices, "kick");
         VoiceSpec snare = find(voices, "snare");
         if (kick == null) throw new ValidationException("Missing voice 'kick'");

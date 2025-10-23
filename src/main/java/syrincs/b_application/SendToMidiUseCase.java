@@ -14,16 +14,16 @@ public class SendToMidiUseCase {
         midiOutput.sendToneToDevice(tone, deviceNameSubstring);
     }
 
-    public void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration) {
+    public void sendChordToDevice(Chord chord, long duration) {
         // Delegate to adapter; no application-layer printing or sleeping
-        midiOutput.sendChordToDevice(chord, deviceNameSubstring, duration);
+        midiOutput.sendChordToDevice(chord, duration);
     }
 
-    public void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration, Integer channelZeroBased) {
+    public void sendChordToDevice(Chord chord, long duration, Integer channelZeroBased) {
         if (channelZeroBased == null) {
-            midiOutput.sendChordToDevice(chord, deviceNameSubstring, duration);
+            midiOutput.sendChordToDevice(chord, duration);
         } else {
-            midiOutput.sendChordToDevice(chord, deviceNameSubstring, duration, channelZeroBased);
+            midiOutput.sendChordToDevice(chord, duration, channelZeroBased);
         }
     }
 }

@@ -40,13 +40,11 @@ class SendToMidiUseCaseTest {
         Assumptions.assumeTrue(target != null,
                 "[MIDI] No Roland/DP603 output found. Skipping chord send test.");
 
-        final String deviceName = target.name();
-        System.out.println("[MIDI] Found target output: " + deviceName + " -> attempting to send a chord");
 
         // C major triad within safe MIDI range
         HindemithChord hindemithChord = new HindemithChord(List.of(64, 67, 72), 72, 1);
 
-        assertDoesNotThrow(() -> sendToMidiUseCase.sendChordToDevice(hindemithChord, deviceName, 100L),
+        assertDoesNotThrow(() -> sendToMidiUseCase.sendChordToDevice(hindemithChord, 100L),
                 "Sending chord to device should not throw");
     }
 

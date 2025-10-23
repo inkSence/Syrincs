@@ -1,5 +1,6 @@
 package syrincs.c_adapters.midi;
 
+import javax.sound.midi.MidiDevice;
 import javax.sound.midi.Sequence;
 
 /**
@@ -8,5 +9,5 @@ import javax.sound.midi.Sequence;
  * the application boundary.
  */
 public interface SequencePlayer {
-    void play(Sequence sequence, String deviceNameSubstring) throws Exception;
+    void play(Sequence sequence, MidiDevice device) throws Exception;
 }

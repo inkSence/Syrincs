@@ -27,12 +27,12 @@ public class FakeMidiOutputPort implements MidiOutputPort, syrincs.b_application
     }
 
     @Override
-    public void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration) {
+    public void sendChordToDevice(Chord chord, long duration) {
         // no-op for tests
     }
 
     @Override
-    public void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration, int channelZeroBased) {
+    public void sendChordToDevice(Chord chord, long duration, int channelZeroBased) {
         // no-op for tests; could record parameters if needed
     }
 }

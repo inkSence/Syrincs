@@ -2,7 +2,7 @@ package syrincs.a_domain.rhythm;
 
 public class VoiceSpec {
     public final String name;
-    public final int channel; // 0-15 (10 means channel 11 in MIDI spec; here we use 10)
+    public final int channel; // 0-15
     public final int note;    // 0-127
     public final int velocity; // 0-127
     public final int gatePercent; // 0-100

@@ -6,7 +6,6 @@ import syrincs.b_application.errors.MidiPortException;
 import syrincs.b_application.ports.MidiOutputPort;
 
 import javax.sound.midi.*;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -19,7 +18,7 @@ public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_applicati
     private static final Logger LOG = Logger.getLogger(JdkMidiOutputAdapter.class.getName());
 
     private MidiDevice.Info findOutputInfoBySubstring(String nameSubstring) {
-        return DeviceResolver.findOutputInfoBySubstring(nameSubstring);
+        return DeviceService.findOutputInfoBySubstring(nameSubstring);
     }
 
     @Override
@@ -29,7 +28,7 @@ public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_applicati
                     ? findOutputInfoBySubstring(deviceNameSubstring)
                     : null;
             if (info == null) {
-                info = DeviceResolver.autoSelectDefaultOutput();
+                info = DeviceService.autoSelectDefaultOutput();
             }
             if (info == null) {
                 String msg = "No suitable MIDI output device found" +
@@ -45,28 +44,16 @@ public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_applicati
     }
 
     @Override
-    public void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration) throws MidiPortException {
-        sendChordToDevice(chord, deviceNameSubstring, duration, 0);
+    public void sendChordToDevice(Chord chord, long duration) throws MidiPortException {
+        sendChordToDevice(chord, duration, 0);
     }
 
     @Override
-    public void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration, int channelZeroBased) throws MidiPortException {
+    public void sendChordToDevice(Chord chord, long duration, int channelZeroBased) throws MidiPortException {
         if (chord == null) return;
         try {
-            MidiDevice.Info info = (deviceNameSubstring != null && !deviceNameSubstring.isEmpty())
-                    ? findOutputInfoBySubstring(deviceNameSubstring)
-                    : null;
-            if (info == null) {
-                info = DeviceResolver.autoSelectDefaultOutput();
-            }
-            if (info == null) {
-                String msg = "No suitable MIDI output device found" +
-                        (deviceNameSubstring != null ? " for substring '" + deviceNameSubstring + "'" : "");
-                LOG.warning(msg);
-                throw new MidiPortException(msg);
-            }
 
-            MidiDevice device = MidiSystem.getMidiDevice(info);
+            MidiDevice device = DeviceService.getMidiDevice();
             boolean openedHere = false;
             try {
                 if (!device.isOpen()) { device.open(); openedHere = true; }

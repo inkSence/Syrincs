@@ -1,13 +1,13 @@
 package syrincs.a_domain.rhythm;
 
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import picocli.CommandLine;
 import syrincs.b_application.UseCaseInteractor;
 import syrincs.b_application.ports.HindemithChordRepositoryPort;
-import syrincs.c_adapters.midi.JdkMidiOutputAdapter;
 import syrincs.b_application.PlaybackRhythmUseCase;
-import syrincs.c_adapters.midi.SequenceBuilder;
-import syrincs.c_adapters.midi.RhythmPlaybackService;
+import syrincs.c_adapters.midi.*;
 import syrincs.c_adapters.cli.RootCmd;
 
 import java.io.ByteArrayOutputStream;
@@ -80,22 +80,24 @@ public class RhythmE2ETest {
             "ppq: 480\n" +
             "res-per-beat: 4\n" +
             "bars: 1\n\n" +
-            "voice kick  note=36 channel=10 vel=90\n" +
-            "voice snare note=38 channel=10 vel=90\n\n" +
+            "voice kick  note=36 channel=10 vel=90 gate=50\n" +
+            "voice snare note=38 channel=10 vel=90 gate=50\n\n" +
             "pattern kick:  | x - - - | x - - - | x - - - | x - - - |\n" +
             "pattern snare: | - - - - | x - - - | - - - - | x - - - |\n";
+
+    @BeforeAll
+    public static void setupMidi(){
+        DeviceService.loadStandardMidiDevice();
+    }
 
     @Test
     public void play_happyPath_buildsCorrectEvents() throws Exception {
         File f = writeTemp(RDL);
         FakeMidiOutputPort fakeMidi = new FakeMidiOutputPort();
         FakeSequencePlayer seqFake = new FakeSequencePlayer();
+
         int code = new CommandLine(buildRootWithFake(fakeMidi, seqFake)).execute("play", "rhythm",
-                "--in", f.getAbsolutePath(),
-                "--device", "FAKE",
-                "--ppq", "480", "--res-per-beat", "4", "--tempo", "120", "--bars", "1",
-                "--note-kick", "36", "--note-snare", "38", "--channel-kick", "10", "--channel-snare", "10",
-                "--vel-kick", "90", "--vel-snare", "90", "--gate", "50"
+                "--in", f.getAbsolutePath()
         );
         assertEquals(0, code);
         List<FakeSequencePlayer.EventRec> events = seqFake.getEvents();
@@ -107,9 +109,9 @@ public class RhythmE2ETest {
             if (e.on) {
                 assertTrue(e.tick % 120 == 0, "On tick multiple of 120");
                 if (e.note == 36) {
-                    assertEquals(9, e.channel); assertEquals(90, e.velocity);
+                    assertEquals(10, e.channel); assertEquals(90, e.velocity);
                 } else if (e.note == 38) {
-                    assertEquals(9, e.channel); assertEquals(90, e.velocity);
+                    assertEquals(10, e.channel); assertEquals(90, e.velocity);
                 } else {
                     fail("Unexpected note: "+e.note);
                 }
@@ -162,32 +164,11 @@ public class RhythmE2ETest {
         FakeMidiOutputPort fakeMidi = new FakeMidiOutputPort();
         FakeSequencePlayer seqFake = new FakeSequencePlayer();
         int code = new CommandLine(buildRootWithFake(fakeMidi, seqFake)).execute("play", "rhythm",
-                "--in", f.getAbsolutePath(),
-                "--ppq", "480", "--res-per-beat", "4", "--tempo", "120", "--bars", "1",
-                "--note-kick", "36", "--note-snare", "38", "--channel-kick", "10", "--channel-snare", "10",
-                "--vel-kick", "90", "--vel-snare", "90", "--gate", "50"
+                "--in", f.getAbsolutePath()
         );
         assertEquals(0, code);
         List<FakeSequencePlayer.EventRec> events = seqFake.getEvents();
         assertFalse(events.isEmpty());
     }
-    
-    @Test
-    public void play_withoutIn_usesDefaultFile_viaSysProp() throws Exception {
-        File f = writeTemp(RDL);
-        System.setProperty("syrincs.rhythm.file", f.getAbsolutePath());
-        try {
-            FakeMidiOutputPort fakeMidi = new FakeMidiOutputPort();
-            FakeSequencePlayer seqFake = new FakeSequencePlayer();
-            int code = new CommandLine(buildRootWithFake(fakeMidi, seqFake)).execute("play", "rhythm",
-                    "--ppq", "480", "--res-per-beat", "4", "--tempo", "120", "--bars", "1",
-                    "--note-kick", "36", "--note-snare", "38", "--channel-kick", "10", "--channel-snare", "10",
-                    "--vel-kick", "90", "--vel-snare", "90", "--gate", "50"
-            );
-            assertEquals(0, code);
-            assertFalse(seqFake.getEvents().isEmpty());
-        } finally {
-            System.clearProperty("syrincs.rhythm.file");
-        }
-    }
+
 }

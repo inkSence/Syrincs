@@ -4,8 +4,9 @@ ppq: 480
 res-per-beat: 4
 bars: 1
 
-voice kick  note=36 channel=9 vel=90
-voice snare note=38 channel=9 vel=90
+voice snare note=38 channel=9 vel=90 gate=50
+voice kick  note=36 channel=9 vel=90 gate=50
+
 
 pattern snare: | - x x x | - x - - | - - - - | x - - - |
 pattern kick:  | x - - - | x - - - | x - - - | x - - - |

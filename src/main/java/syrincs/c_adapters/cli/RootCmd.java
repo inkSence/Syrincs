@@ -8,18 +8,10 @@ import picocli.CommandLine.ParentCommand;
 import syrincs.a_domain.Tone;
 import syrincs.b_application.UseCaseInteractor;
 
-import java.io.FileReader;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
 
-import syrincs.a_domain.rhythm.PatternHeader;
-import syrincs.a_domain.rhythm.RhythmSpec;
-import syrincs.a_domain.rhythm.VoiceSpec;
 import syrincs.c_adapters.RhythmFileParser;
 
 /**
@@ -34,7 +26,7 @@ import syrincs.c_adapters.RhythmFileParser;
                 RootCmd.ListCmd.class,
                 RootCmd.PlayCmd.class,
                 RootCmd.CalculateCmd.class,
-                RootCmd.AnalyzeCmd.class,
+                RootCmd.AnalyseCmd.class,
                 RootCmd.DeleteCmd.class
         }
 )
@@ -67,21 +59,16 @@ public class RootCmd implements Runnable {
         }
     }
 
-    @Command(name = "play", description = "Play a single note (default) or use subcommands 'note', 'chords' and 'rhythm'", subcommands = { PlayCmd.NoteCmd.class, PlayChordsCmd.class, PlayCmd.RhythmCmd.class })
+    @Command(name = "play", description = "play something", subcommands = { PlayCmd.NoteCmd.class, PlayCmd.PlayChordsCmd.class, PlayCmd.RhythmCmd.class })
     public static class PlayCmd implements Callable<Integer> {
         @ParentCommand RootCmd parent;
 
+//        @Command(name = "note", description = "Play a single note")
+
         @Override
         public Integer call() {
-            try {
-                // Default behavior for 'syrincs play' -> same as 'syrincs play note' with defaults
-                var interactor = parent.interactor;
-                interactor.sendToneToDevice(new Tone(100L, 60, 0.5), null);
-                return 0;
-            } catch (Exception e) {
-                System.err.println("[ERROR] " + e.getMessage());
-                return 1;
-            }
+            new CommandLine(this).usage(System.out);
+            return 0;
         }
 
         @Command(name = "note", description = "Play a single note (defaults: note=60, vel=0.5, ms=100)")
@@ -94,11 +81,52 @@ public class RootCmd implements Runnable {
             @Option(names = "vel", description = "Velocity 0..1", defaultValue = "0.5")
             double vel;
 
+            @Option(names = {"duration", "dur"}, description = "Duration in ms", defaultValue = "100")
+            long dur;
+
             @Override
             public Integer call() {
                 try {
                     var interactor = parentPlay.parent.interactor;
-                    interactor.sendToneToDevice(new Tone(100L, note, vel), null);
+                    interactor.sendToneToDevice(new Tone(dur, note, vel), null);
+                    return 0;
+                } catch (Exception e) {
+                    System.err.println("[ERROR] " + e.getMessage());
+                    return 1;
+                }
+            }
+        }
+
+        @Command(name = "chords", description = "Play chords from DB. Output device is auto-selected.")
+        public static class PlayChordsCmd implements Callable<Integer> {
+            @ParentCommand PlayCmd parentPlay; // Access via parentPlay.parent.interactor
+
+            // Accept tokenized options like today: "numnotes 3 4"
+            @Option(names = {"numNotes", "notes"}, arity = "1..*", description = "Chord sizes (default: 3 4 5)", split = " ", defaultValue = "3 4 5")
+            int[] numNotes;
+
+            @Option(names = {"group", "groups"}, arity = "1..*", description = "Hindemith groups (1..9)", split = " ", defaultValue = "1 2 3 4 5 6 7 8 9")
+            int[] groups;
+
+            @Option(names = {"rootNote", "root"}, description = "Root note (default: 60)", defaultValue = "60")
+            int rootNote;
+
+            @Option(names = "range", description = "Max chord span (maxNote - minNote), default: 24", defaultValue = "24")
+            int range;
+
+            @Option(names = "channel", description = "MIDI channel, default 0", defaultValue = "0")
+            Integer channel;
+
+            @Option(names = {"duration", "dur"}, description = "Duration, default 200ms", defaultValue = "200")
+            Long dur;
+
+            @Override
+            public Integer call() {
+                try {
+                    var interactor = parentPlay.parent.interactor;
+                    List<Integer> nn = Arrays.stream(numNotes).boxed().toList();
+                    List<Integer> gr = Arrays.stream(groups).boxed().toList();
+                    interactor.playChords(nn, gr, rootNote, range, dur, channel);
                     return 0;
                 } catch (Exception e) {
                     System.err.println("[ERROR] " + e.getMessage());
@@ -111,45 +139,77 @@ public class RootCmd implements Runnable {
         public static class RhythmCmd implements Callable<Integer> {
             @ParentCommand PlayCmd parentPlay;
 
-            @Option(names = "--sig", description = "time signature, e.g. 4/4", defaultValue = "4/4")
-            String sig;
+
+
+
+            @Option(names = "--in", description = "RDL-0 input file", defaultValue = "data/beat.rdl")
+            String inFile;
+
+            @Override public Integer call() {
+                try {
+                    RhythmFileParser.MidiData res = new RhythmFileParser().parse(inFile);
+                    var interactor = parentPlay.parent.interactor;
+                    interactor.playRhythm(res.pattern, res.spec, res.voices);
+                    return 0;
+                } catch (Exception e) {
+                    System.err.println("[ERROR] " + e.getMessage());
+                    return 1;
+                }
+            }
+
+
+
+
+        }
+    }
+
+
+
+    @Command(name = "calculate", aliases = {"calc"},  subcommands = {CalculateCmd.ChordsCmd.class, CalculateCmd.RhythmCmd.class })
+    public static class CalculateCmd implements Callable<Integer> {
+        @ParentCommand RootCmd parent;
+
+        public Integer call(){
+            new CommandLine(this).usage(System.out);
+            return 0;
+        }
+
+        @Command(name = "chords", aliases = {"chord" }, description = "Generate chords and persist")
+        public static class ChordsCmd implements Callable<Integer> {
+            @ParentCommand CalculateCmd parent;
+
+            @Parameters(index = "0", description = "minLowerNote")
+            int minLowerNote;
+
+            @Parameters(index = "1", description = "maxUpperNote")
+            int maxUpperNote;
+
+            @Override
+            public Integer call() {
+                var interactor = parent.parent.interactor;
+                var ids = interactor.calculateAndPersistAllChordsToFiveNotes(minLowerNote, maxUpperNote);
+                System.out.printf("[DB] Persisted %d chords for range [%d, %d].%n", ids.size(), minLowerNote, maxUpperNote);
+                return 0;
+            }
+        }
+
+        @Command(name = "rhythm", description = "Generate rhythm")
+        public static class RhythmCmd implements Callable<Integer>{
+          @ParentCommand CalculateCmd parent;
+
+
             @Option(names = "--tempo", description = "tempo BPM", defaultValue = "120")
             int tempo;
             @Option(names = "--ppq", description = "pulses per quarter note", defaultValue = "480")
             int ppq;
             @Option(names = "--res-per-beat", description = "resolution per beat (e.g. 4 => 16ths)", defaultValue = "4")
             int resPerBeat;
+
+            @Option(names = "--sig", description = "time signature, e.g. 4/4", defaultValue = "4/4")
+            String sig;
+
             @Option(names = "--bars", description = "number of bars", defaultValue = "1")
             int bars;
-            @Option(names = "--in", description = "RDL-0 input file", defaultValue = "data/beat.rdl")
-            String inFile;
-
-            // Voice overrides
-            @Option(names = "--channel-kick", description = "MIDI channel for kick (1-16)")
-            Integer channelKick;
-            @Option(names = "--note-kick", description = "MIDI note for kick")
-            Integer noteKick;
-            @Option(names = "--vel-kick", description = "velocity for kick (0-127)")
-            Integer velKick;
-            @Option(names = "--channel-snare", description = "MIDI channel for snare (1-16)")
-            Integer channelSnare;
-            @Option(names = "--note-snare", description = "MIDI note for snare")
-            Integer noteSnare;
-            @Option(names = "--vel-snare", description = "velocity for snare (0-127)")
-            Integer velSnare;
-
-            @Option(names = "--gate", description = "gate percent (0-100) for both voices", defaultValue = "50")
-            int gate;
-
-            @Option(names = "--device", description = "MIDI device name substring")
-            String device;
-
-            Reader openReader() throws Exception {
-                if (inFile != null && !inFile.isBlank()) {
-                    return new FileReader(inFile);
-                }
-                throw new IllegalArgumentException("No rhythm input file.");
-            }
 
             int[] parseSig() {
                 String[] xy = sig.split("/");
@@ -159,124 +219,74 @@ public class RootCmd implements Runnable {
                 return new int[]{n,d};
             }
 
-            @Override public Integer call() {
-                try (Reader r = openReader()) {
-                    var parser = new RhythmFileParser();
-                    var res = parser.parse(r);
+            @Option(names = "channel", description = "MIDI channel for drum-instrument")
+            Integer channel;
+            @Option(names = "--vel-kick", description = "velocity for kick (0-127)")
+            Integer velKick;
+            @Option(names = "--vel-snare", description = "velocity for snare (0-127)")
+            Integer velSnare;
+            @Option(names = "--gate", description = "gate percent (0-100) for both voices", defaultValue = "50")
+            int gate;
 
-                    PatternHeader h = res.header;
-                    int[] nm = parseSig();
-                    int timeNum = h.timeNum() != null ? h.timeNum() : nm[0];
-                    int timeDen = h.timeDen() != null ? h.timeDen() : nm[1];
-                    int tempoBpm = h.tempo() != null ? h.tempo() : this.tempo;
-                    int ppqV = h.ppq() != null ? h.ppq() : this.ppq;
-                    int rpb = h.resPerBeat() != null ? h.resPerBeat() : this.resPerBeat;
-                    int barsV = h.bars() != null ? h.bars() : this.bars;
-                    RhythmSpec spec = new RhythmSpec(timeNum, timeDen, tempoBpm, ppqV, rpb, barsV);
-
-                    int g = Math.max(0, Math.min(100, gate));
-                    VoiceSpec kick = new VoiceSpec("kick", 10, 36, 90, g);
-                    VoiceSpec snare = new VoiceSpec("snare", 10, 38, 90, g);
-                    Map<String, RhythmFileParser.VoiceDecl> pvoices = res.voices;
-                    RhythmFileParser.VoiceDecl kd = pvoices.get("kick");
-                    RhythmFileParser.VoiceDecl sd = pvoices.get("snare");
-                    if (kd != null) kick = new VoiceSpec("kick", kd.channel, kd.note, kd.vel, g);
-                    if (sd != null) snare = new VoiceSpec("snare", sd.channel, sd.note, sd.vel, g);
-                    int chKick = syrincs.c_adapters.cli.ChannelMapper.toZeroBased(channelKick, kick.channel);
-                    int chSnare = syrincs.c_adapters.cli.ChannelMapper.toZeroBased(channelSnare, snare.channel);
-                    kick = new VoiceSpec("kick", chKick, kick.note, kick.velocity, g);
-                    snare = new VoiceSpec("snare", chSnare, snare.note, snare.velocity, g);
-                    // apply note/vel overrides if present
-                    if (noteKick != null || velKick != null) {
-                        kick = new VoiceSpec("kick", kick.channel, noteKick != null ? noteKick : kick.note, velKick != null ? velKick : kick.velocity, g);
-                    }
-                    if (noteSnare != null || velSnare != null) {
-                        snare = new VoiceSpec("snare", snare.channel, noteSnare != null ? noteSnare : snare.note, velSnare != null ? velSnare : snare.velocity, g);
-                    }
-
-                    var voices = new ArrayList<VoiceSpec>();
-                    voices.add(kick); voices.add(snare);
-
-                    var interactor = parentPlay.parent.interactor;
-                    interactor.playRhythm(res.pattern, spec, voices, device);
-                    return 0;
-                } catch (Exception e) {
-                    System.err.println("[ERROR] " + e.getMessage());
-                    return 1;
-                }
-            }
+          @Override
+          public Integer call(){
+            System.out.println("No Rhythms generated.");
+            return 0;
+          }
         }
     }
 
-    @Command(name = "chords", description = "Play chords from DB. Options: numnotes|num|notes (multi), group|groups (multi), rootnote|root (default=60), range (default=24). Duration is fixed to 200 ms; output device is auto-selected.")
-    public static class PlayChordsCmd implements Callable<Integer> {
-        @ParentCommand PlayCmd parentPlay; // Access via parentPlay.parent.interactor
-
-        // Accept tokenized options like today: "numnotes 3 4"
-        @Option(names = {"numnotes", "num", "notes"}, arity = "1..*", description = "Chord sizes (e.g. 3 4 5)", split = " ")
-        int[] numNotes;
-
-        @Option(names = {"group", "groups"}, arity = "1..*", description = "Hindemith groups (1..9)", split = " ")
-        int[] groups;
-
-        @Option(names = {"rootnote", "root"}, description = "Root note (default: 60)", defaultValue = "60")
-        int rootNote;
-
-        @Option(names = "range", description = "Max chord span (maxNote - minNote), default: 24", defaultValue = "24")
-        int range;
-
-        @Option(names = "--channel", description = "MIDI channel (1-16)")
-        Integer channel;
+    @Command(name = "analyse", aliases = {"analyze"}, subcommands = { AnalyseCmd.ChordCmd.class, AnalyseCmd.RhythmCmd.class })
+    public static class AnalyseCmd implements Callable<Integer> {
+        @ParentCommand RootCmd parent;
 
         @Override
-        public Integer call() {
-            try {
-                var interactor = parentPlay.parent.interactor;
-                List<Integer> nn = (numNotes == null || numNotes.length == 0) ? List.of(3,4,5) : Arrays.stream(numNotes).boxed().toList();
-                List<Integer> gr = (groups   == null || groups.length   == 0) ? List.of(1,2,3,4,5,6,7,8,9) : Arrays.stream(groups).boxed().toList();
-                Integer chZero = (channel == null ? null : syrincs.c_adapters.cli.ChannelMapper.toZeroBased(channel, 0));
-                interactor.playChords(nn, gr, rootNote, range, 200L, null, chZero);
+        public Integer call(){
+            new CommandLine(this).usage(System.out);
+            return 0;
+        }
+
+        @Command(name = "chord", description = "Analyse chord by Hindemith")
+        public static class ChordCmd implements Callable<Integer> {
+            @ParentCommand AnalyseCmd parent;
+            @Parameters(arity = "3..*", description = "MIDI notes")
+            int[] notes;
+
+            @Override
+            public Integer call() {
+                var interactor = parent.parent.interactor;
+                var list = Arrays.stream(notes).boxed().toList();
+                var res = interactor.analyzeChordByHindemith(list);
+                System.out.println("[ANALYZE] Notes=" + res.notes + " | Column=" + res.column + " | Root=" + res.rootNote + " | Group=" + res.group + " | Frame=" + res.frameInterval);
                 return 0;
-            } catch (Exception e) {
-                System.err.println("[ERROR] " + e.getMessage());
-                return 1;
             }
+
+
         }
-    }
 
-    @Command(name = "calculate", aliases = {"calc"}, description = "Generate chords and persist")
-    public static class CalculateCmd implements Callable<Integer> {
-        @ParentCommand RootCmd parent;
 
-        @Parameters(index = "0", description = "minLowerNote")
-        int minLowerNote;
+        @Command(name="rhythm", description="Hufman Code Based Validation")
+        public static class RhythmCmd implements Callable<Integer> {
+            @ParentCommand AnalyseCmd parent;
 
-        @Parameters(index = "1", description = "maxUpperNote")
-        int maxUpperNote;
+            @Parameters(index="0", description = "Rhythm in simple onset Format")
+            String rhythm;
 
-        @Override
-        public Integer call() {
-            var interactor = parent.interactor;
-            var ids = interactor.calculateAndPersistAllChordsToFiveNotes(minLowerNote, maxUpperNote);
-            System.out.printf("[DB] Persisted %d chords for range [%d, %d].%n", ids.size(), minLowerNote, maxUpperNote);
-            return 0;
-        }
-    }
 
-    @Command(name = "analyse", aliases = {"analyze"}, description = "Analyse chord by Hindemith")
-    public static class AnalyzeCmd implements Callable<Integer> {
-        @ParentCommand RootCmd parent;
 
-        @Parameters(arity = "3..*", description = "MIDI notes")
-        int[] notes;
+            @Option(names = "--in", description = "Rhythm File", defaultValue = "data/beat.rdl")
+            String inFile;
 
-        @Override
-        public Integer call() {
-            var interactor = parent.interactor;
-            var list = Arrays.stream(notes).boxed().toList();
-            var res = interactor.analyzeChordByHindemith(list);
-            System.out.println("[ANALYZE] Notes=" + res.notes + " | Column=" + res.column + " | Root=" + res.rootNote + " | Group=" + res.group + " | Frame=" + res.frameInterval);
-            return 0;
+
+
+            @Override
+            public Integer call() {
+                var interactor = parent.parent.interactor;
+                interactor.printRhythmFileContent();
+                System.out.println(rhythm);
+
+                return 0;
+            }
         }
     }
 

@@ -3,11 +3,8 @@ package syrincs;
 
 import picocli.CommandLine;
 import syrincs.b_application.*;
-import syrincs.c_adapters.midi.JdkMidiOutputAdapter;
+import syrincs.c_adapters.midi.*;
 import syrincs.b_application.PlaybackRhythmUseCase;
-import syrincs.c_adapters.midi.SequenceBuilder;
-import syrincs.c_adapters.midi.RhythmPlaybackService;
-import syrincs.c_adapters.midi.JdkSequencePlayer;
 import syrincs.c_adapters.cli.RootCmd;
 import syrincs.c_adapters.postgres.PostgresHindemithChordRepository;
 
@@ -30,7 +27,7 @@ public class Main {
         var get = new GetHindemithChordsFromDbUseCase(repo);
         var persist = new PersistHindemithChordUseCase(repo);
         var interactor = new UseCaseInteractor(send, validate, rhythmPlayback, repo, generate, analyze, get, persist);
-
+        DeviceService.loadStandardMidiDevice();
         // Filter out DB-related CLI flags before passing to PicoCli so they don't appear in help
         String[] filtered = filterDbArgs(args);
 

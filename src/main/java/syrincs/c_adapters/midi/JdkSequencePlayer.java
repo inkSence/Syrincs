@@ -10,22 +10,12 @@ import javax.sound.midi.*;
 public class JdkSequencePlayer implements SequencePlayer {
 
     @Override
-    public void play(Sequence sequence, String deviceNameSubstring) throws Exception {
+    public void play(Sequence sequence, MidiDevice device) throws Exception {
         if (sequence == null) throw new IllegalArgumentException("sequence must not be null");
-
-        MidiDevice.Info target = DeviceResolver.resolveOutput(deviceNameSubstring);
-        if (target == null) {
-            if (deviceNameSubstring != null && !deviceNameSubstring.isBlank()) {
-                throw new IllegalArgumentException("Unknown MIDI device: '" + deviceNameSubstring + "'");
-            } else {
-                throw new IllegalArgumentException("No suitable MIDI output device found. Set env SYRINCS_MIDI_DEVICE or pass --device.");
-            }
-        }
-
         Sequencer sequencer = MidiSystem.getSequencer(false); // not connected to default Synth
-        boolean openedSeq = false;
-        MidiDevice device = MidiSystem.getMidiDevice(target);
         boolean openedDev = false;
+        boolean openedSeq = false;
+
         try {
             if (!sequencer.isOpen()) { sequencer.open(); openedSeq = true; }
             if (!device.isOpen()) { device.open(); openedDev = true; }

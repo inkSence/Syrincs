@@ -11,5 +11,5 @@ import java.util.List;
  * Implementations belong to the outer adapter layer and may use javax.sound.midi internally.
  */
 public interface RhythmPlaybackPort {
-    void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring) throws Exception;
+    void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws Exception;
 }

@@ -79,9 +79,8 @@ public class UseCaseInteractor {
         send.sendToneToDevice(tone, deviceNameSubstring);
     }
 
-    public void sendChordToDevice(HindemithChord hindemithChord, String deviceNameSubstring, Long duration) {
-        send.sendChordToDevice(hindemithChord, deviceNameSubstring, duration);
-
+    public void sendChordToDevice(HindemithChord hindemithChord, Long duration) {
+        send.sendChordToDevice(hindemithChord, duration);
     }
 
     public void loadHindemithChordsWithMaxGroup(Integer rootNote, Integer maxGroup ){
@@ -109,37 +108,30 @@ public class UseCaseInteractor {
         repository.truncate();
     }
 
-    public void playChords(List<Integer> numNotes, List<Integer> groups, Integer rootNote,
-                           Long durationMs, String deviceNameSubstring) {
-        playChords(numNotes, groups, rootNote, null, durationMs, deviceNameSubstring, null);
-    }
 
-    // Overload: also filter by range
     public void playChords(List<Integer> numNotes, List<Integer> groups, Integer rootNote, Integer range,
-                           Long durationMs, String deviceNameSubstring) {
-        playChords(numNotes, groups, rootNote, range, durationMs, deviceNameSubstring, null);
-    }
-
-    // New overload: optional channel (zero-based) for chord playback
-    public void playChords(List<Integer> numNotes, List<Integer> groups, Integer rootNote, Integer range,
-                           Long durationMs, String deviceNameSubstring, Integer channelZeroBased) {
+                           Long durationMs, Integer channelZeroBased) {
         var chords = (range == null)
                 ? findChordsFor(numNotes, groups, rootNote)
                 : findChordsFor(numNotes, groups, rootNote, range);
         if (chords == null || chords.isEmpty()) {
             return;
         }
-        for (var hc : chords) {
+        for (var chord : chords) {
             if (channelZeroBased == null) {
-                sendChordToDevice(hc, deviceNameSubstring, durationMs);
+                sendChordToDevice(chord, durationMs);
             } else {
-                send.sendChordToDevice(hc, deviceNameSubstring, durationMs, channelZeroBased);
+                send.sendChordToDevice(chord, durationMs, channelZeroBased);
             }
         }
     }
 
-    public void playRhythm(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring) throws Exception {
+    public void playRhythm(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws Exception {
         validate.validate(pattern, spec, voices);
-        rhythmPlayback.playRhythm(pattern, spec, voices, deviceNameSubstring);
+        rhythmPlayback.playRhythm(pattern, spec, voices);
+    }
+
+    public void printRhythmFileContent(){
+        System.out.println("Fake Content");
     }
 }

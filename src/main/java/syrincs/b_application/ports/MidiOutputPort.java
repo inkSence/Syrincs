@@ -16,11 +16,11 @@ public interface MidiOutputPort {
 
     void sendToneToDevice(Tone tone, String deviceNameSubstring) throws MidiPortException;
 
-    void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration) throws MidiPortException;
+    void sendChordToDevice(Chord chord, long duration) throws MidiPortException;
 
     /**
      * Variant that allows specifying the target MIDI channel (0-15). For user-facing CLI, map 1-16 → 0-15 before calling.
      */
-    void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration, int channelZeroBased) throws MidiPortException;
+    void sendChordToDevice(Chord chord, long duration, int channelZeroBased) throws MidiPortException;
 
 }

@@ -2,6 +2,7 @@ package syrincs.a_domain.rhythm;
 
 import syrincs.c_adapters.midi.SequencePlayer;
 
+import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiEvent;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.ShortMessage;
@@ -30,7 +31,7 @@ public class FakeSequencePlayer implements SequencePlayer {
     private final List<EventRec> events = new ArrayList<>();
 
     @Override
-    public void play(Sequence sequence, String deviceNameSubstring) {
+    public void play(Sequence sequence, MidiDevice device) {
         // Device name ignored in fake
         events.clear();
         if (sequence == null) return;

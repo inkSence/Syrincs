@@ -3,6 +3,8 @@ package syrincs.c_adapters.midi;
 import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiSystem;
 import javax.sound.midi.MidiUnavailableException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Centralized device resolution helper for adapter layer.
@@ -13,9 +15,37 @@ import javax.sound.midi.MidiUnavailableException;
  * - autoSelectDefaultOutput(): env/config preference (AppConfig), then preferred brand hints, then first OUT
  * - resolveOutput(substring): if substring provided → find by substring; else → autoSelectDefaultOutput
  */
-final class DeviceResolver {
+public final class DeviceService {
 
-    private DeviceResolver() {}
+    private DeviceService() {}
+
+    static List<MidiDevice> device = new ArrayList<>();
+
+    public static void loadStandardMidiDevice(){
+        String device = MidiConfig.defaults().defaultDeviceSubstring();
+        loadMidiDevice(device);
+    }
+
+    static void loadMidiDevice(String nameSubstring) {
+        MidiDevice.Info target = DeviceService.resolveOutput(nameSubstring);
+        if (target == null) {
+            if (nameSubstring != null && !nameSubstring.isBlank()) {
+                throw new IllegalArgumentException("Unknown MIDI device: '" + nameSubstring + "'");
+            } else {
+                throw new IllegalArgumentException("No suitable MIDI output device found. Set env SYRINCS_MIDI_DEVICE or pass --device.");
+            }
+        }
+        try {
+            device.add( MidiSystem.getMidiDevice(target) );
+        } catch (MidiUnavailableException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    static MidiDevice getMidiDevice(){
+        if(device.isEmpty()) throw new IllegalStateException("No MIDI device found.");
+        return device.getFirst();
+    }
 
     static MidiDevice.Info[] listOutputInfos() {
         MidiDevice.Info[] all = MidiSystem.getMidiDeviceInfo();

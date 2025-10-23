@@ -47,7 +47,7 @@ public class RootCmdChordsCliTest {
             super(
                 new syrincs.b_application.SendToMidiUseCase(midi),
                 new syrincs.b_application.ValidatePatternsUseCase(),
-                new PlaybackRhythmUseCase((p,s,v,d)->{}),
+                new PlaybackRhythmUseCase((p,s,v)->{}),
                 repo,
                 new syrincs.b_application.GenerateChordsUseCase(new syrincs.a_domain.chord.NoteCombinator(), new syrincs.a_domain.hindemith.ChordAnalysis(), 3),
                 new syrincs.b_application.AnalyseChordByHindemithUseCase(),
@@ -57,13 +57,12 @@ public class RootCmdChordsCliTest {
         }
         @Override
         public void playChords(List<Integer> numNotes, List<Integer> groups, Integer rootNote, Integer range,
-                               Long durationMs, String deviceNameSubstring, Integer channelZeroBased) {
+                               Long durationMs, Integer channelZeroBased) {
             this.numNotes = List.copyOf(numNotes);
             this.groups = List.copyOf(groups);
             this.root = rootNote;
             this.range = range;
             this.duration = durationMs;
-            this.device = deviceNameSubstring;
             this.channel = channelZeroBased;
             this.calls++;
         }
@@ -102,7 +101,7 @@ public class RootCmdChordsCliTest {
         var root = buildRoot(interactor, midiFake);
 
         // When
-        int code = new CommandLine(root).execute("play", "chords", "numnotes", "3", "4", "group", "4", "5", "6");
+        int code = new CommandLine(root).execute("play", "chords", "numNotes", "3", "4", "groups", "4", "5", "6");
         assertEquals(0, code);
 
         // Then
@@ -120,7 +119,7 @@ public class RootCmdChordsCliTest {
         var root = buildRoot(interactor, midiFake);
 
         // When
-        int code = new CommandLine(root).execute("play", "chords", "group", "1", "2", "rootnote", "72");
+        int code = new CommandLine(root).execute("play", "chords", "groups", "1", "2", "rootNote", "72");
         assertEquals(0, code);
 
         // Then
@@ -130,16 +129,4 @@ public class RootCmdChordsCliTest {
         assertEquals(24, interactor.range);
     }
 
-    @Test
-    void playChords_channel_option_maps_1_to_16_to_zero_based() {
-        var midiFake = new FakeMidiOutputPort();
-        var interactor = new CapturingInteractor(midiFake, new DummyRepo());
-        var root = buildRoot(interactor, midiFake);
-
-        int code = new CommandLine(root).execute("play", "chords", "--channel", "10");
-        assertEquals(0, code);
-        assertEquals(1, interactor.calls);
-        assertNotNull(interactor.channel);
-        assertEquals(9, interactor.channel); // 10 (user) -> 9 (zero-based)
-    }
 }

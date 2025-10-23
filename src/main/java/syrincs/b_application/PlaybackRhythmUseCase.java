@@ -16,7 +16,7 @@ public class PlaybackRhythmUseCase {
         this.playbackPort = Objects.requireNonNull(playbackPort, "playbackPort");
     }
     
-    public void playRhythm(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring) throws Exception {
-        playbackPort.play(pattern, spec, voices, deviceNameSubstring);
+    public void playRhythm(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws Exception {
+        playbackPort.play(pattern, spec, voices);
     }
 }

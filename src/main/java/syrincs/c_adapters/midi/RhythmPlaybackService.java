@@ -5,6 +5,8 @@ import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
 import syrincs.b_application.ports.RhythmPlaybackPort;
 
+import javax.sound.midi.MidiDevice;
+import javax.sound.midi.MidiSystem;
 import javax.sound.midi.Sequence;
 import java.util.List;
 import java.util.Objects;
@@ -23,8 +25,9 @@ public class RhythmPlaybackService implements RhythmPlaybackPort {
     }
 
     @Override
-    public void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring) throws Exception {
+    public void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws Exception {
         Sequence seq = sequenceBuilder.build(pattern, spec, voices);
-        sequencePlayer.play(seq, deviceNameSubstring);
+        MidiDevice device = DeviceService.getMidiDevice();
+        sequencePlayer.play(seq, device);
     }
 }
