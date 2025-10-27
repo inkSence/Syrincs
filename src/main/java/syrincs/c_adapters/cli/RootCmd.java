@@ -165,7 +165,7 @@ public class RootCmd implements Runnable {
 
 
 
-    @Command(name = "calculate", aliases = {"calc"},  subcommands = {CalculateCmd.ChordsCmd.class, CalculateCmd.RhythmCmd.class })
+    @Command(name = "calculate", aliases = {"calc", "generate"}, description = "generate something",  subcommands = {CalculateCmd.ChordsCmd.class, CalculateCmd.RhythmCmd.class })
     public static class CalculateCmd implements Callable<Integer> {
         @ParentCommand RootCmd parent;
 
@@ -195,7 +195,7 @@ public class RootCmd implements Runnable {
 
         @Command(name = "rhythm", description = "Generate rhythm")
         public static class RhythmCmd implements Callable<Integer>{
-          @ParentCommand CalculateCmd parent;
+            @ParentCommand CalculateCmd parent;
 
 
             @Option(names = "--tempo", description = "tempo BPM", defaultValue = "120")
@@ -211,13 +211,7 @@ public class RootCmd implements Runnable {
             @Option(names = "--bars", description = "number of bars", defaultValue = "1")
             int bars;
 
-            int[] parseSig() {
-                String[] xy = sig.split("/");
-                if (xy.length != 2) throw new IllegalArgumentException("Invalid --sig: '"+sig+"'");
-                int n = Integer.parseInt(xy[0].trim());
-                int d = Integer.parseInt(xy[1].trim());
-                return new int[]{n,d};
-            }
+
 
             @Option(names = "channel", description = "MIDI channel for drum-instrument")
             Integer channel;
@@ -227,16 +221,22 @@ public class RootCmd implements Runnable {
             Integer velSnare;
             @Option(names = "--gate", description = "gate percent (0-100) for both voices", defaultValue = "50")
             int gate;
-
-          @Override
-          public Integer call(){
+            int[] parseSig() {
+                String[] xy = sig.split("/");
+                if (xy.length != 2) throw new IllegalArgumentException("Invalid --sig: '"+sig+"'");
+                int n = Integer.parseInt(xy[0].trim());
+                int d = Integer.parseInt(xy[1].trim());
+                return new int[]{n,d};
+            }
+            @Override
+            public Integer call(){
             System.out.println("No Rhythms generated.");
             return 0;
-          }
+            }
         }
     }
 
-    @Command(name = "analyse", aliases = {"analyze"}, subcommands = { AnalyseCmd.ChordCmd.class, AnalyseCmd.RhythmCmd.class })
+    @Command(name = "analyse", aliases = {"analyze"}, description = "analyse something", subcommands = { AnalyseCmd.ChordCmd.class, AnalyseCmd.RhythmCmd.class })
     public static class AnalyseCmd implements Callable<Integer> {
         @ParentCommand RootCmd parent;
 
