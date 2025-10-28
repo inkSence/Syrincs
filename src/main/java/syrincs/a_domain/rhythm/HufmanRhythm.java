@@ -48,114 +48,123 @@ public class HufmanRhythm extends Rhythm {
             int position = getPositionOfBeat(i);
             ctx.state.handle(ctx, c, position);
         }
+        System.out.println("codeList: "+ ctx.codeList);
         return ctx.getCodeList().size();
     }
 
     private enum IdleAndQuarter implements RhythmState {
         INSTANCE; // Diese enums haben jeweils nur ein Feld.
         @Override public void handle(FSMContext ctx, char c, int position) {
-            if (position == 0) {
-                ctx.noteValue = 4;
-                if (c == 'x') { ctx.emitNoteOn(); ctx.setState(PlayingAndQuarter.INSTANCE); }
-                return;
-            }  // videt
-
             if (c == 'x') {
-                ctx.noteValue = 2;
-                ctx.splitOnce();
-                ctx.setState(PlayingAndEighth.INSTANCE);
-            } // videt
+                ctx.emitNoteOn();
+                if (position == 0) {
+                    ctx.setState(PlayingAndQuarter.INSTANCE);
+                }
+                else handlePosititionsOneToThreeAndPlayingCharacter(ctx, position);
+            }
         }
     }
 
     private enum PlayingAndQuarter implements RhythmState {
         INSTANCE;
         @Override public void handle(FSMContext ctx, char c, int position) {
-            if (position == 0) {
-                ctx.noteValue = 4;
-                if (c == 'o') { ctx.emitRestOn(); ctx.setState(IdleAndQuarter.INSTANCE); }
-                return;
-            } // videt
-            else if(position == 1 || position == 3 && c == 'x'){
-                ctx.noteValue = 1;
-                ctx.splitOnce();
-                ctx.splitOnce();
-                ctx.setState(PlayingAndSixteenth.INSTANCE);
-            }
-            // innerhalb der Gruppe: Split von 4→2 bei 'x'
-            if (ctx.noteValue == 4 && c == 'x') {
-                ctx.noteValue = 2;
-                ctx.splitOnce();
-                ctx.setState(PlayingAndEighth.INSTANCE);
-                return;
+            if (c == 'o') {
+                if (position == 0) {
+                    ctx.emitRestOn();
+                    ctx.setState(IdleAndQuarter.INSTANCE);
+                }
+            } else {
+                handlePosititionsOneToThreeAndPlayingCharacter(ctx, position);
             }
         }
+
+
     }
 
     private enum IdleAndEighth implements RhythmState {
         INSTANCE;
         @Override public void handle(FSMContext ctx, char c, int position) {
             if (position == 0) {
-                ctx.noteValue = 4;
                 if (c == 'x') { ctx.emitNoteOn(); ctx.setState(PlayingAndQuarter.INSTANCE); }
                 else { ctx.setState(IdleAndQuarter.INSTANCE); }
-                return;
             }
-            // kein 2→1 Split in der aktuellen Logik
+
         }
     }
 
     private enum PlayingAndEighth implements RhythmState {
         INSTANCE;
         @Override public void handle(FSMContext ctx, char c, int position) {
-            if (position == 0) {
-                ctx.noteValue = 4;
-                if (c == 'o') { ctx.emitRestOn(); ctx.setState(IdleAndQuarter.INSTANCE); }
-                else { ctx.setState(PlayingAndQuarter.INSTANCE); }
-                return;
+            if (c == 'o') {
+                if (position == 0) {
+                    ctx.emitRestOn();
+                    ctx.setState(IdleAndQuarter.INSTANCE);
+                }
+            } else {
+                if (position == 0) {
+                    ctx.setState(PlayingAndQuarter.INSTANCE);
+                } else if (position == 3){
+                    ctx.splitOnce();
+                    ctx.setState(PlayingAndSixteenth.INSTANCE);
+                }
             }
-            // kein 2→1 Split in der aktuellen Logik
         }
     }
 
     private enum IdleAndSixteenth implements RhythmState {
         INSTANCE;
         @Override public void handle(FSMContext ctx, char c, int position) {
-            if (position == 0) {
-                ctx.noteValue = 4;
-                if (c == 'x') { ctx.emitNoteOn(); ctx.setState(PlayingAndQuarter.INSTANCE); }
-                else { ctx.setState(IdleAndQuarter.INSTANCE); }
-                return;
+            if (c == 'x') {
+                ctx.emitNoteOn();
+                if (position == 0) {
+                    ctx.setState(PlayingAndQuarter.INSTANCE);
+                } else {
+                    ctx.setState(PlayingAndSixteenth.INSTANCE);
+                }
+            } else {
+                if (position == 0) {
+                    ctx.setState(IdleAndQuarter.INSTANCE);
+                }
             }
+
         }
     }
 
     private enum PlayingAndSixteenth implements RhythmState {
         INSTANCE;
         @Override public void handle(FSMContext ctx, char c, int position) {
-            if (position == 0) {
-                ctx.noteValue = 4;
-                if (c == 'o') { ctx.emitRestOn(); ctx.setState(IdleAndQuarter.INSTANCE); }
-                else { ctx.setState(PlayingAndQuarter.INSTANCE); }
-                return;
-            }
             if (c == 'o') {
-                if (position == 2) {
-                    ctx.emitRestOn();
-                    ctx.noteValue = 2;
-                    ctx.setState(IdleAndEighth.INSTANCE);
-                } else if (position == 3) {
-                    ctx.emitRestOn();
+                ctx.emitRestOn();
+                if (position == 0) {
                     ctx.setState(IdleAndQuarter.INSTANCE);
-                } //videt
+                } else if (position == 2) {
+                    ctx.setState(IdleAndSixteenth.INSTANCE);
+                } else if (position == 3) {
+                    ctx.setState(IdleAndSixteenth.INSTANCE);
+                }
+            } else {
+                if (position == 0) {
+                    ctx.setState(PlayingAndQuarter.INSTANCE);
+                }
             }
+        }
+    }
+
+    private static void handlePosititionsOneToThreeAndPlayingCharacter(FSMContext ctx, int position) {
+        if (position == 1 || position == 3) {
+            ctx.splitOnce();
+            ctx.splitOnce();
+            ctx.setState(PlayingAndSixteenth.INSTANCE);
+        } else if (position == 2) {
+            ctx.splitOnce();
+            ctx.setState(PlayingAndEighth.INSTANCE);
         }
     }
 
 
 
     public static void main(String[] args){
-        var rhythm = new HufmanRhythm(4,4,90, "xooo oooo oooo oooo");
+        var rhythm = new HufmanRhythm(4,4,90, "xooo xoxo xoxx xxxo");
         int info = rhythm.calculateInformation(rhythm.onsetList);
         System.out.println(info);
 

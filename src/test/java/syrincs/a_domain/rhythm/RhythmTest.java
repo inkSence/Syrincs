@@ -81,8 +81,25 @@ public class RhythmTest {
         info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(5, info);
 
-//        rhythm = new HufmanRhythm(4, 4, 90, "xooo xoxo xoxx xxxo");
-//        info = rhythm.calculateInformation(rhythm.onsetList);
-//        assertEquals(7, info);
+        rhythm = new HufmanRhythm(4, 4, 90, "xooo xoxo xoxx xxxo");
+        info = rhythm.calculateInformation(rhythm.onsetList);
+        assertEquals(7, info);
+
+        rhythm = new HufmanRhythm(4, 4, 90, "xooo ooxo xoxx xxxo");
+        info = rhythm.calculateInformation(rhythm.onsetList);
+        assertEquals(9, info);
+
+        rhythm = new HufmanRhythm(4, 4, 90, "xxox xoxo ooxo xooo");
+        info = rhythm.calculateInformation(rhythm.onsetList);
+        assertEquals(9, info);
+
+        rhythm = new HufmanRhythm(4, 4, 90, "xxxx xxxx xxxx xxxx");
+        info = rhythm.calculateInformation(rhythm.onsetList);
+        assertEquals(9, info);
+
+        rhythm = new HufmanRhythm(4, 4, 90, "xxox xxox xxox xxox");
+        info = rhythm.calculateInformation(rhythm.onsetList);
+        assertEquals(17, info);
+
     }
 }
