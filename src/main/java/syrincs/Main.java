@@ -26,7 +26,7 @@ public class Main {
         var analyze = new AnalyseChordByHindemithUseCase();
         var get = new GetHindemithChordsFromDbUseCase(repo);
         var persist = new PersistHindemithChordUseCase(repo);
-        var interactor = new UseCaseInteractor(send, validate, rhythmPlayback, repo, generate, analyze, get, persist);
+        var interactor = new UseCaseInteractor(send, validate, rhythmPlayback, new AnalyseRhythmUseCase(), repo, generate, analyze, get, persist);
         DeviceService.loadStandardMidiDevice();
         // Filter out DB-related CLI flags before passing to PicoCli so they don't appear in help
         String[] filtered = filterDbArgs(args);

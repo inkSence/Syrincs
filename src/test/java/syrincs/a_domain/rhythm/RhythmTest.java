@@ -43,61 +43,61 @@ public class RhythmTest {
     }
 
     @Test void testCalculateInformation_OnlyQuarters(){
-        var rhythm = new HufmanRhythm(4,4,90, "xooo xooo xooo xooo");
+        var rhythm = new HuffmanRhythm(4,4,90, "xooo xooo xooo xooo");
         int info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(1, info);
 
-        rhythm = new HufmanRhythm(4,4,90, "xooo oooo oooo oooo");
+        rhythm = new HuffmanRhythm(4,4,90, "xooo oooo oooo oooo");
         info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(2, info);
 
-        rhythm = new HufmanRhythm(4,4,90, "oooo oooo xooo oooo");
+        rhythm = new HuffmanRhythm(4,4,90, "oooo oooo xooo oooo");
         info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(2, info);
 
-        rhythm = new HufmanRhythm(4,4,90, "xooo xooo oooo oooo");
+        rhythm = new HuffmanRhythm(4,4,90, "xooo xooo oooo oooo");
         info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(2, info);
 
-        rhythm = new HufmanRhythm(4,4,90, "xooo oooo xooo xooo");
+        rhythm = new HuffmanRhythm(4,4,90, "xooo oooo xooo xooo");
         info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(3, info);
 
-        rhythm = new HufmanRhythm(4,4,90, "xooo xooo xooo oooo");
+        rhythm = new HuffmanRhythm(4,4,90, "xooo xooo xooo oooo");
         info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(2, info);
     }
 
     @Test void testCalculateInformation_WithSeparation() {
-        var rhythm = new HufmanRhythm(4, 4, 90, "xooo xoxo xooo xoxo");
+        var rhythm = new HuffmanRhythm(4, 4, 90, "xooo xoxo xooo xoxo");
         int info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(3, info);
 
-        rhythm = new HufmanRhythm(4, 4, 90, "xoxo xooo xoxo xooo");
+        rhythm = new HuffmanRhythm(4, 4, 90, "xoxo xooo xoxo xooo");
         info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(3, info);
 
-        rhythm = new HufmanRhythm(4, 4, 90, "xoxo xoxo xoxo xoxo");
+        rhythm = new HuffmanRhythm(4, 4, 90, "xoxo xoxo xoxo xoxo");
         info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(5, info);
 
-        rhythm = new HufmanRhythm(4, 4, 90, "xooo xoxo xoxx xxxo");
+        rhythm = new HuffmanRhythm(4, 4, 90, "xooo xoxo xoxx xxxo");
         info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(7, info);
 
-        rhythm = new HufmanRhythm(4, 4, 90, "xooo ooxo xoxx xxxo");
+        rhythm = new HuffmanRhythm(4, 4, 90, "xooo ooxo xoxx xxxo");
         info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(9, info);
 
-        rhythm = new HufmanRhythm(4, 4, 90, "xxox xoxo ooxo xooo");
+        rhythm = new HuffmanRhythm(4, 4, 90, "xxox xoxo ooxo xooo");
         info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(9, info);
 
-        rhythm = new HufmanRhythm(4, 4, 90, "xxxx xxxx xxxx xxxx");
+        rhythm = new HuffmanRhythm(4, 4, 90, "xxxx xxxx xxxx xxxx");
         info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(9, info);
 
-        rhythm = new HufmanRhythm(4, 4, 90, "xxox xxox xxox xxox");
+        rhythm = new HuffmanRhythm(4, 4, 90, "xxox xxox xxox xxox");
         info = rhythm.calculateInformation(rhythm.onsetList);
         assertEquals(17, info);
 

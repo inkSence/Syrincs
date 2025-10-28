@@ -283,7 +283,7 @@ public class RootCmd implements Runnable {
             public Integer call() {
                 var interactor = parent.parent.interactor;
                 interactor.printRhythmFileContent();
-                System.out.println(rhythm);
+                System.out.println("Information: " + interactor.analyzeRhythm(rhythm));
 
                 return 0;
             }

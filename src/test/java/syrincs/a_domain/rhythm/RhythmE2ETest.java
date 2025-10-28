@@ -48,7 +48,7 @@ public class RhythmE2ETest {
         var analyze = new syrincs.b_application.AnalyseChordByHindemithUseCase();
         var get = new syrincs.b_application.GetHindemithChordsFromDbUseCase(repo);
         var persist = new syrincs.b_application.PersistHindemithChordUseCase(repo);
-        var interactor = new UseCaseInteractor(send, validate, rhythmUC, repo, generate, analyze, get, persist);
+        var interactor = new UseCaseInteractor(send, validate, rhythmUC, new syrincs.b_application.AnalyseRhythmUseCase(), repo, generate, analyze, get, persist);
         return new RootCmd(interactor, fakeMidi);
         }
 
@@ -62,7 +62,7 @@ public class RhythmE2ETest {
         var analyze = new syrincs.b_application.AnalyseChordByHindemithUseCase();
         var get = new syrincs.b_application.GetHindemithChordsFromDbUseCase(repo);
         var persist = new syrincs.b_application.PersistHindemithChordUseCase(repo);
-        var interactor = new UseCaseInteractor(send, validate, rhythmUC, repo, generate, analyze, get, persist);
+        var interactor = new UseCaseInteractor(send, validate, rhythmUC, new syrincs.b_application.AnalyseRhythmUseCase(), repo, generate, analyze, get, persist);
         return new RootCmd(interactor, real);
     }
 

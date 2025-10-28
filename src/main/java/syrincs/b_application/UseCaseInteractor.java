@@ -26,11 +26,13 @@ public class UseCaseInteractor {
     private List<syrincs.a_domain.hindemith.HindemithChord> hindemithChords;
     private final ValidatePatternsUseCase validate;
     private final PlaybackRhythmUseCase rhythmPlayback;
+    private final AnalyseRhythmUseCase analyseRhythmUseCase;
 
 
     public UseCaseInteractor(SendToMidiUseCase send,
                              ValidatePatternsUseCase validate,
                              PlaybackRhythmUseCase playRhythm,
+                             AnalyseRhythmUseCase analyseRhythmUseCase,
                              HindemithChordRepositoryPort repository,
                              GenerateChordsUseCase generateChordsUseCase,
                              AnalyseChordByHindemithUseCase analyseChordByHindemithUseCase,
@@ -39,6 +41,7 @@ public class UseCaseInteractor {
         this.send = Objects.requireNonNull(send);
         this.validate = Objects.requireNonNull(validate);
         this.rhythmPlayback = Objects.requireNonNull(playRhythm);
+        this.analyseRhythmUseCase = Objects.requireNonNull(analyseRhythmUseCase);
         this.repository = Objects.requireNonNull(repository);
         this.generateChordsUseCase = Objects.requireNonNull(generateChordsUseCase);
         this.analyseChordByHindemithUseCase = Objects.requireNonNull(analyseChordByHindemithUseCase);
@@ -133,5 +136,9 @@ public class UseCaseInteractor {
 
     public void printRhythmFileContent(){
         System.out.println("Fake Content");
+    }
+
+    public Integer analyzeRhythm(String onsetList) {
+        return analyseRhythmUseCase.analyzeInformation(onsetList);
     }
 }

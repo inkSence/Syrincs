@@ -48,6 +48,7 @@ public class RootCmdChordsCliTest {
                 new syrincs.b_application.SendToMidiUseCase(midi),
                 new syrincs.b_application.ValidatePatternsUseCase(),
                 new PlaybackRhythmUseCase((p,s,v)->{}),
+                new syrincs.b_application.AnalyseRhythmUseCase(),
                 repo,
                 new syrincs.b_application.GenerateChordsUseCase(new syrincs.a_domain.chord.NoteCombinator(), new syrincs.a_domain.hindemith.ChordAnalysis(), 3),
                 new syrincs.b_application.AnalyseChordByHindemithUseCase(),
