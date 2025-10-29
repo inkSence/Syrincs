@@ -19,4 +19,6 @@ public class PlaybackRhythmUseCase {
     public void playRhythm(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws Exception {
         playbackPort.play(pattern, spec, voices);
     }
+
+
 }

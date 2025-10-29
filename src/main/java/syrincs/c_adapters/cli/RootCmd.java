@@ -135,12 +135,9 @@ public class RootCmd implements Runnable {
             }
         }
 
-        @Command(name = "rhythm", description = "Parse RDL-0, validate, build MIDI sequence, and play it on device")
+        @Command(name = "rhythm", description = "Parse RDL-0, validate, build MIDI sequence, and play it on device", subcommands = {RhythmCmd.DbCmd.class})
         public static class RhythmCmd implements Callable<Integer> {
             @ParentCommand PlayCmd parentPlay;
-
-
-
 
             @Option(names = "--in", description = "RDL-0 input file", defaultValue = "data/beat.rdl")
             String inFile;
@@ -154,6 +151,26 @@ public class RootCmd implements Runnable {
                 } catch (Exception e) {
                     System.err.println("[ERROR] " + e.getMessage());
                     return 1;
+                }
+            }
+
+            @Command(name = "db", description = "Play two rhythms from database by IDs")
+            public static class DbCmd implements Callable<Integer> {
+                @ParentCommand RhythmCmd parent;
+                @Parameters(index = "0", description = "First rhythm id")
+                int id1;
+                @Parameters(index = "1", description = "Second rhythm id")
+                int id2;
+
+                @Override public Integer call() {
+                    try {
+                        var interactor = parent.parentPlay.parent.interactor;
+                        interactor.playRhythms(id1, id2);
+                        return 0;
+                    } catch (Exception e) {
+                        System.err.println("[ERROR] " + e.getMessage());
+                        return 1;
+                    }
                 }
             }
         }

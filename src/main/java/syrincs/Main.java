@@ -29,7 +29,8 @@ public class Main {
         var get = new GetHindemithChordsFromDbUseCase(repo);
         var persist = new PersistHindemithChordUseCase(repo);
         var genPersistRhythm = new GenerateAndPersistRhythmUseCase(rhythmRepo);
-        var interactor = new UseCaseInteractor(send, validate, rhythmPlayback, new AnalyseRhythmUseCase(), repo, generate, analyze, get, persist, genPersistRhythm);
+        var playHuffman = new PlayHuffmanRhythmsUseCase(rhythmPlayback, validate);
+        var interactor = new UseCaseInteractor(send, validate, rhythmPlayback, new AnalyseRhythmUseCase(), repo, generate, analyze, get, persist, genPersistRhythm, playHuffman, rhythmRepo);
         DeviceService.loadStandardMidiDevice();
         // Filter out DB-related CLI flags before passing to PicoCli so they don't appear in help
         String[] filtered = filterDbArgs(args);

@@ -52,6 +52,13 @@ public class SequenceBuilder {
                 track.add(new MidiEvent(off, endTick));
             }
         }
+
+        // Ensure sequencer runs through trailing rests by adding End-of-Track at bar end
+        long totalTicks = (long) spec.totalSteps() * stepTicks;
+        MetaMessage eot = new MetaMessage();
+        eot.setMessage(0x2F, new byte[0], 0);
+        track.add(new MidiEvent(eot, totalTicks));
+
         return seq;
     }
 }
