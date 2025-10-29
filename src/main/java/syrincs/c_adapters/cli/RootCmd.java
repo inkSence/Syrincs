@@ -25,7 +25,7 @@ import syrincs.c_adapters.RhythmFileParser;
         subcommands = {
                 RootCmd.ListCmd.class,
                 RootCmd.PlayCmd.class,
-                RootCmd.CalculateCmd.class,
+                RootCmd.GenerateCmd.class,
                 RootCmd.AnalyseCmd.class,
                 RootCmd.DeleteCmd.class
         }
@@ -165,8 +165,8 @@ public class RootCmd implements Runnable {
 
 
 
-    @Command(name = "calculate", aliases = {"calc", "generate"}, description = "generate something",  subcommands = {CalculateCmd.ChordsCmd.class, CalculateCmd.RhythmCmd.class })
-    public static class CalculateCmd implements Callable<Integer> {
+    @Command(name = "calculate", aliases = {"calc", "generate"}, description = "generate something",  subcommands = {GenerateCmd.ChordsCmd.class, GenerateCmd.RhythmCmd.class })
+    public static class GenerateCmd implements Callable<Integer> {
         @ParentCommand RootCmd parent;
 
         public Integer call(){
@@ -176,7 +176,8 @@ public class RootCmd implements Runnable {
 
         @Command(name = "chords", aliases = {"chord" }, description = "Generate chords and persist")
         public static class ChordsCmd implements Callable<Integer> {
-            @ParentCommand CalculateCmd parent;
+            @ParentCommand
+            GenerateCmd parent;
 
             @Parameters(index = "0", description = "minLowerNote")
             int minLowerNote;
@@ -193,9 +194,10 @@ public class RootCmd implements Runnable {
             }
         }
 
-        @Command(name = "rhythm", description = "Generate rhythm")
+        @Command(name = "rhythms", description = "Generate rhythms")
         public static class RhythmCmd implements Callable<Integer>{
-            @ParentCommand CalculateCmd parent;
+            @ParentCommand
+            GenerateCmd parent;
 
 
             @Option(names = "--tempo", description = "tempo BPM", defaultValue = "120")
@@ -230,7 +232,8 @@ public class RootCmd implements Runnable {
             }
             @Override
             public Integer call(){
-            System.out.println("No Rhythms generated.");
+                parent.parent.interactor.generateAllRhythmsOfFourQuarters();
+                System.out.println("All Rhythms of Four Quarters generated.");
             return 0;
             }
         }
@@ -265,7 +268,7 @@ public class RootCmd implements Runnable {
         }
 
 
-        @Command(name="rhythm", description="Hufman Code Based Validation")
+        @Command(name="rhythm", description="Huffman Code Based Validation")
         public static class RhythmCmd implements Callable<Integer> {
             @ParentCommand AnalyseCmd parent;
 

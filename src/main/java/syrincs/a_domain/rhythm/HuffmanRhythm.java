@@ -40,7 +40,7 @@ public class HuffmanRhythm extends Rhythm {
             int position = getPositionOfBeat(i);
             ctx.state.handle(ctx, c, position);
         }
-        System.out.println("codeList: "+ ctx.codeList);
+        //System.out.println("codeList: "+ ctx.codeList);
         return ctx.getCodeList().size();
     }
 

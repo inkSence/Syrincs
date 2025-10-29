@@ -8,6 +8,7 @@ import syrincs.b_application.ports.HindemithChordRepositoryPort;
 import syrincs.a_domain.rhythm.Pattern;
 import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
+import syrincs.a_domain.rhythm.HuffmanRhythm;
 
 import java.util.List;
 import java.util.Objects;
@@ -27,6 +28,7 @@ public class UseCaseInteractor {
     private final ValidatePatternsUseCase validate;
     private final PlaybackRhythmUseCase rhythmPlayback;
     private final AnalyseRhythmUseCase analyseRhythmUseCase;
+    private final GenerateAndPersistRhythmUseCase generateAndPersistRhythmUseCase;
 
 
     public UseCaseInteractor(SendToMidiUseCase send,
@@ -38,6 +40,20 @@ public class UseCaseInteractor {
                              AnalyseChordByHindemithUseCase analyseChordByHindemithUseCase,
                              GetHindemithChordsFromDbUseCase getHindemithChordsFromDbUseCase,
                              PersistHindemithChordUseCase persistUseCase) {
+        this(send, validate, playRhythm, analyseRhythmUseCase, repository, generateChordsUseCase,
+                analyseChordByHindemithUseCase, getHindemithChordsFromDbUseCase, persistUseCase, null);
+    }
+
+    public UseCaseInteractor(SendToMidiUseCase send,
+                             ValidatePatternsUseCase validate,
+                             PlaybackRhythmUseCase playRhythm,
+                             AnalyseRhythmUseCase analyseRhythmUseCase,
+                             HindemithChordRepositoryPort repository,
+                             GenerateChordsUseCase generateChordsUseCase,
+                             AnalyseChordByHindemithUseCase analyseChordByHindemithUseCase,
+                             GetHindemithChordsFromDbUseCase getHindemithChordsFromDbUseCase,
+                             PersistHindemithChordUseCase persistUseCase,
+                             GenerateAndPersistRhythmUseCase generateAndPersistRhythmUseCase) {
         this.send = Objects.requireNonNull(send);
         this.validate = Objects.requireNonNull(validate);
         this.rhythmPlayback = Objects.requireNonNull(playRhythm);
@@ -47,6 +63,7 @@ public class UseCaseInteractor {
         this.analyseChordByHindemithUseCase = Objects.requireNonNull(analyseChordByHindemithUseCase);
         this.getHindemithChordsFromDbUseCase = Objects.requireNonNull(getHindemithChordsFromDbUseCase);
         this.persistUseCase = Objects.requireNonNull(persistUseCase);
+        this.generateAndPersistRhythmUseCase = generateAndPersistRhythmUseCase; // optional
     }
 
     public List<HindemithChord> findChordsFor(List<Integer> numNotes, List<Integer> groups, Integer rootNote) {
@@ -140,5 +157,12 @@ public class UseCaseInteractor {
 
     public Integer analyzeRhythm(String onsetList) {
         return analyseRhythmUseCase.analyzeInformation(onsetList);
+    }
+
+    public void generateAllRhythmsOfFourQuarters() {
+        if (generateAndPersistRhythmUseCase == null) {
+            throw new IllegalStateException("GenerateAndPersistRhythmUseCase not wired in UseCaseInteractor");
+        }
+        generateAndPersistRhythmUseCase.generateAllRhythmsOfFourQuarters();
     }
 }
