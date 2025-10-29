@@ -1,12 +1,14 @@
 package syrincs.a_domain.rhythm;
 
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import picocli.CommandLine;
 import syrincs.b_application.UseCaseInteractor;
 import syrincs.b_application.ports.HindemithChordRepositoryPort;
 import syrincs.b_application.PlaybackRhythmUseCase;
+import syrincs.b_application.AnalyseChordByHindemithUseCase;
+import syrincs.b_application.AnalyseRhythmUseCase;
+import syrincs.b_application.GetHindemithChordsFromDbUseCase;
 import syrincs.c_adapters.midi.*;
 import syrincs.c_adapters.cli.RootCmd;
 
@@ -45,10 +47,10 @@ public class RhythmE2ETest {
         var rhythmUC = new PlaybackRhythmUseCase(new RhythmPlaybackService(new SequenceBuilder(), seqFake));
         var repo = new DummyRepo();
         var generate = new syrincs.b_application.GenerateChordsUseCase(new syrincs.a_domain.chord.NoteCombinator(), new syrincs.a_domain.hindemith.ChordAnalysis(), 3);
-        var analyze = new syrincs.b_application.AnalyseChordByHindemithUseCase();
-        var get = new syrincs.b_application.GetHindemithChordsFromDbUseCase(repo);
+        var analyze = new AnalyseChordByHindemithUseCase();
+        var get = new GetHindemithChordsFromDbUseCase(repo);
         var persist = new syrincs.b_application.PersistHindemithChordUseCase(repo);
-        var interactor = new UseCaseInteractor(send, validate, rhythmUC, new syrincs.b_application.AnalyseRhythmUseCase(), repo, generate, analyze, get, persist);
+        var interactor = new UseCaseInteractor(send, validate, rhythmUC, new AnalyseRhythmUseCase(), repo, generate, analyze, get, persist);
         return new RootCmd(interactor, fakeMidi);
         }
 
@@ -59,10 +61,10 @@ public class RhythmE2ETest {
         var rhythmUC = new PlaybackRhythmUseCase(new RhythmPlaybackService(new SequenceBuilder(), new syrincs.c_adapters.midi.JdkSequencePlayer()));
         var repo = new DummyRepo();
         var generate = new syrincs.b_application.GenerateChordsUseCase(new syrincs.a_domain.chord.NoteCombinator(), new syrincs.a_domain.hindemith.ChordAnalysis(), 3);
-        var analyze = new syrincs.b_application.AnalyseChordByHindemithUseCase();
-        var get = new syrincs.b_application.GetHindemithChordsFromDbUseCase(repo);
+        var analyze = new AnalyseChordByHindemithUseCase();
+        var get = new GetHindemithChordsFromDbUseCase(repo);
         var persist = new syrincs.b_application.PersistHindemithChordUseCase(repo);
-        var interactor = new UseCaseInteractor(send, validate, rhythmUC, new syrincs.b_application.AnalyseRhythmUseCase(), repo, generate, analyze, get, persist);
+        var interactor = new UseCaseInteractor(send, validate, rhythmUC, new AnalyseRhythmUseCase(), repo, generate, analyze, get, persist);
         return new RootCmd(interactor, real);
     }
 

@@ -1,6 +1,5 @@
 package syrincs.b_application;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import syrincs.a_domain.hindemith.ChordAnalysis;

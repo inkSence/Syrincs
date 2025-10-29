@@ -168,34 +168,34 @@ public final class RhythmMapperFromOnsetStringToKickAndSnare {
         return List.of(kick, snare);
     }
 
-    /**
-     * Erzeugt eine einfache RhythmSpec mit den üblichen Defaults für 16 Schritte:
-     * 4/4, tempo=120, resPerBeat=4, bars=1.
-     */
-    public static RhythmSpec defaultSpec() {
-        return new RhythmSpec(4, 4, 120, 4, 1);
-    }
+//    /**
+//     * Erzeugt eine einfache RhythmSpec mit den üblichen Defaults für 16 Schritte:
+//     * 4/4, tempo=120, resPerBeat=4, bars=1.
+//     */
+//    public static RhythmSpec defaultSpec() {
+//        return new RhythmSpec(4, 4, 120, 4, 1);
+//    }
 
-    /** Kleines DTO, um Pattern, Spec und Voices gebündelt zurückzugeben. */
-    public static final class PlaybackBundle {
-        public final Pattern pattern;
-        public final RhythmSpec spec;
-        public final List<VoiceSpec> voices;
-        public PlaybackBundle(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) {
-            this.pattern = pattern; this.spec = spec; this.voices = voices;
-        }
-    }
+//    /** Kleines DTO, um Pattern, Spec und Voices gebündelt zurückzugeben. */
+//    public static final class PlaybackBundle {
+//        public final Pattern pattern;
+//        public final RhythmSpec spec;
+//        public final List<VoiceSpec> voices;
+//        public PlaybackBundle(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) {
+//            this.pattern = pattern; this.spec = spec; this.voices = voices;
+//        }
+//    }
 
-    /**
-     * Komfort-Helfer: nimmt einen 16‑Zeichen‑Onset‑String und liefert ein Pattern
-     * zusammen mit einer Default‑Spec und den Standard‑Voices zurück.
-     */
-    public static PlaybackBundle buildForPlayback(String sixteenXO) {
-        RhythmMapperFromOnsetStringToKickAndSnare mapper = RhythmMapperFromOnsetStringToKickAndSnare.defaultMapper(Style.DEFAULT);
-        Result res = mapper.map(sixteenXO);
-        Pattern pat = toPattern(res);
-        return new PlaybackBundle(pat, defaultSpec(), defaultVoiceSpecs());
-    }
+//    /**
+//     * Komfort-Helfer: nimmt einen 16‑Zeichen‑Onset‑String und liefert ein Pattern
+//     * zusammen mit einer Default‑Spec und den Standard‑Voices zurück.
+//     */
+//    public static PlaybackBundle buildForPlayback(String sixteenXO) {
+//        RhythmMapperFromOnsetStringToKickAndSnare mapper = RhythmMapperFromOnsetStringToKickAndSnare.defaultMapper(Style.DEFAULT);
+//        Result res = mapper.map(sixteenXO);
+//        Pattern pat = toPattern(res);
+//        return new PlaybackBundle(pat, defaultSpec(), defaultVoiceSpecs());
+//    }
 
     // ============ Regeln (modular) ============
     public static final class Rules {
@@ -266,24 +266,24 @@ public final class RhythmMapperFromOnsetStringToKickAndSnare {
         return out;
     }
 
-    // ============ kleines Demo ============
-    public static void main(String[] args) {
-        RhythmMapperFromOnsetStringToKickAndSnare mapper = RhythmMapperFromOnsetStringToKickAndSnare.defaultMapper(Style.DEFAULT);
-        // Optionales CLI-Argument verwenden, sonst gültigen 16er Default
-        String input = (args != null && args.length > 0) ? String.join(" ", args) : "xooo xoxo xooo xooo";
-        try {
-            Result r = mapper.map(input);
-            System.out.println(r);
-
-            // Four-on-the-floor Vergleich
-            RhythmMapperFromOnsetStringToKickAndSnare mapper4 = RhythmMapperFromOnsetStringToKickAndSnare.defaultMapper(Style.FOUR_ON_FLOOR);
-            System.out.println("\nFour-on-the-floor:");
-            System.out.println(mapper4.map(r.input));
-        } catch (IllegalArgumentException ex) {
-            System.err.println("[ERROR] " + ex.getMessage());
-            System.err.println("Usage: RhythmMapperFromOnsetStringToKickAndSnare <16 x/o Zeichen>\n" +
-                    "Beispiele: 'xooo xoxo xooo xooo' oder 'xoooxoxoxoooxooo'");
-            System.exit(1);
-        }
-    }
+//    // ============ kleines Demo ============
+//    public static void main(String[] args) {
+//        RhythmMapperFromOnsetStringToKickAndSnare mapper = RhythmMapperFromOnsetStringToKickAndSnare.defaultMapper(Style.DEFAULT);
+//        // Optionales CLI-Argument verwenden, sonst gültigen 16er Default
+//        String input = (args != null && args.length > 0) ? String.join(" ", args) : "xooo xoxo xooo xooo";
+//        try {
+//            Result r = mapper.map(input);
+//            System.out.println(r);
+//
+//            // Four-on-the-floor Vergleich
+//            RhythmMapperFromOnsetStringToKickAndSnare mapper4 = RhythmMapperFromOnsetStringToKickAndSnare.defaultMapper(Style.FOUR_ON_FLOOR);
+//            System.out.println("\nFour-on-the-floor:");
+//            System.out.println(mapper4.map(r.input));
+//        } catch (IllegalArgumentException ex) {
+//            System.err.println("[ERROR] " + ex.getMessage());
+//            System.err.println("Usage: RhythmMapperFromOnsetStringToKickAndSnare <16 x/o Zeichen>\n" +
+//                    "Beispiele: 'xooo xoxo xooo xooo' oder 'xoooxoxoxoooxooo'");
+//            System.exit(1);
+//        }
+//    }
 }

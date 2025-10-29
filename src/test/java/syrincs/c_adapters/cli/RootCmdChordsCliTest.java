@@ -8,6 +8,9 @@ import syrincs.b_application.ports.HindemithChordRepositoryPort;
 import syrincs.b_application.ports.MidiDeviceQueryPort;
 import syrincs.b_application.ports.MidiOutputPort;
 import syrincs.a_domain.rhythm.FakeMidiOutputPort;
+import syrincs.b_application.AnalyseChordByHindemithUseCase;
+import syrincs.b_application.AnalyseRhythmUseCase;
+import syrincs.b_application.GetHindemithChordsFromDbUseCase;
 
 import java.util.Collection;
 import java.util.List;
@@ -48,11 +51,11 @@ public class RootCmdChordsCliTest {
                 new syrincs.b_application.SendToMidiUseCase(midi),
                 new syrincs.b_application.ValidatePatternsUseCase(),
                 new PlaybackRhythmUseCase((p,s,v)->{}),
-                new syrincs.b_application.AnalyseRhythmUseCase(),
+                new AnalyseRhythmUseCase(),
                 repo,
                 new syrincs.b_application.GenerateChordsUseCase(new syrincs.a_domain.chord.NoteCombinator(), new syrincs.a_domain.hindemith.ChordAnalysis(), 3),
-                new syrincs.b_application.AnalyseChordByHindemithUseCase(),
-                new syrincs.b_application.GetHindemithChordsFromDbUseCase(repo),
+                new AnalyseChordByHindemithUseCase(),
+                new GetHindemithChordsFromDbUseCase(repo),
                 new syrincs.b_application.PersistHindemithChordUseCase(repo)
             );
         }

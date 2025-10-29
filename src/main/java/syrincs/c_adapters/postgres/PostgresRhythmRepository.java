@@ -1,6 +1,7 @@
 package syrincs.c_adapters.postgres;
 
 import syrincs.a_domain.rhythm.HuffmanRhythm;
+import syrincs.b_application.AppDefaults;
 import syrincs.b_application.ports.RhythmRepository;
 
 import java.sql.*;
@@ -104,8 +105,8 @@ public class PostgresRhythmRepository implements RhythmRepository {
                     String onset = rs.getString("rhythmstring");
                     int numerator = rs.getInt("numerator");
                     int denominator = rs.getInt("denominator");
-                    // Domain HuffmanRhythm requires tempo; DB doesn't store it. Use default tempo 90 as elsewhere.
-                    HuffmanRhythm r = new HuffmanRhythm(numerator, denominator, 90, onset);
+                    // Domain HuffmanRhythm requires tempo; DB doesn't store it. Use application default tempo.
+                    HuffmanRhythm r = new HuffmanRhythm(numerator, denominator, AppDefaults.DEFAULT_TEMPO_BPM, onset);
                     byId.put(id, r);
                 }
             }
@@ -118,5 +119,26 @@ public class PostgresRhythmRepository implements RhythmRepository {
             throw new RuntimeException("Failed to load two HuffmanRhythms by id", e);
         }
         return out;
+    }
+
+    @Override
+    public List<HuffmanRhythm> getAllByInformation(Integer information) {
+        Objects.requireNonNull(information, "information must not be null");
+        String sql = "SELECT rhythmstring, numerator, denominator FROM public.huffmanRhythms WHERE info = ? ORDER BY id";
+        List<HuffmanRhythm> result = new ArrayList<>();
+        try (Connection con = getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, information);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String onset = rs.getString("rhythmstring");
+                    int numerator = rs.getInt("numerator");
+                    int denominator = rs.getInt("denominator");
+                    result.add(new HuffmanRhythm(numerator, denominator, AppDefaults.DEFAULT_TEMPO_BPM, onset));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to load HuffmanRhythms by information", e);
+        }
+        return result;
     }
 }

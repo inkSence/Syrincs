@@ -23,4 +23,9 @@ public interface RhythmRepository {
      * Implementations may return fewer than two items if an id is not found.
      */
     List<HuffmanRhythm> getTwoRhythms(Integer id1, Integer id2);
+
+    /**
+     * Returns all rhythms that have the given information grade (matches column 'info').
+     */
+    List<HuffmanRhythm> getAllByInformation(Integer information);
 }

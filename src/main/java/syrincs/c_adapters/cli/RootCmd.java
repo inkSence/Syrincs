@@ -154,18 +154,18 @@ public class RootCmd implements Runnable {
                 }
             }
 
-            @Command(name = "db", description = "Play two rhythms from database by IDs")
+            @Command(name = "db", description = "Play rhythms from database by information grades (one random per grade)")
             public static class DbCmd implements Callable<Integer> {
                 @ParentCommand RhythmCmd parent;
-                @Parameters(index = "0", description = "First rhythm id")
-                int id1;
-                @Parameters(index = "1", description = "Second rhythm id")
-                int id2;
+                // Accept 1..* integers representing information grades
+                @Parameters(arity = "1..*", description = "Information grades to play (e.g., 1 2 3 4)")
+                int[] infoGrades;
 
                 @Override public Integer call() {
                     try {
                         var interactor = parent.parentPlay.parent.interactor;
-                        interactor.playRhythms(id1, id2);
+                        java.util.List<Integer> infos = java.util.Arrays.stream(infoGrades).boxed().toList();
+                        interactor.playRhythmsByInformationGrades(infos);
                         return 0;
                     } catch (Exception e) {
                         System.err.println("[ERROR] " + e.getMessage());

@@ -4,6 +4,7 @@ import syrincs.a_domain.rhythm.Pattern;
 import syrincs.a_domain.rhythm.PatternHeader;
 import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
+import syrincs.b_application.AppDefaults;
 
 import java.io.*;
 import java.util.*;
@@ -130,7 +131,7 @@ public class RhythmFileParser {
     private RhythmSpec toRhythmSpec(PatternHeader h) {
         int tn = h.timeNum() != null ? h.timeNum() : 4;
         int td = h.timeDen() != null ? h.timeDen() : 4;
-        int tempo = h.tempo() != null ? h.tempo() : 120;
+        int tempo = h.tempo() != null ? h.tempo() : AppDefaults.DEFAULT_TEMPO_BPM;
         int rpb = h.resPerBeat() != null ? h.resPerBeat() : 4;
         int bars = h.bars() != null ? h.bars() : 1;
         return new RhythmSpec(tn, td, tempo, rpb, bars);

@@ -53,7 +53,7 @@ public class GenerateAndPersistRhythmUseCase {
     // -- Public API --
 
     /**
-     * Full pipeline: generate numbers, convert to binary strings, map to HuffmanRhythm (4/4, tempo 90), persist, return.
+     * Full pipeline: generate numbers, convert to binary strings, map to HuffmanRhythm (4/4, tempo default), persist, return.
      */
     public void generateAllRhythmsOfFourQuarters() {
         List<Integer> nums = generateAllNumbersForRhythmsOfFourQuarters();
@@ -87,7 +87,7 @@ public class GenerateAndPersistRhythmUseCase {
                 onset.append(c == '1' ? 'x' : 'o');
                 // if (i % 4 == 3 && i < 15) onset.append(' '); // Todo: Wäre schön als Methode beim Persistieren, um die Lesbarkeit zu steigern.
             }
-            out.add(new HuffmanRhythm(4, 4, 90, onset.toString()));
+            out.add(new HuffmanRhythm(4, 4, AppDefaults.DEFAULT_TEMPO_BPM, onset.toString()));
         }
         return out;
     }

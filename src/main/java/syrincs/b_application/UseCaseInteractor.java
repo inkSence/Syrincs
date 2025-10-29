@@ -1,9 +1,7 @@
 package syrincs.b_application;
 
-import syrincs.a_domain.chord.NoteCombinator;
 import syrincs.a_domain.hindemith.HindemithChord;
 import syrincs.a_domain.Tone;
-import syrincs.a_domain.hindemith.ChordAnalysis;
 import syrincs.b_application.ports.HindemithChordRepositoryPort;
 import syrincs.a_domain.rhythm.Pattern;
 import syrincs.a_domain.rhythm.RhythmSpec;
@@ -191,13 +189,25 @@ public class UseCaseInteractor {
         playHuffmanRhythmsUseCase.playRhythms(rhythms);
     }
 
-    /** Convenience: load two rhythms by DB id and play them sequentially. */
-    public void playRhythms(Integer id1, Integer id2) throws Exception {
+    /**
+     * Loads, for each requested information grade, all matching rhythms and picks one at random.
+     * The selected rhythms are then played sequentially.
+     */
+    public void playRhythmsByInformationGrades(List<Integer> informationGrades) throws Exception {
         if (huffmanRhythmRepository == null) {
             throw new IllegalStateException("RhythmRepository not wired in UseCaseInteractor");
         }
-        List<HuffmanRhythm> rhythms = huffmanRhythmRepository.getTwoRhythms(id1, id2);
-        if (rhythms == null || rhythms.isEmpty()) return;
-        playRhythms(rhythms);
+        if (informationGrades == null || informationGrades.isEmpty()) return;
+        java.util.List<HuffmanRhythm> selection = new java.util.ArrayList<>();
+        java.util.concurrent.ThreadLocalRandom rnd = java.util.concurrent.ThreadLocalRandom.current();
+        for (Integer info : informationGrades) {
+            if (info == null) continue;
+            List<HuffmanRhythm> candidates = huffmanRhythmRepository.getAllByInformation(info);
+            if (candidates == null || candidates.isEmpty()) continue;
+            int idx = (candidates.size() == 1) ? 0 : rnd.nextInt(candidates.size());
+            selection.add(candidates.get(idx));
+        }
+        if (selection.isEmpty()) return;
+        playRhythms(selection);
     }
 }

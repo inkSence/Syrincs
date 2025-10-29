@@ -3,6 +3,10 @@ package syrincs;
 
 import picocli.CommandLine;
 import syrincs.b_application.*;
+import syrincs.b_application.AnalyseChordByHindemithUseCase;
+import syrincs.b_application.AnalyseRhythmUseCase;
+import syrincs.b_application.GenerateAndPersistRhythmUseCase;
+import syrincs.b_application.GetHindemithChordsFromDbUseCase;
 import syrincs.c_adapters.midi.*;
 import syrincs.b_application.PlaybackRhythmUseCase;
 import syrincs.c_adapters.cli.RootCmd;

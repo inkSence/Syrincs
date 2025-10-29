@@ -5,7 +5,7 @@ public class Rhythm {
     int numerator = 4;
     int denominator = 4;
     int positionsPerBeat = 4;
-    int tempo = 90; //bpm
+    int tempo; // bpm, must be provided by callers
     String onsetList;
 
     public Rhythm(int numerator, int denominator, int tempo, String onsetList) {
