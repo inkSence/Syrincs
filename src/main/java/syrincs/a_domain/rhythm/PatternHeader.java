@@ -7,7 +7,6 @@ public record PatternHeader(
         Integer timeNum,
         Integer timeDen,
         Integer tempo,
-        Integer ppq,
         Integer resPerBeat,
         Integer bars
 ) {}

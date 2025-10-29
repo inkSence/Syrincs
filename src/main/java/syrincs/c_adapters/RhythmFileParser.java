@@ -24,7 +24,7 @@ public class RhythmFileParser {
 
     // Lightweight state holder for parsing
     private static class ParseState {
-        Integer timeNum, timeDen, tempo, ppq, resPerBeat, bars;
+        Integer timeNum, timeDen, tempo, resPerBeat, bars;
         final Pattern pattern = new Pattern();
         final List<VoiceSpec> voices = new ArrayList<>();
         final Map<String, List<Boolean>> tmpPatterns = new LinkedHashMap<>();
@@ -43,13 +43,13 @@ public class RhythmFileParser {
                 }
             }
             finalizePatterns(st);
-            PatternHeader header = new PatternHeader(st.timeNum, st.timeDen, st.tempo, st.ppq, st.resPerBeat, st.bars);
+            PatternHeader header = new PatternHeader(st.timeNum, st.timeDen, st.tempo, st.resPerBeat, st.bars);
             RhythmSpec spec = toRhythmSpec(header);
             return new MidiData(spec, st.pattern, st.voices);
         }
     }
 
-    Reader openReader(String inFile) throws FileNotFoundException {
+    private Reader openReader(String inFile) throws FileNotFoundException {
         if (inFile != null && !inFile.isBlank()) {
             return new FileReader(inFile);
         }
@@ -65,7 +65,6 @@ public class RhythmFileParser {
     private boolean dispatchLine(String raw, int lineNo, ParseState st) throws ParseException {
         if (raw.startsWith("time:")) { parseTime(raw, lineNo, st); return true; }
         if (raw.startsWith("tempo:")) { st.tempo = parseIntStrict(raw.substring(7).trim(), lineNo, "tempo"); return true; }
-        if (raw.startsWith("ppq:")) { st.ppq = parseIntStrict(raw.substring(4).trim(), lineNo, "ppq"); return true; }
         if (raw.startsWith("res-per-beat:")) { st.resPerBeat = parseIntStrict(raw.substring(14).trim(), lineNo, "res-per-beat"); return true; }
         if (raw.startsWith("bars:")) { st.bars = parseIntStrict(raw.substring(6).trim(), lineNo, "bars"); return true; }
         if (raw.startsWith("voice ")) { parseVoice(raw, lineNo, st); return true; }
@@ -132,10 +131,9 @@ public class RhythmFileParser {
         int tn = h.timeNum() != null ? h.timeNum() : 4;
         int td = h.timeDen() != null ? h.timeDen() : 4;
         int tempo = h.tempo() != null ? h.tempo() : 120;
-        int ppq = h.ppq() != null ? h.ppq() : 480;
         int rpb = h.resPerBeat() != null ? h.resPerBeat() : 4;
         int bars = h.bars() != null ? h.bars() : 1;
-        return new RhythmSpec(tn, td, tempo, ppq, rpb, bars);
+        return new RhythmSpec(tn, td, tempo, rpb, bars);
     }
 
     private int parseIntStrict(String s, int lineNo, String what) throws ParseException {

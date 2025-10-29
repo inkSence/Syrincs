@@ -6,7 +6,9 @@ import syrincs.b_application.ports.RhythmRepository;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -83,5 +85,38 @@ public class PostgresRhythmRepository implements RhythmRepository {
             throw new RuntimeException("Failed to batch save HuffmanRhythms", e);
         }
         return ids;
+    }
+
+    @Override
+    public List<HuffmanRhythm> getTwoRhythms(Integer id1, Integer id2) {
+        Objects.requireNonNull(id1, "id1 must not be null");
+        Objects.requireNonNull(id2, "id2 must not be null");
+        String sql = "SELECT id, rhythmstring, numerator, denominator FROM public.huffmanRhythms WHERE id = ANY(?)";
+        List<HuffmanRhythm> out = new ArrayList<>(2);
+        try (Connection con = getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            Long[] arr = new Long[] { id1.longValue(), id2.longValue() };
+            Array sqlArr = con.createArrayOf("int8", arr);
+            ps.setArray(1, sqlArr);
+            Map<Long, HuffmanRhythm> byId = new HashMap<>();
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    long id = rs.getLong("id");
+                    String onset = rs.getString("rhythmstring");
+                    int numerator = rs.getInt("numerator");
+                    int denominator = rs.getInt("denominator");
+                    // Domain HuffmanRhythm requires tempo; DB doesn't store it. Use default tempo 90 as elsewhere.
+                    HuffmanRhythm r = new HuffmanRhythm(numerator, denominator, 90, onset);
+                    byId.put(id, r);
+                }
+            }
+            // Ensure output order corresponds to requested ids and duplicates allowed
+            HuffmanRhythm r1 = byId.get(id1.longValue());
+            if (r1 != null) out.add(r1);
+            HuffmanRhythm r2 = byId.get(id2.longValue());
+            if (r2 != null) out.add(r2);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to load two HuffmanRhythms by id", e);
+        }
+        return out;
     }
 }

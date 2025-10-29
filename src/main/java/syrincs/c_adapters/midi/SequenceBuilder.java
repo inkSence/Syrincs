@@ -15,7 +15,7 @@ import java.util.Map;
 public class SequenceBuilder {
 
     public Sequence build(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws InvalidMidiDataException {
-        int ppq = spec.ppq;
+        int ppq = MidiConfig.defaults().ppq();
         Sequence seq = new Sequence(Sequence.PPQ, ppq);
         var track = seq.createTrack();
 
@@ -30,7 +30,7 @@ public class SequenceBuilder {
         tempoMsg.setMessage(0x51, data, data.length);
         track.add(new MidiEvent(tempoMsg, 0));
 
-        int stepTicks = spec.stepTicks();
+        int stepTicks = ppq / spec.resPerBeat;
 
         Map<String, boolean[]> vmap = pattern.voices();
         for (VoiceSpec v : voices) {

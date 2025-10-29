@@ -151,10 +151,6 @@ public class UseCaseInteractor {
         rhythmPlayback.playRhythm(pattern, spec, voices);
     }
 
-    public void printRhythmFileContent(){
-        System.out.println("Fake Content");
-    }
-
     public Integer analyzeRhythm(String onsetList) {
         return analyseRhythmUseCase.analyzeInformation(onsetList);
     }

@@ -156,10 +156,6 @@ public class RootCmd implements Runnable {
                     return 1;
                 }
             }
-
-
-
-
         }
     }
 
@@ -202,8 +198,7 @@ public class RootCmd implements Runnable {
 
             @Option(names = "--tempo", description = "tempo BPM", defaultValue = "120")
             int tempo;
-            @Option(names = "--ppq", description = "pulses per quarter note", defaultValue = "480")
-            int ppq;
+
             @Option(names = "--res-per-beat", description = "resolution per beat (e.g. 4 => 16ths)", defaultValue = "4")
             int resPerBeat;
 
@@ -285,7 +280,6 @@ public class RootCmd implements Runnable {
             @Override
             public Integer call() {
                 var interactor = parent.parent.interactor;
-                interactor.printRhythmFileContent();
                 System.out.println("Information: " + interactor.analyzeRhythm(rhythm));
 
                 return 0;

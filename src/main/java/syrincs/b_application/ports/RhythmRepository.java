@@ -17,4 +17,10 @@ public interface RhythmRepository {
      * returns generated database ids in insertion order.
      */
     List<Long> saveAll(List<HuffmanRhythm> rhythms);
+
+    /**
+     * Loads two rhythms by their database IDs and returns them as a list.
+     * Implementations may return fewer than two items if an id is not found.
+     */
+    List<HuffmanRhythm> getTwoRhythms(Integer id1, Integer id2);
 }

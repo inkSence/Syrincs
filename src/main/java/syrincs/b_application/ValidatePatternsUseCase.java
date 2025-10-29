@@ -39,7 +39,6 @@ public class ValidatePatternsUseCase {
 
     private void validateRanges(RhythmSpec spec, VoiceSpec kick, VoiceSpec snare) throws ValidationException {
         // Ranges
-        if (spec.ppq <= 0) throw new ValidationException("ppq must be > 0");
         if (spec.resPerBeat <= 0) throw new ValidationException("res-per-beat must be > 0");
         if (spec.beats() <= 0) throw new ValidationException("time numerator must be > 0");
         if (spec.bars <= 0) throw new ValidationException("bars must be > 0");

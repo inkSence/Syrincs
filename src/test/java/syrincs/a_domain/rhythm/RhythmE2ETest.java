@@ -77,7 +77,6 @@ public class RhythmE2ETest {
     private static final String RDL = "" +
             "time: 4/4\n" +
             "tempo: 120\n" +
-            "ppq: 480\n" +
             "res-per-beat: 4\n" +
             "bars: 1\n\n" +
             "voice kick  note=36 channel=10 vel=90 gate=50\n" +
