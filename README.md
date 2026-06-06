@@ -68,13 +68,76 @@ Alternativ kann die CLI über Maven gestartet werden:
 mvn exec:java -Dexec.args="--help"
 ```
 
-## MIDI-Gerät
+## Lokale Laufzeit
 
-Beim Start lädt `DeviceService` aktuell ein Standardgerät mit dem Namens-Substring `Roland Digital Piano`. Dieser Wert steht in `MidiConfig.defaults()`.
+Für den normalen lokalen Betrieb sind zwei externe Dienste relevant:
 
-Wenn auf dem System kein passendes MIDI-Ausgabegerät vorhanden ist, können CLI-Kommandos bereits beim Bootstrapping fehlschlagen. Für ein anderes Setup muss der Default in `src/main/java/syrincs/c_adapters/midi/MidiConfig.java` angepasst oder die Geräteauflösung erweitert werden.
+- PostgreSQL für gespeicherte Hindemith-Akkorde.
+- SuperCollider als Standard-Audio-Consumer.
 
-MIDI-Kanäle werden intern nullbasiert verwendet: `channel=9` entspricht dem üblichen MIDI-Kanal 10 für General-MIDI-Drums.
+Status prüfen:
+
+```bash
+syrincs status
+```
+
+Lokale Laufzeit starten:
+
+```bash
+syrincs start
+```
+
+`syrincs start` prüft PostgreSQL und startet danach den SuperCollider-Consumer
+im Vordergrund. Stoppen mit `Ctrl+C`. Syrincs führt keine privilegierten
+DB-Startbefehle automatisch aus, damit kein versteckter `sudo`-/PolicyKit-Dialog
+aus der Anwendung heraus entsteht.
+
+Nur SuperCollider starten:
+
+```bash
+syrincs start sc
+```
+
+Nur die Datenbank prüfen/starten:
+
+```bash
+syrincs start db
+```
+
+Wenn PostgreSQL nicht automatisch gestartet werden kann:
+
+```bash
+pg_lsclusters
+sudo pg_ctlcluster <version> <cluster> start
+sudo systemctl start postgresql
+pg_isready -h localhost -p 5432
+```
+
+Wenn `syrincs status` `DATABASE_MISSING` meldet, läuft PostgreSQL, aber die
+konfigurierte Datenbank fehlt. Für die Defaults:
+
+```bash
+sudo -u postgres createdb -O syrincs hindemith
+```
+
+Danach die Tabelle aus dem Abschnitt `Datenbank` anlegen oder ein zukünftiges
+Migrations-/Init-Kommando verwenden.
+
+## Ausgabe
+
+Der Standard-Output für `play` ist SuperCollider über OSC. MIDI ist weiterhin
+als expliziter Output verfügbar:
+
+```bash
+syrincs play note note 60 --output midi
+syrincs play chords --output midi
+```
+
+MIDI-Ausgänge anzeigen:
+
+```bash
+syrincs list
+```
 
 ## CLI
 
@@ -84,7 +147,7 @@ Geräte anzeigen:
 mvn exec:java -Dexec.args="list"
 ```
 
-Einzelnote spielen:
+Einzelnote spielen. Standard: SuperCollider:
 
 ```bash
 mvn exec:java -Dexec.args="play note note 60 vel 0.5 dur 500"
@@ -93,7 +156,7 @@ mvn exec:java -Dexec.args="play note note 60 vel 0.5 dur 500"
 Akkord nach Hindemith analysieren:
 
 ```bash
-mvn exec:java -Dexec.args="analyse chord 60 64 67"
+mvn exec:java -Dexec.args="analyse 60 64 67"
 ```
 
 Ausgabeformat:
@@ -105,16 +168,19 @@ Ausgabeformat:
 Akkorde erzeugen und persistieren:
 
 ```bash
-mvn exec:java -Dexec.args="calculate chords 48 84"
+mvn exec:java -Dexec.args="calculate 48 84"
 ```
 
-Akkorde aus der Datenbank spielen:
+Akkorde aus der Datenbank spielen. Standard: SuperCollider:
 
 ```bash
-mvn exec:java -Dexec.args="play chords numNotes 3 4 groups 1 2 3 rootNote 60 range 24 duration 200 channel 0"
+mvn exec:java -Dexec.args="play chords numnotes 3 4 group 1 2 3 rootnote 60 range 24 duration 200"
 ```
 
-Die Picocli-Optionen für `play chords` sind im aktuellen Stand ohne führende Bindestriche definiert, zum Beispiel `numNotes`, `groups`, `rootNote`, `range`, `duration` und `channel`.
+Die Picocli-Optionen für `play chords` sind im aktuellen Stand teils ohne
+führende Bindestriche definiert, zum Beispiel `numnotes`, `group`, `rootnote`,
+`range` und `duration`. Der Ausgabeweg wird mit `--output sc` oder
+`--output midi` gewählt; Default ist `sc`.
 
 Rhythmusdatei abspielen:
 
@@ -244,15 +310,19 @@ Parser-Regeln:
 
 ## Datenbank
 
-Die Anwendung verwendet PostgreSQL. Im aktuellen Code sind die Verbindungswerte in `AppConfig.loadDbConfig(...)` fest gesetzt:
+Die Anwendung verwendet PostgreSQL. `AppConfig.loadDbConfig(...)` löst die
+Verbindungswerte in dieser Reihenfolge auf:
+
+1. CLI-Flags `--db-url=`, `--db-user=`, `--db-pass=`
+2. Environment-Variablen `HINDEMITH_DB_URL`, `HINDEMITH_DB_USER`,
+   `HINDEMITH_DB_PASSWORD`
+3. Defaults
 
 ```text
-jdbc:postgresql://localhost:5432/syrincsdb
+jdbc:postgresql://localhost:5432/hindemith
 user: syrincs
 password: syrincs
 ```
-
-In `AppConfig` sind CLI- und Environment-basierte Konfigurationspfade bereits vorbereitet, aber derzeit auskommentiert. Die `Main`-Klasse filtert `--db-url=`, `--db-user=` und `--db-pass=` zwar aus den Picocli-Argumenten, `AppConfig` nutzt aktuell aber die festen Werte.
 
 Erwartete Tabellen:
 

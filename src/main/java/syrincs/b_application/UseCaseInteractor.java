@@ -72,7 +72,7 @@ public class UseCaseInteractor {
     }
 
     public void sendToneToDevice(Tone tone, String deviceNameSubstring) throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
-        System.out.printf("[MIDI] Playing note %d.", (int) tone.getMidiPitch());
+        System.out.printf("[PLAY] Playing note %d.%n", (int) tone.getMidiPitch());
         send.sendToneToDevice(tone, deviceNameSubstring);
     }
 
@@ -112,7 +112,7 @@ public class UseCaseInteractor {
             throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
         var chords = findChordsFor(numNotes, groups, rootNote);
         if (chords == null || chords.isEmpty()) {
-            System.out.println("[MIDI] No chords available after loading.");
+            System.out.println("[PLAY] No chords available after loading.");
             return;
         }
         for (var hc : chords) {
@@ -126,7 +126,7 @@ public class UseCaseInteractor {
             throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
         var chords = findChordsFor(numNotes, groups, rootNote, range);
         if (chords == null || chords.isEmpty()) {
-            System.out.println("[MIDI] No chords available after loading.");
+            System.out.println("[PLAY] No chords available after loading.");
             return;
         }
         for (var hc : chords) {

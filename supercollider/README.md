@@ -37,7 +37,13 @@ Beispiel:
 
 ## SuperCollider starten
 
-Empfohlen ist der headless Start ohne IDE:
+Empfohlen ist der Start über die Syrincs-CLI:
+
+```bash
+syrincs start sc
+```
+
+Alternativ geht der headless Start ohne Java-CLI:
 
 ```bash
 bash scripts/start-supercollider-consumer.sh
@@ -64,13 +70,13 @@ ADSR-Hüllkurve und lauscht auf UDP-Port `57120`.
 Ein einzelner Ton:
 
 ```bash
-mvn exec:java -Dexec.args="play sc 60 --velocity 0.7 --duration 0.5"
+syrincs play note note 60 vel 0.7 dur 500
 ```
 
 Ein einfacher C-Dur-Akkord:
 
 ```bash
-mvn exec:java -Dexec.args="play sc 60 64 67 --synth basic.sine --velocity 0.55 --duration 1.2 --pan 0.0"
+syrincs play sc 60 64 67 --synth basic.sine --velocity 0.55 --duration 1.2 --pan 0.0
 ```
 
 Wenn es funktioniert, hörst du den Ton bzw. Akkord und SuperCollider schreibt

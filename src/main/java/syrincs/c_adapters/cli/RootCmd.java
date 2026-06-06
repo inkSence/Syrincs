@@ -9,11 +9,13 @@ import syrincs.a_domain.Tone;
 import syrincs.a_domain.hindemith.HindemithChord;
 import syrincs.b_application.UseCaseInteractor;
 import syrincs.c_adapters.osc.SuperColliderOscOutputAdapter;
+import syrincs.c_adapters.runtime.LocalRuntime;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiUnavailableException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Callable;
 
 /**
@@ -26,6 +28,8 @@ import java.util.concurrent.Callable;
         description = "MIDI Utilities and Hindemith chords",
         subcommands = {
                 RootCmd.ListCmd.class,
+                RootCmd.StartCmd.class,
+                RootCmd.StatusCmd.class,
                 RootCmd.PlayCmd.class,
                 RootCmd.CalculateCmd.class,
                 RootCmd.AnalyzeCmd.class,
@@ -34,9 +38,17 @@ import java.util.concurrent.Callable;
 )
 public class RootCmd implements Runnable {
     final UseCaseInteractor interactor;
+    final UseCaseInteractor midiInteractor;
+    final LocalRuntime runtime;
 
     public RootCmd(UseCaseInteractor interactor) {
+        this(interactor, interactor, null);
+    }
+
+    public RootCmd(UseCaseInteractor interactor, UseCaseInteractor midiInteractor, LocalRuntime runtime) {
         this.interactor = interactor;
+        this.midiInteractor = midiInteractor;
+        this.runtime = runtime;
     }
 
     @Override
@@ -76,7 +88,7 @@ public class RootCmd implements Runnable {
 
         @Override
         public Integer call() {
-            var interactor = parent.interactor;
+            var interactor = parent.midiInteractor;
             for (var i : interactor.listMidiOutputs()) {
                 System.out.printf("[MIDI] %s | %s | %s%n", i.getName(), i.getDescription(), i.getVendor());
             }
@@ -84,19 +96,48 @@ public class RootCmd implements Runnable {
         }
     }
 
-    @Command(name = "play", description = "Play a single note (default) or use subcommands 'note', 'chords' and 'sc'", subcommands = { PlayCmd.NoteCmd.class, PlayChordsCmd.class, PlayCmd.SuperColliderCmd.class })
+    @Command(name = "start", description = "Start local runtime dependencies. Default: db then SuperCollider in foreground")
+    public static class StartCmd implements Callable<Integer> {
+        @ParentCommand RootCmd parent;
+
+        @Parameters(index = "0", arity = "0..1", description = "Runtime target: all, db, sc", defaultValue = "all")
+        String target;
+
+        @Override
+        public Integer call() throws Exception {
+            if (parent.runtime == null) {
+                System.err.println("[START] Runtime management is not configured.");
+                return 1;
+            }
+            return parent.runtime.start(target, System.out, System.err);
+        }
+    }
+
+    @Command(name = "status", description = "Check local database and SuperCollider consumer status")
+    public static class StatusCmd implements Callable<Integer> {
+        @ParentCommand RootCmd parent;
+
+        @Override
+        public Integer call() {
+            if (parent.runtime == null) {
+                System.err.println("[STATUS] Runtime management is not configured.");
+                return 1;
+            }
+            return parent.runtime.printStatus(System.out);
+        }
+    }
+
+    @Command(name = "play", description = "Play through the default SuperCollider output or an explicit MIDI output", subcommands = { PlayCmd.NoteCmd.class, PlayChordsCmd.class, PlayCmd.SuperColliderCmd.class })
     public static class PlayCmd implements Callable<Integer> {
         @ParentCommand RootCmd parent;
 
         @Override
         public Integer call() throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
-            // Default behavior for 'syrincs play' -> same as 'syrincs play note' with defaults
-            var interactor = parent.interactor;
-            interactor.sendToneToDevice(new Tone(100L, 60, 0.5), null);
+            parent.interactor.sendToneToDevice(new Tone(500L, 60, 0.7), null);
             return 0;
         }
 
-        @Command(name = "note", description = "Play a single note (defaults: note=60, vel=0.5, ms=100)")
+        @Command(name = "note", description = "Play a single note through SuperCollider by default")
         public static class NoteCmd implements Callable<Integer> {
             @ParentCommand PlayCmd parentPlay;
 
@@ -106,10 +147,16 @@ public class RootCmd implements Runnable {
             @Option(names = "vel", description = "Velocity 0..1", defaultValue = "0.5")
             double vel;
 
+            @Option(names = {"dur", "--duration", "--dur"}, description = "Duration in milliseconds", defaultValue = "500")
+            long durationMs;
+
+            @Option(names = "--output", description = "Output target: sc or midi", defaultValue = "sc")
+            String output;
+
             @Override
             public Integer call() throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
-                var interactor = parentPlay.parent.interactor;
-                interactor.sendToneToDevice(new Tone(100L, note, vel), null);
+                var interactor = parentPlay.parent.interactorFor(output);
+                interactor.sendToneToDevice(new Tone(durationMs, note, vel), null);
                 return 0;
             }
         }
@@ -161,7 +208,7 @@ public class RootCmd implements Runnable {
         }
     }
 
-    @Command(name = "chords", description = "Play chords from DB. Options: numnotes|num|notes (multi), group|groups (multi), rootnote|root (default=60), range (default=24). Duration is fixed to 200 ms; output device is auto-selected.")
+    @Command(name = "chords", description = "Play chords from DB through SuperCollider by default")
     public static class PlayChordsCmd implements Callable<Integer> {
         @ParentCommand PlayCmd parentPlay; // Access via parentPlay.parent.interactor
 
@@ -178,12 +225,18 @@ public class RootCmd implements Runnable {
         @Option(names = "range", description = "Max chord span (maxNote - minNote), default: 24", defaultValue = "24")
         int range;
 
+        @Option(names = {"duration", "dur", "--duration", "--dur"}, description = "Duration in milliseconds", defaultValue = "200")
+        long durationMs;
+
+        @Option(names = "--output", description = "Output target: sc or midi", defaultValue = "sc")
+        String output;
+
         @Override
         public Integer call() throws Exception {
-            var interactor = parentPlay.parent.interactor;
+            var interactor = parentPlay.parent.interactorFor(output);
             List<Integer> nn = (numNotes == null || numNotes.length == 0) ? List.of(3,4,5) : Arrays.stream(numNotes).boxed().toList();
             List<Integer> gr = (groups   == null || groups.length   == 0) ? List.of(1,2,3,4,5,6,7,8,9) : Arrays.stream(groups).boxed().toList();
-            interactor.playChords(nn, gr, rootNote, range, 200L, null);
+            interactor.playChords(nn, gr, rootNote, range, durationMs, null);
             return 0;
         }
     }
@@ -230,6 +283,28 @@ public class RootCmd implements Runnable {
         @Override public Integer call() {
             parent.interactor.deleteHindemithChords();
             return 0;
+        }
+    }
+
+    private UseCaseInteractor interactorFor(String output) {
+        OutputTarget target = OutputTarget.parse(output);
+        return target == OutputTarget.MIDI ? midiInteractor : interactor;
+    }
+
+    private enum OutputTarget {
+        SC,
+        MIDI;
+
+        static OutputTarget parse(String value) {
+            if (value == null || value.isBlank()) {
+                return SC;
+            }
+            String normalized = value.toLowerCase(Locale.ROOT);
+            return switch (normalized) {
+                case "sc", "supercollider", "osc" -> SC;
+                case "midi", "jdk-midi", "jdk" -> MIDI;
+                default -> throw new IllegalArgumentException("Unknown output target: " + value);
+            };
         }
     }
 }

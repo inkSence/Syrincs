@@ -5,30 +5,35 @@ import picocli.CommandLine;
 import syrincs.b_application.UseCaseInteractor;
 import syrincs.c_adapters.JdkMidiOutputAdapter;
 import syrincs.c_adapters.cli.RootCmd;
+import syrincs.c_adapters.osc.SuperColliderOscOutputAdapter;
 import syrincs.c_adapters.postgres.PostgresHindemithChordRepository;
+import syrincs.c_adapters.runtime.LocalRuntime;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        // Bootstrap interactor with MIDI and DB repository
+        // Bootstrap interactors with SuperCollider as default output and MIDI as explicit fallback
         var midiAdapter = new JdkMidiOutputAdapter();
+        var scAdapter = new SuperColliderOscOutputAdapter();
         var dbCfg = syrincs.d_frameworksAndDrivers.AppConfig.loadDbConfig(args);
         var repo = new PostgresHindemithChordRepository(dbCfg.url, dbCfg.user, dbCfg.password);
-        var interactor = new UseCaseInteractor(midiAdapter, repo);
+        var defaultInteractor = new UseCaseInteractor(scAdapter, repo);
+        var midiInteractor = new UseCaseInteractor(midiAdapter, repo);
+        var runtime = new LocalRuntime(LocalRuntime.resolveProjectRoot(), dbCfg);
 
         // Filter out DB-related CLI flags before passing to PicoCli so they don't appear in help
         String[] filtered = filterDbArgs(args);
 
         // If root-level help requested, print extended help including subcommand usages and exit
         if (isRootHelpRequest(filtered)) {
-            var root = new CommandLine(new RootCmd(interactor));
+            var root = new CommandLine(new RootCmd(defaultInteractor, midiInteractor, runtime));
             printExtendedHelp(root);
             return;
         }
 
-        var cmd = new CommandLine(new RootCmd(interactor));
+        var cmd = new CommandLine(new RootCmd(defaultInteractor, midiInteractor, runtime));
         int exitCode = cmd.execute(filtered);
         if (exitCode != 0) {
             System.exit(exitCode);
