@@ -11,15 +11,16 @@ Syrincs CLI
 -> SuperColliderOscOutputAdapter
 -> OSC
 -> Preset
--> Synth/Drum
+-> Synth/Drum oder optionaler Sample-Player
 -> Dry/FX Sends
 -> Reverb/Delay/Chorus
 -> Master Limiter
 -> Audio
 ```
 
-Nicht enthalten sind Samples, Plugin-Bridge, DAW-artige Effektketten,
-Automation ueber Zeit oder eine realistische Orchesteremulation.
+Nicht enthalten sind grosse Sample-Libraries, Multisampling, Velocity-Layer,
+Round-Robin, Plugin-Bridge, DAW-artige Effektketten, Automation ueber Zeit
+oder eine realistische Orchesteremulation.
 
 ## SuperCollider Starten
 
@@ -138,7 +139,10 @@ Namen nicht; sie sendet nur Presets.
 - `syrincsWindVoice`: einfache Wind-Andeutungen mit Noise, Filter und Vibrato.
 - `syrincsKick`, `syrincsSnare`, `syrincsHatClosed`, `syrincsHatOpen`,
   `syrincsTom`, `syrincsClap`, `syrincsRim`, `syrincsClick`: synthetische
-  Drums ohne Samples.
+  Drum-Fallbacks.
+- `syrincsSampleOneShot`: optionaler Sample-Player fuer Drum-One-Shots.
+- `syrincsSampleTonal`: optionaler Sample-Player fuer einfache tonale
+  C4-Samples mit Playback-Rate-Transposition.
 
 ## Preset-Struktur
 
@@ -148,7 +152,8 @@ Preset kann diese Felder verwenden:
 ```text
 synth, wave, ampScale, atk, dec, sus, rel, cutoff, rq, pan,
 detune, drive, modRatio, modIndex, decay, coef, reverbSend,
-delaySend, chorusSend, family, description
+delaySend, chorusSend, sample, sampleFallback, rootMidi, rate,
+startPos, family, description
 ```
 
 Zusaetzliche interne Felder wie `harm2`, `harm3`, `harm4`, `noiseMix`,
@@ -210,6 +215,7 @@ Pads / Strings / Brass -> `syrincsSubVoice`:
 - `strings.slow`
 - `brass.soft`
 - `brass.bright`
+- `strings.sample` -> `syrincsSampleTonal`, Fallback `strings.pad`
 
 Organ -> `syrincsOrganVoice`:
 
@@ -223,12 +229,14 @@ Keys / Mallets -> `syrincsFmVoice`:
 - `keys.fm_epiano`
 - `keys.mallet`
 - `keys.bell`
+- `keys.piano.sample` -> `syrincsSampleTonal`, Fallback `keys.fm_epiano`
 
 Plucked -> `syrincsPluckVoice`:
 
 - `pluck.harplike`
 - `pluck.guitarish`
 - `pluck.pizzicato`
+- `pluck.sample` -> `syrincsSampleTonal`, Fallback `pluck.harplike`
 
 Wind -> `syrincsWindVoice`:
 
@@ -252,12 +260,17 @@ Drums:
 - `drum.clap` -> `syrincsClap`
 - `drum.rim` -> `syrincsRim`
 - `drum.click` -> `syrincsClick`
+- `drum.kick.sample` -> `syrincsSampleOneShot`, Fallback `drum.kick`
+- `drum.snare.sample` -> `syrincsSampleOneShot`, Fallback `drum.snare`
+- `drum.hat.closed.sample` -> `syrincsSampleOneShot`, Fallback `drum.hat.closed`
+- `drum.hat.open.sample` -> `syrincsSampleOneShot`, Fallback `drum.hat.open`
+- `drum.clap.sample` -> `syrincsSampleOneShot`, Fallback `drum.clap`
 
 ## Synthetische Drum-Engine
 
-Die Drum-Engine bleibt synthetisch und samplefrei. Die App sendet nur
-Drum-Presetnamen ueber `/drum`; SuperCollider waehlt intern SynthDef und
-Parameter.
+Die synthetische Drum-Engine bleibt als stabiler Fallback erhalten. Die App
+sendet nur Drum-Presetnamen ueber `/drum`; SuperCollider waehlt intern SynthDef,
+Sample-Player und Parameter.
 
 Drum-SynthDefs:
 
@@ -292,6 +305,67 @@ Kompatibilitaet:
 
 - `basic.sine` ist ein Alias auf `test.sine`.
 
+## Optionaler Sample-Layer
+
+Der Sample-Layer ist optional. Das Repository enthaelt nur die Verzeichnisse,
+keine grossen Audiodateien:
+
+```text
+supercollider/samples/
+supercollider/samples/drums/
+supercollider/samples/keys/
+supercollider/samples/instruments/
+```
+
+Diese lokalen Dateien werden beim Start des Consumers gesucht:
+
+```text
+supercollider/samples/drums/kick.wav          -> sample.kick
+supercollider/samples/drums/snare.wav         -> sample.snare
+supercollider/samples/drums/hat_closed.wav    -> sample.hat.closed
+supercollider/samples/drums/hat_open.wav      -> sample.hat.open
+supercollider/samples/drums/clap.wav          -> sample.clap
+supercollider/samples/keys/piano_c4.wav       -> sample.piano.c4
+supercollider/samples/instruments/pluck_c4.wav -> sample.pluck.c4
+supercollider/samples/instruments/strings_c4.wav -> sample.strings.c4
+```
+
+WAV ist der dokumentierte Standardpfad; AIFF/AIF kann SuperCollider je nach
+System ebenfalls lesen. Die Registry erwartet aktuell aber die oben genannten
+WAV-Dateinamen. Grosse Audio-Dateien unter `supercollider/samples/` sind in
+`.gitignore` ausgeschlossen; nur `.gitkeep`-Dateien werden versioniert.
+
+Sample-Presets:
+
+- `drum.kick.sample`
+- `drum.snare.sample`
+- `drum.hat.closed.sample`
+- `drum.hat.open.sample`
+- `drum.clap.sample`
+- `keys.piano.sample`
+- `pluck.sample`
+- `strings.sample`
+
+Wenn ein Sample fehlt, loggt SuperCollider eine Warnung und nutzt das im Preset
+hinterlegte synthetische Fallback-Preset. Dadurch funktionieren Sample-Presets
+auch ohne lokale Audiodateien hoerbar weiter.
+
+Beispiel:
+
+```bash
+cp ~/Samples/kick.wav supercollider/samples/drums/kick.wav
+bash scripts/start-supercollider-consumer.sh
+mvn exec:java -Dexec.args="play sc drum drum.kick.sample"
+```
+
+Tonales Beispiel mit einem C4-Piano-Sample:
+
+```bash
+cp ~/Samples/piano_c4.wav supercollider/samples/keys/piano_c4.wav
+bash scripts/start-supercollider-consumer.sh
+mvn exec:java -Dexec.args="play sc 60 --preset keys.piano.sample --duration 1.0"
+```
+
 ## Sinnvolle Hindemith-Presets
 
 Fuer Hindemith-Akkorde sind besonders brauchbar:
@@ -316,6 +390,7 @@ Einzelne Note:
 ```bash
 mvn exec:java -Dexec.args="play sc 60 --preset test.sine"
 mvn exec:java -Dexec.args="play sc 60 --preset wind.fluteish --velocity 0.6 --duration 1.0"
+mvn exec:java -Dexec.args="play sc 60 --preset keys.piano.sample --velocity 0.7 --duration 1.0"
 ```
 
 Akkord:
@@ -329,8 +404,10 @@ Drums:
 
 ```bash
 mvn exec:java -Dexec.args="play sc drum drum.kick"
+mvn exec:java -Dexec.args="play sc drum drum.kick.sample"
 mvn exec:java -Dexec.args="play sc drum drum.hat.open --velocity 0.45 --pan -0.2"
 mvn exec:java -Dexec.args="play sc drum drum.clap --velocity 0.7 --pan 0.1"
+mvn exec:java -Dexec.args="play sc drum drum.clap.sample --velocity 0.7 --pan 0.1"
 mvn exec:java -Dexec.args="play sc drum drum.tom.mid --velocity 0.6"
 mvn exec:java -Dexec.args="play sc drum drum.click --velocity 0.35"
 ```
@@ -383,11 +460,23 @@ Erfolgskriterien:
   `/fx`-Nachrichten,
 - unbekannte Presets beenden den Consumer nicht, sondern erzeugen eine Warnung.
 
+Die Demo bleibt bewusst synthetisch stabil. Sample-Presets kannst du separat
+testen; wenn die Dateien fehlen, sollten Warnungen erscheinen und trotzdem
+synthetische Fallbacks klingen:
+
+```bash
+mvn exec:java -Dexec.args="play sc drum drum.kick.sample"
+mvn exec:java -Dexec.args="play sc drum drum.snare.sample"
+mvn exec:java -Dexec.args="play sc 60 --preset keys.piano.sample --duration 1.0"
+mvn exec:java -Dexec.args="play sc 64 --preset pluck.sample --duration 0.7"
+```
+
 ## Automatisierter Smoke-Test
 
 Der JUnit-Test startet keinen SuperCollider-Server. Er bindet lokal einen
 UDP-Port und prueft, dass Syrincs OSC-Pakete fuer `/note`, `/chord`, `/drum`
-und `/fx` erzeugt:
+und `/fx` erzeugt. Sample-Presetnamen werden dabei wie normale Preset-Strings
+geprueft; echte Audiodateien sind nicht noetig:
 
 ```bash
 mvn -Dtest=SuperColliderOscOutputAdapterTest test
@@ -406,9 +495,12 @@ Falls kein Klang kommt:
 
 ## Grenzen Dieser Stufe
 
-- keine Samples
-- keine realistischen Akustikdrums
+- keine mitgelieferte Sample-Library
+- keine grossen Audiodateien im Repository
+- kein Multi-Sampling
 - keine Round-Robin- oder Velocity-Layer-Samples
+- keine SFZ- oder SoundFont-Engine
+- keine realistischen Akustikdrums als vollstaendige Library
 - keine Plugin-Bridge
 - keine DAW-artige Effektkette
 - keine Automation ueber Zeit

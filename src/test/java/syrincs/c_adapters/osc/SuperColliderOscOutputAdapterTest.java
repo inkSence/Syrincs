@@ -54,6 +54,26 @@ class SuperColliderOscOutputAdapterTest {
     }
 
     @Test
+    void sendsSampleDrumPresetAsOscUdpPacket() throws Exception {
+        assertOscPacket(
+                adapter -> adapter.sendDrum("drum.kick.sample", 0.9, 0.0),
+                "/drum",
+                ",sff",
+                "drum.kick.sample"
+        );
+    }
+
+    @Test
+    void sendsSampleTonalPresetAsOscUdpPacket() throws Exception {
+        assertOscPacket(
+                adapter -> adapter.sendNote("keys.piano.sample", 60, 0.7, 1.0, 0.0),
+                "/note",
+                ",sifff",
+                "keys.piano.sample"
+        );
+    }
+
+    @Test
     void sendsFxAsOscUdpPacket() throws Exception {
         assertOscPacket(
                 adapter -> adapter.sendFx("reverb", true, "mix", 0.25),

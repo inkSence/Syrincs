@@ -13,6 +13,11 @@ s.waitForBoot({
                 group.free;
             };
         });
+        if(~samples.notNil) {
+            ~samples.keysValuesDo({ |name, buffer|
+                if(buffer.notNil) { buffer.free };
+            });
+        };
         [~dryBus, ~reverbBus, ~delayBus, ~chorusBus, ~masterBus].do({ |bus|
             if(bus.notNil) { bus.free };
         });
@@ -384,6 +389,35 @@ s.waitForBoot({
         Out.ar(chorusOut, voice * chorusSend.clip(0, 1));
     }).add;
 
+    SynthDef(\syrincsSampleOneShot, { |bufnum = 0, amp = 0.5, rate = 1, pan = 0, startPos = 0,
+        out = 0, reverbOut = 0, delayOut = 0, chorusOut = 0,
+        reverbSend = 0, delaySend = 0, chorusSend = 0|
+
+        var sig = PlayBuf.ar(1, bufnum, BufRateScale.kr(bufnum) * rate.clip(0.125, 4), 1, startPos.max(0), 0, 2);
+        var voice = Pan2.ar(LeakDC.ar(sig) * amp.clip(0, 0.9), pan.clip(-1, 1));
+
+        Out.ar(out, voice);
+        Out.ar(reverbOut, voice * reverbSend.clip(0, 1));
+        Out.ar(delayOut, voice * delaySend.clip(0, 1));
+        Out.ar(chorusOut, voice * chorusSend.clip(0, 1));
+    }).add;
+
+    SynthDef(\syrincsSampleTonal, { |bufnum = 0, midiNote = 60, rootMidi = 60, amp = 0.25,
+        sustain = 0.8, pan = 0, atk = 0.005, rel = 0.18, rate = 1, startPos = 0,
+        out = 0, reverbOut = 0, delayOut = 0, chorusOut = 0,
+        reverbSend = 0, delaySend = 0, chorusSend = 0|
+
+        var transposeRate = (2 ** ((midiNote - rootMidi) / 12)).clip(0.25, 4);
+        var env = EnvGen.kr(Env.linen(atk.clip(0.001, 0.3), sustain.clip(0.03, 8), rel.clip(0.01, 2), 1, -4), doneAction: 2);
+        var sig = PlayBuf.ar(1, bufnum, BufRateScale.kr(bufnum) * rate.clip(0.25, 2) * transposeRate, 1, startPos.max(0), 0, 0);
+        var voice = Pan2.ar(LeakDC.ar(sig) * env * amp.clip(0, 0.8), pan.clip(-1, 1));
+
+        Out.ar(out, voice);
+        Out.ar(reverbOut, voice * reverbSend.clip(0, 1));
+        Out.ar(delayOut, voice * delaySend.clip(0, 1));
+        Out.ar(chorusOut, voice * chorusSend.clip(0, 1));
+    }).add;
+
     SynthDef(\syrincsReverbFx, { |inBus = 0, out = 0, mix = 0.16, room = 0.55, damp = 0.45, amp = 0.9|
         var input = In.ar(inBus, 2);
         var amount = mix.clip(0, 0.65);
@@ -466,6 +500,49 @@ s.waitForBoot({
         ~fallback.(preset[key], 0).asFloat.clip(0, 1);
     };
 
+    ~scriptPath = thisProcess.nowExecutingPath;
+    ~sampleRoot = if(~scriptPath.notNil) {
+        PathName(~scriptPath).pathOnly +/+ "samples"
+    } {
+        "supercollider" +/+ "samples"
+    };
+
+    ~samples = Dictionary.new;
+    ~sampleFiles = Dictionary.newFrom([
+        "sample.kick", "drums/kick.wav",
+        "sample.snare", "drums/snare.wav",
+        "sample.hat.closed", "drums/hat_closed.wav",
+        "sample.hat.open", "drums/hat_open.wav",
+        "sample.clap", "drums/clap.wav",
+        "sample.piano.c4", "keys/piano_c4.wav",
+        "sample.pluck.c4", "instruments/pluck_c4.wav",
+        "sample.strings.c4", "instruments/strings_c4.wav"
+    ]);
+
+    ~loadSample = { |name, relativePath|
+        var path = ~sampleRoot +/+ relativePath;
+
+        if(File.exists(path)) {
+            ~samples.put(name, Buffer.readChannel(s, path, channels: [0]));
+            ("Syrincs loaded sample '" ++ name ++ "' from " ++ path).postln;
+        } {
+            ("Syrincs optional sample '" ++ name ++ "' missing at " ++ path).warn;
+        };
+    };
+
+    ~loadSamples = {
+        ~sampleFiles.keysValuesDo({ |name, relativePath|
+            ~loadSample.(name, relativePath);
+        });
+    };
+
+    ~sampleBufferFor = { |sampleName|
+        if(sampleName.isNil) { nil } { ~samples.at(sampleName.asString) };
+    };
+
+    ~loadSamples.();
+    s.sync;
+
     ~defaults = (
         synth: \syrincsBasicWave,
         wave: 0,
@@ -497,6 +574,11 @@ s.waitForBoot({
         reverbSend: 0,
         delaySend: 0,
         chorusSend: 0,
+        sample: nil,
+        sampleFallback: nil,
+        rootMidi: 60,
+        rate: 1,
+        startPos: 0,
         family: "test",
         description: "",
         drum: false
@@ -535,10 +617,12 @@ s.waitForBoot({
     ~putPreset.("keys.fm_epiano", "keys", "Minimal FM electric piano", (synth: \syrincsFmVoice, ampScale: 0.18, atk: 0.006, dec: 0.30, sus: 0.42, rel: 0.34, cutoff: 8200, modRatio: 2, modIndex: 0.42, harm2: 0.12, harm3: 0.03, reverbSend: 0.14, delaySend: 0.08));
     ~putPreset.("keys.mallet", "keys", "Short mallet tone", (synth: \syrincsFmVoice, ampScale: 0.18, atk: 0.003, dec: 0.18, sus: 0.15, rel: 0.16, cutoff: 9600, modRatio: 3, modIndex: 0.34, decay: 0.35));
     ~putPreset.("keys.bell", "keys", "Simple bell tone", (synth: \syrincsFmVoice, ampScale: 0.15, atk: 0.003, dec: 0.45, sus: 0.10, rel: 0.65, cutoff: 11000, modRatio: 2.7, modIndex: 0.72, harm2: 0.18, harm3: 0.08, decay: 0.9, reverbSend: 0.20, delaySend: 0.06));
+    ~putPreset.("keys.piano.sample", "keys", "Optional sampled piano C4", (synth: \syrincsSampleTonal, sample: "sample.piano.c4", sampleFallback: "keys.fm_epiano", rootMidi: 60, ampScale: 0.22, atk: 0.004, rel: 0.35, reverbSend: 0.14));
 
     ~putPreset.("pluck.harplike", "pluck", "Bright harp-like pluck", (synth: \syrincsPluckVoice, ampScale: 0.22, cutoff: 9800, decay: 1.5, coef: 0.38, reverbSend: 0.20, delaySend: 0.10));
     ~putPreset.("pluck.guitarish", "pluck", "Muted guitar-like pluck", (synth: \syrincsPluckVoice, ampScale: 0.20, cutoff: 4200, decay: 0.9, coef: 0.55, drive: 0.22, noiseMix: 0.03, reverbSend: 0.12, delaySend: 0.06));
     ~putPreset.("pluck.pizzicato", "pluck", "Short pizzicato pluck", (synth: \syrincsPluckVoice, ampScale: 0.19, cutoff: 3600, decay: 0.42, coef: 0.72, reverbSend: 0.10));
+    ~putPreset.("pluck.sample", "pluck", "Optional sampled pluck C4", (synth: \syrincsSampleTonal, sample: "sample.pluck.c4", sampleFallback: "pluck.harplike", rootMidi: 60, ampScale: 0.20, atk: 0.002, rel: 0.20, reverbSend: 0.16, delaySend: 0.05));
 
     ~putPreset.("organ.soft", "organ", "Soft drawbar organ", (synth: \syrincsOrganVoice, wave: 0.1, ampScale: 0.13, atk: 0.018, dec: 0.05, sus: 0.85, rel: 0.22, cutoff: 5200, harm2: 0.34, harm3: 0.12, harm4: 0.03, reverbSend: 0.14));
     ~putPreset.("organ.full", "organ", "Full organ", (synth: \syrincsOrganVoice, wave: 0.35, ampScale: 0.16, atk: 0.015, dec: 0.04, sus: 0.90, rel: 0.18, cutoff: 9000, harm2: 0.62, harm3: 0.32, harm4: 0.16, reverbSend: 0.18, chorusSend: 0.04));
@@ -552,6 +636,7 @@ s.waitForBoot({
     ~putPreset.("brass.bright", "brass", "Bright synthetic brass", (synth: \syrincsSubVoice, wave: 2.5, ampScale: 0.15, atk: 0.055, dec: 0.12, sus: 0.68, rel: 0.25, cutoff: 5000, rq: 0.24, drive: 0.24, harm2: 0.44));
     ~putPreset.("strings.pad", "strings", "Slow string pad", (synth: \syrincsSubVoice, wave: 2, ampScale: 0.11, atk: 0.55, dec: 0.35, sus: 0.78, rel: 1.4, cutoff: 2900, rq: 0.32, detune: 0.022, reverbSend: 0.28, chorusSend: 0.18));
     ~putPreset.("strings.slow", "strings", "Very slow string layer", (synth: \syrincsSubVoice, wave: 1.7, ampScale: 0.10, atk: 0.9, dec: 0.45, sus: 0.82, rel: 1.8, cutoff: 2350, rq: 0.35, detune: 0.018, reverbSend: 0.30, chorusSend: 0.16));
+    ~putPreset.("strings.sample", "strings", "Optional sampled strings C4", (synth: \syrincsSampleTonal, sample: "sample.strings.c4", sampleFallback: "strings.pad", rootMidi: 60, ampScale: 0.18, atk: 0.03, rel: 0.70, reverbSend: 0.24, chorusSend: 0.10));
 
     ~putPreset.("drum.kick", "drum", "Defined synthetic kick", (synth: \syrincsKick, ampScale: 0.78, decay: 0.30, drive: 0.12, pitchStart: 92, pitchEnd: 42, click: 0.055, cutoff: 3900, rq: 0.45, body: 0.92, noise: 0.018, drum: true));
     ~putPreset.("drum.kick.deep", "drum", "Deeper longer kick", (synth: \syrincsKick, ampScale: 0.82, decay: 0.48, drive: 0.18, pitchStart: 76, pitchEnd: 32, click: 0.035, cutoff: 3200, rq: 0.42, body: 0.96, noise: 0.012, drum: true));
@@ -571,6 +656,11 @@ s.waitForBoot({
     ~putPreset.("drum.clap", "drum", "Synthetic hand clap", (synth: \syrincsClap, ampScale: 0.48, decay: 0.30, cutoff: 2600, rq: 0.58, noise: 0.82, body: 0.12, snap: 0.38, spread: 0.026, pan: 0.08, reverbSend: 0.18, delaySend: 0.035, drum: true));
     ~putPreset.("drum.rim", "drum", "Short rimshot accent", (synth: \syrincsRim, ampScale: 0.42, decay: 0.075, cutoff: 5400, rq: 0.44, tone: 980, noise: 0.16, body: 0.55, snap: 0.42, pan: 0.10, reverbSend: 0.07, delaySend: 0.025, drum: true));
     ~putPreset.("drum.click", "drum", "Small click for metronome accents", (synth: \syrincsClick, ampScale: 0.34, decay: 0.032, cutoff: 6900, rq: 0.35, tone: 1850, noise: 0.12, body: 0.44, snap: 0.32, pan: 0.0, reverbSend: 0.02, drum: true));
+    ~putPreset.("drum.kick.sample", "drum", "Optional sampled kick", (synth: \syrincsSampleOneShot, sample: "sample.kick", sampleFallback: "drum.kick", ampScale: 0.72, rate: 1, drum: true));
+    ~putPreset.("drum.snare.sample", "drum", "Optional sampled snare", (synth: \syrincsSampleOneShot, sample: "sample.snare", sampleFallback: "drum.snare", ampScale: 0.58, reverbSend: 0.10, drum: true));
+    ~putPreset.("drum.hat.closed.sample", "drum", "Optional sampled closed hi-hat", (synth: \syrincsSampleOneShot, sample: "sample.hat.closed", sampleFallback: "drum.hat.closed", ampScale: 0.32, pan: -0.10, reverbSend: 0.02, drum: true));
+    ~putPreset.("drum.hat.open.sample", "drum", "Optional sampled open hi-hat", (synth: \syrincsSampleOneShot, sample: "sample.hat.open", sampleFallback: "drum.hat.open", ampScale: 0.30, pan: -0.14, reverbSend: 0.04, drum: true));
+    ~putPreset.("drum.clap.sample", "drum", "Optional sampled clap", (synth: \syrincsSampleOneShot, sample: "sample.clap", sampleFallback: "drum.clap", ampScale: 0.48, pan: 0.08, reverbSend: 0.15, delaySend: 0.025, drum: true));
 
     // Compatibility alias for the first proof of concept.
     ~presets.put("basic.sine", ~presets.at("test.sine"));
@@ -614,39 +704,71 @@ s.waitForBoot({
         var amp = ~ampFor.(velocity, preset, 0.22);
         var dur = ~durationFor.(duration);
         var outPan = ~panFor.(pan, preset);
+        var sampleName = ~fallback.(preset[\sample], nil);
+        var sampleBuffer = ~sampleBufferFor.(sampleName);
+        var sampleFallback = ~fallback.(preset[\sampleFallback], nil);
 
-        Synth(synth, [
-            \freq, note.midicps,
-            \amp, amp,
-            \sustain, dur,
-            \pan, outPan,
-            \wave, ~fallback.(preset[\wave], 0),
-            \atk, ~fallback.(preset[\atk], 0.01),
-            \dec, ~fallback.(preset[\dec], 0.08),
-            \sus, ~fallback.(preset[\sus], 0.65),
-            \rel, ~fallback.(preset[\rel], 0.12),
-            \cutoff, ~fallback.(preset[\cutoff], 9000),
-            \rq, ~fallback.(preset[\rq], 0.35),
-            \detune, ~fallback.(preset[\detune], 0),
-            \drive, ~fallback.(preset[\drive], 0),
-            \modRatio, ~fallback.(preset[\modRatio], 2),
-            \modIndex, ~fallback.(preset[\modIndex], 0),
-            \decay, ~fallback.(preset[\decay], dur),
-            \coef, ~fallback.(preset[\coef], 0.45),
-            \noiseMix, ~fallback.(preset[\noiseMix], 0),
-            \vibratoRate, ~fallback.(preset[\vibratoRate], 5),
-            \vibratoDepth, ~fallback.(preset[\vibratoDepth], 0),
-            \harm2, ~fallback.(preset[\harm2], 0.4),
-            \harm3, ~fallback.(preset[\harm3], 0.18),
-            \harm4, ~fallback.(preset[\harm4], 0.08),
-            \out, ~dryBus,
-            \reverbOut, ~reverbBus,
-            \delayOut, ~delayBus,
-            \chorusOut, ~chorusBus,
-            \reverbSend, ~sendFor.(preset, \reverbSend),
-            \delaySend, ~sendFor.(preset, \delaySend),
-            \chorusSend, ~sendFor.(preset, \chorusSend)
-        ], target: ~voiceGroup);
+        if(sampleName.notNil) {
+            if(sampleBuffer.notNil) {
+                Synth(synth, [
+                    \bufnum, sampleBuffer.bufnum,
+                    \midiNote, note,
+                    \rootMidi, ~fallback.(preset[\rootMidi], 60),
+                    \amp, amp,
+                    \sustain, dur,
+                    \pan, outPan,
+                    \atk, ~fallback.(preset[\atk], 0.005),
+                    \rel, ~fallback.(preset[\rel], 0.18),
+                    \rate, ~fallback.(preset[\rate], 1),
+                    \startPos, ~fallback.(preset[\startPos], 0),
+                    \out, ~dryBus,
+                    \reverbOut, ~reverbBus,
+                    \delayOut, ~delayBus,
+                    \chorusOut, ~chorusBus,
+                    \reverbSend, ~sendFor.(preset, \reverbSend),
+                    \delaySend, ~sendFor.(preset, \delaySend),
+                    \chorusSend, ~sendFor.(preset, \chorusSend)
+                ], target: ~voiceGroup);
+            } {
+                ("Syrincs sample '" ++ sampleName.asString ++ "' missing for preset '" ++ presetName.asString ++ "', using fallback " ++ sampleFallback.asString).warn;
+                if(sampleFallback.notNil) {
+                    ~playNote.(sampleFallback, midiNote, velocity, duration, pan);
+                };
+            };
+        } {
+            Synth(synth, [
+                \freq, note.midicps,
+                \amp, amp,
+                \sustain, dur,
+                \pan, outPan,
+                \wave, ~fallback.(preset[\wave], 0),
+                \atk, ~fallback.(preset[\atk], 0.01),
+                \dec, ~fallback.(preset[\dec], 0.08),
+                \sus, ~fallback.(preset[\sus], 0.65),
+                \rel, ~fallback.(preset[\rel], 0.12),
+                \cutoff, ~fallback.(preset[\cutoff], 9000),
+                \rq, ~fallback.(preset[\rq], 0.35),
+                \detune, ~fallback.(preset[\detune], 0),
+                \drive, ~fallback.(preset[\drive], 0),
+                \modRatio, ~fallback.(preset[\modRatio], 2),
+                \modIndex, ~fallback.(preset[\modIndex], 0),
+                \decay, ~fallback.(preset[\decay], dur),
+                \coef, ~fallback.(preset[\coef], 0.45),
+                \noiseMix, ~fallback.(preset[\noiseMix], 0),
+                \vibratoRate, ~fallback.(preset[\vibratoRate], 5),
+                \vibratoDepth, ~fallback.(preset[\vibratoDepth], 0),
+                \harm2, ~fallback.(preset[\harm2], 0.4),
+                \harm3, ~fallback.(preset[\harm3], 0.18),
+                \harm4, ~fallback.(preset[\harm4], 0.08),
+                \out, ~dryBus,
+                \reverbOut, ~reverbBus,
+                \delayOut, ~delayBus,
+                \chorusOut, ~chorusBus,
+                \reverbSend, ~sendFor.(preset, \reverbSend),
+                \delaySend, ~sendFor.(preset, \delaySend),
+                \chorusSend, ~sendFor.(preset, \chorusSend)
+            ], target: ~voiceGroup);
+        };
     };
 
     ~playChord = { |presetName, midiNotes, velocity = 0.7, duration = 1.0, pan = 0|
@@ -667,32 +789,59 @@ s.waitForBoot({
         var amp = ~ampFor.(vel, preset, 0.55);
         var outPan = ~panFor.(pan, preset);
         var cutoff = ~fallback.(preset[\cutoff], 7000) * (1 + (vel * 0.08));
+        var sampleName = ~fallback.(preset[\sample], nil);
+        var sampleBuffer = ~sampleBufferFor.(sampleName);
+        var sampleFallback = ~fallback.(preset[\sampleFallback], nil);
 
-        Synth(synth, [
-            \freq, ~fallback.(preset[\freq], 120),
-            \amp, amp,
-            \pan, outPan,
-            \decay, ~fallback.(preset[\decay], 0.3),
-            \drive, (~fallback.(preset[\drive], 0) + (vel * 0.08)).clip(0, 4),
-            \pitchStart, ~fallback.(preset[\pitchStart], 82),
-            \pitchEnd, ~fallback.(preset[\pitchEnd], 38),
-            \click, (~fallback.(preset[\click], 0.05) * (0.8 + (vel * 0.45))).clip(0, 0.35),
-            \cutoff, cutoff,
-            \rq, ~fallback.(preset[\rq], 0.5),
-            \tone, ~fallback.(preset[\tone], 185),
-            \noise, (~fallback.(preset[\noise], 0.0) * (0.75 + (vel * 0.35))).clip(0, 1),
-            \body, ~fallback.(preset[\body], 0.8),
-            \snap, (~fallback.(preset[\snap], 0.2) * (0.7 + (vel * 0.45))).clip(0, 1),
-            \spread, ~fallback.(preset[\spread], 0.02),
-            \vel, vel,
-            \out, ~dryBus,
-            \reverbOut, ~reverbBus,
-            \delayOut, ~delayBus,
-            \chorusOut, ~chorusBus,
-            \reverbSend, ~sendFor.(preset, \reverbSend),
-            \delaySend, ~sendFor.(preset, \delaySend),
-            \chorusSend, ~sendFor.(preset, \chorusSend)
-        ], target: ~voiceGroup);
+        if(sampleName.notNil) {
+            if(sampleBuffer.notNil) {
+                Synth(synth, [
+                    \bufnum, sampleBuffer.bufnum,
+                    \amp, amp,
+                    \rate, ~fallback.(preset[\rate], 1),
+                    \pan, outPan,
+                    \startPos, ~fallback.(preset[\startPos], 0),
+                    \out, ~dryBus,
+                    \reverbOut, ~reverbBus,
+                    \delayOut, ~delayBus,
+                    \chorusOut, ~chorusBus,
+                    \reverbSend, ~sendFor.(preset, \reverbSend),
+                    \delaySend, ~sendFor.(preset, \delaySend),
+                    \chorusSend, ~sendFor.(preset, \chorusSend)
+                ], target: ~voiceGroup);
+            } {
+                ("Syrincs sample '" ++ sampleName.asString ++ "' missing for preset '" ++ presetName.asString ++ "', using fallback " ++ sampleFallback.asString).warn;
+                if(sampleFallback.notNil) {
+                    ~playDrum.(sampleFallback, velocity, pan);
+                };
+            };
+        } {
+            Synth(synth, [
+                \freq, ~fallback.(preset[\freq], 120),
+                \amp, amp,
+                \pan, outPan,
+                \decay, ~fallback.(preset[\decay], 0.3),
+                \drive, (~fallback.(preset[\drive], 0) + (vel * 0.08)).clip(0, 4),
+                \pitchStart, ~fallback.(preset[\pitchStart], 82),
+                \pitchEnd, ~fallback.(preset[\pitchEnd], 38),
+                \click, (~fallback.(preset[\click], 0.05) * (0.8 + (vel * 0.45))).clip(0, 0.35),
+                \cutoff, cutoff,
+                \rq, ~fallback.(preset[\rq], 0.5),
+                \tone, ~fallback.(preset[\tone], 185),
+                \noise, (~fallback.(preset[\noise], 0.0) * (0.75 + (vel * 0.35))).clip(0, 1),
+                \body, ~fallback.(preset[\body], 0.8),
+                \snap, (~fallback.(preset[\snap], 0.2) * (0.7 + (vel * 0.45))).clip(0, 1),
+                \spread, ~fallback.(preset[\spread], 0.02),
+                \vel, vel,
+                \out, ~dryBus,
+                \reverbOut, ~reverbBus,
+                \delayOut, ~delayBus,
+                \chorusOut, ~chorusBus,
+                \reverbSend, ~sendFor.(preset, \reverbSend),
+                \delaySend, ~sendFor.(preset, \delaySend),
+                \chorusSend, ~sendFor.(preset, \chorusSend)
+            ], target: ~voiceGroup);
+        };
     };
 
     ~clipFxParam = { |effect, param, value|
