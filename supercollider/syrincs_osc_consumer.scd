@@ -1073,7 +1073,16 @@ s.waitForBoot({
 
     ~automationRamps = Dictionary.new;
 
-    ~globalTargets = ["reverb", "delay", "chorus", "master"];
+    ~isGlobalTarget = { |targetName|
+        var target = targetName.asString;
+
+        case
+        { target == "reverb" } { true }
+        { target == "delay" } { true }
+        { target == "chorus" } { true }
+        { target == "master" } { true }
+        { false };
+    };
 
     ~allowedGlobalParamsFor = { |targetName|
         var target = targetName.asString;
@@ -1212,7 +1221,7 @@ s.waitForBoot({
         var param = paramName.asString.asSymbol;
 
         case
-        { ~globalTargets.includes(target) } {
+        { ~isGlobalTarget.(target) } {
             ~setGlobalParam.(target, param, value);
         }
         { target.find("preset:") == 0 } {
@@ -1234,7 +1243,7 @@ s.waitForBoot({
         var preset;
         var family;
 
-        if(~globalTargets.includes(target)) {
+        if(~isGlobalTarget.(target)) {
             values = ~globalParamValues[target.asSymbol];
             if(values.notNil) { value = values[param] };
         } {
@@ -1316,7 +1325,7 @@ s.waitForBoot({
                 ("Syrincs unknown /fx effect '" ++ effect ++ "'").warn;
             };
         } {
-            if(~globalTargets.includes(effect).not) {
+            if(~isGlobalTarget.(effect).not) {
                 ("Syrincs unknown /fx effect '" ++ effect ++ "'").warn;
             } {
                 ~setGlobalParam.(effect, param, value);

@@ -666,6 +666,46 @@ spielt denselben musikalischen Inhalt wieder mit denselben Rollen. Der
 Klangwechsel soll aus der Szene kommen, nicht aus Java-seitig geaenderten
 Presetnamen.
 
+### Manueller Java-Hoertest
+
+Zusaetzlich gibt es einen isoliert ausfuehrbaren JUnit-Hoertest mit kuratierten
+OSC-Testdaten:
+
+```bash
+mvn -Dtest=SuperColliderManualSoundEngineTest -DrunScAudioTest=true test
+```
+
+Optional kannst du Host und Port setzen:
+
+```bash
+mvn -Dtest=SuperColliderManualSoundEngineTest -DrunScAudioTest=true -Dsc.host=127.0.0.1 -Dsc.port=57120 test
+```
+
+Ohne `-DrunScAudioTest=true` ueberspringt sich der Test sauber. Normale
+`mvn test`-Laeufe starten deshalb keinen Audio-Test und scheitern nicht, wenn
+SuperCollider nicht laeuft.
+
+Der Test sendet nacheinander:
+
+- Basic-Presets `test.sine`, `test.triangle`, `test.saw`, `test.pulse`,
+  `test.noise`
+- denselben Akkord ueber mehrere Synth-Familien
+- Hindemith-artige Vierklaenge mit Orgel, Strings und `role:harmony`
+- ein Drum-Kit-Auditioning und ein kurzes Drum-Pattern
+- Reverb, Delay, Chorus und Master-Volume ueber `/fx`
+- Cutoff- und Reverb-Rampen ueber `/set` und `/ramp`
+- Szenenwechsel zwischen `scene.chorale` und `scene.electronic`
+- Sample-Presets wie `drum.kick.sample`, `keys.piano.sample` und
+  `pluck.sample`; ohne Sample-Dateien greifen die synthetischen Fallbacks
+
+Wenn nichts zu hoeren ist, pruefe:
+
+- laeuft `bash scripts/start-supercollider-consumer.sh` noch?
+- zeigt SuperCollider eingehende OSC-Messages auf UDP-Port `57120`?
+- stimmt `-Dsc.port` mit dem Consumer-Port ueberein?
+- sind SuperCollider-Ausgaenge in PipeWire/JACK mit dem Systemausgang verbunden?
+- ist Master-Volume in SuperCollider oder im System-Mixer stummgeschaltet?
+
 ## Automatisierter Smoke-Test
 
 Der JUnit-Test startet keinen SuperCollider-Server. Er bindet lokal einen
