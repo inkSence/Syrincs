@@ -190,7 +190,8 @@ public class UseCaseInteractor {
     }
 
     /**
-     * Loads, for each requested information grade, all matching rhythms and picks one at random.
+     * Loads, for each requested information grade, matching rhythms with enough beat-to-beat
+     * variation and picks one at random.
      * The selected rhythms are then played sequentially.
      */
     public void playRhythmsByInformationGrades(List<Integer> informationGrades) throws Exception {
@@ -202,7 +203,10 @@ public class UseCaseInteractor {
         java.util.concurrent.ThreadLocalRandom rnd = java.util.concurrent.ThreadLocalRandom.current();
         for (Integer info : informationGrades) {
             if (info == null) continue;
-            List<HuffmanRhythm> candidates = huffmanRhythmRepository.getAllByInformationAndMinDeviation(info, 0.7);
+            List<HuffmanRhythm> candidates = huffmanRhythmRepository.getAllByInformationAndMinDeviation(
+                    info,
+                    AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION
+            );
             if (candidates == null || candidates.isEmpty()) continue;
             int idx = (candidates.size() == 1) ? 0 : rnd.nextInt(candidates.size());
             selection.add(candidates.get(idx));

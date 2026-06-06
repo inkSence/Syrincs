@@ -37,6 +37,18 @@ public class RhythmTest {
     }
 
     @Test
+    public void testOnSetListPerBeatIncludesAllBars(){
+        var rhythm = new Rhythm(4,4,90, "oooo oooo oooo oooo xooo oxoo ooxo ooox");
+        List<String> onsetList = rhythm.getOnsetListPerBeat();
+
+        assertEquals(8, onsetList.size());
+        assertEquals("oooo", onsetList.getFirst());
+        assertEquals("oooo", onsetList.get(3));
+        assertEquals("xooo", onsetList.get(4));
+        assertEquals("ooox", onsetList.get(7));
+    }
+
+    @Test
     public void testIsOnBeat(){
         var rhythm = new Rhythm(4,4,90, "xooo xooo xooo xooo");
         assertTrue(rhythm.isOnBeat(0));

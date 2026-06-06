@@ -16,21 +16,16 @@ public class HuffmanRhythm extends Rhythm {
         List<Integer> informationOfEachBeat = calculateInformationForEachBeat();
         this.information = informationOfEachBeat.stream().mapToInt(Integer::intValue).sum();
         this.standardDeviation = StandardDeviation.calc(informationOfEachBeat);
-
-        System.out.println("onsetList: " + onsetList + ", informationOfEachBeat: " + informationOfEachBeat + ", standardDeviation = " + standardDeviation);
-
     }
 
     private List<Integer> calculateInformationForEachBeat() {
         List<Integer> output = new ArrayList<>();
         boolean playing = false; // fortgeführter Zustand über Beat-Grenzen
-        int idx = 0;
         for (String onsets : getOnsetListPerBeat()) {
-            Beat beat = new Beat(idx * positionsPerBeat, onsets, playing);
+            Beat beat = new Beat(onsets, playing);
             Integer info = calculateInformation(beat);
             output.add(info);
             playing = playingAfterBeat(playing, onsets);
-            idx++;
         }
         return output;
     }
@@ -57,11 +52,9 @@ public class HuffmanRhythm extends Rhythm {
 
     // Beat als ganze Zählzeit (4 Onsets bei 4/4) mit fortgeführtem Spielzustand am Beat-Anfang
     private static final class Beat {
-        final int globalIndex; // Index des ersten Onsets dieses Beats (0,4,8,...)
         final String onsets;   // genau 4 Zeichen 'x' oder 'o'
         final boolean playing; // Zustand am Beat-Beginn
-        Beat(int globalIndex, String onsets, boolean playing) {
-            this.globalIndex = globalIndex;
+        Beat(String onsets, boolean playing) {
             this.onsets = onsets;
             this.playing = playing;
         }
@@ -90,18 +83,6 @@ public class HuffmanRhythm extends Rhythm {
             int position = pos; // 0..3 innerhalb des Beats
             ctx.state.handle(ctx, c, position);
         }
-        return ctx.getCodeList().size();
-    }
-
-    private int calculateInformation(String onsetString){
-
-        FSMContext ctx = new FSMContext();
-        for (int i = 0; i < onsetString.length(); i++) {
-            char c = onsetString.charAt(i);
-            int position = getPositionOfBeat(i);
-            ctx.state.handle(ctx, c, position);
-        }
-        //System.out.println("codeList: "+ ctx.codeList);
         return ctx.getCodeList().size();
     }
 

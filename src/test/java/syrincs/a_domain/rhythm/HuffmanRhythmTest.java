@@ -2,7 +2,12 @@ package syrincs.a_domain.rhythm;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class HuffmanRhythmTest {
     @Test
@@ -51,6 +56,34 @@ public class HuffmanRhythmTest {
         rhythm = new HuffmanRhythm(4, 4, 90, "xxox xxox xxox xxox");
         assertEquals(17, rhythm.getInformation());
 
+    }
+
+    @Test
+    void testCalculateInformation_IncludesAllBars() {
+        var rhythm = new HuffmanRhythm(4, 4, 90, "oooo oooo oooo oooo xooo xooo xooo xooo");
+
+        assertEquals(1, rhythm.getInformation());
+    }
+
+    @Test
+    void testStandardDeviation_IsCalculatedFromBeatInformation() {
+        var rhythm = new HuffmanRhythm(4, 4, 90, "xooo xoxo xooo xoxo");
+
+        assertEquals(0.4330127018922193, rhythm.getStandardDeviation(), 0.0000000000000001);
+    }
+
+    @Test
+    void constructorDoesNotWriteToStdout() {
+        PrintStream originalOut = System.out;
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(output));
+            new HuffmanRhythm(4, 4, 90, "xooo xoxo xooo xoxo");
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        assertTrue(output.toString(StandardCharsets.UTF_8).isBlank());
     }
 
 }

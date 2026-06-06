@@ -52,8 +52,11 @@ public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_applicati
     public void sendChordToDevice(Chord chord, long duration, int channelZeroBased) throws MidiPortException {
         if (chord == null) return;
         try {
-
-            MidiDevice device = DeviceService.getMidiDevice();
+            MidiDevice.Info info = DeviceService.autoSelectDefaultOutput();
+            if (info == null) {
+                throw new MidiPortException("No suitable MIDI output device found");
+            }
+            MidiDevice device = MidiSystem.getMidiDevice(info);
             boolean openedHere = false;
             try {
                 if (!device.isOpen()) { device.open(); openedHere = true; }

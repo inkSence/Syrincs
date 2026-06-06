@@ -29,5 +29,8 @@ public interface RhythmRepository {
      */
     List<HuffmanRhythm> getAllByInformation(Integer information);
 
+    /**
+     * Returns rhythms with the given information grade and a deviation strictly above minDeviation.
+     */
     List<HuffmanRhythm> getAllByInformationAndMinDeviation(Integer information, Double minDeviation);
 }

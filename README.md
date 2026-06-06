@@ -68,11 +68,65 @@ Alternativ kann die CLI über Maven gestartet werden:
 mvn exec:java -Dexec.args="--help"
 ```
 
-## MIDI-Gerät
+## Lokale Laufzeit
 
-Beim Start lädt `DeviceService` aktuell ein Standardgerät mit dem Namens-Substring `Roland Digital Piano`. Dieser Wert steht in `MidiConfig.defaults()`.
+Für den normalen lokalen Betrieb sind zwei externe Dienste relevant:
 
-Wenn auf dem System kein passendes MIDI-Ausgabegerät vorhanden ist, können CLI-Kommandos bereits beim Bootstrapping fehlschlagen. Für ein anderes Setup muss der Default in `src/main/java/syrincs/c_adapters/midi/MidiConfig.java` angepasst oder die Geräteauflösung erweitert werden.
+- PostgreSQL für gespeicherte Hindemith-Akkorde und Huffman-Rhythmen.
+- SuperCollider als Standard-Audio-Consumer für Noten und Akkorde.
+
+Status prüfen:
+
+```bash
+syrincs status
+```
+
+Schema initialisieren:
+
+```bash
+syrincs init
+```
+
+Lokale Laufzeit starten:
+
+```bash
+syrincs start
+```
+
+`syrincs start` prüft PostgreSQL und startet danach den SuperCollider-Consumer
+im Vordergrund. Stoppen mit `Ctrl+C`. Syrincs führt keine privilegierten
+DB-Startbefehle automatisch aus.
+
+Nur SuperCollider starten:
+
+```bash
+syrincs start sc
+```
+
+Nur die Datenbank prüfen:
+
+```bash
+syrincs start db
+```
+
+Für den kompletten lokalen PostgreSQL-Setup mit den Defaults:
+
+```bash
+bash scripts/init-postgres.sh
+```
+
+## Ausgabe
+
+Der Standard-Output für Noten und Akkorde ist SuperCollider über OSC. MIDI ist
+weiterhin explizit verfügbar:
+
+```bash
+syrincs play note note 60 --output midi
+syrincs play chords --output midi
+```
+
+Rhythmus-Playback nutzt auf diesem Branch weiterhin den MIDI-Sequencer.
+Das MIDI-Gerät wird erst beim tatsächlichen MIDI-Playback aufgelöst.
 
 MIDI-Kanäle werden intern nullbasiert verwendet: `channel=9` entspricht dem üblichen MIDI-Kanal 10 für General-MIDI-Drums.
 
@@ -84,7 +138,7 @@ Geräte anzeigen:
 mvn exec:java -Dexec.args="list"
 ```
 
-Einzelnote spielen:
+Einzelnote spielen. Standard: SuperCollider:
 
 ```bash
 mvn exec:java -Dexec.args="play note note 60 vel 0.5 dur 500"
@@ -93,7 +147,7 @@ mvn exec:java -Dexec.args="play note note 60 vel 0.5 dur 500"
 Akkord nach Hindemith analysieren:
 
 ```bash
-mvn exec:java -Dexec.args="analyse chord 60 64 67"
+mvn exec:java -Dexec.args="analyse 60 64 67"
 ```
 
 Ausgabeformat:
@@ -105,16 +159,19 @@ Ausgabeformat:
 Akkorde erzeugen und persistieren:
 
 ```bash
-mvn exec:java -Dexec.args="calculate chords 48 84"
+mvn exec:java -Dexec.args="calculate 48 84"
 ```
 
-Akkorde aus der Datenbank spielen:
+Akkorde aus der Datenbank spielen. Standard: SuperCollider:
 
 ```bash
 mvn exec:java -Dexec.args="play chords numNotes 3 4 groups 1 2 3 rootNote 60 range 24 duration 200 channel 0"
 ```
 
-Die Picocli-Optionen für `play chords` sind im aktuellen Stand ohne führende Bindestriche definiert, zum Beispiel `numNotes`, `groups`, `rootNote`, `range`, `duration` und `channel`.
+Die Picocli-Optionen für `play chords` sind im aktuellen Stand teils ohne
+führende Bindestriche definiert, zum Beispiel `numNotes`, `groups`, `rootNote`,
+`range`, `duration` und `channel`. Der Ausgabeweg wird mit `--output sc` oder
+`--output midi` gewählt; Default ist `sc`.
 
 Rhythmusdatei abspielen:
 
@@ -142,7 +199,7 @@ Zufällige gespeicherte Rhythmen nach Informationsgraden spielen:
 mvn exec:java -Dexec.args="play rhythm db 3 5 7"
 ```
 
-Pro angegebenem Informationsgrad wird ein Rhythmus aus der Datenbank geladen. Der aktuelle Code filtert dabei zusätzlich auf `deviation > 0.7`.
+Pro angegebenem Informationsgrad wird ein Rhythmus aus der Datenbank geladen. Der aktuelle Default filtert dabei zusätzlich auf `deviation > 0.7` (`AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION`).
 
 ## Hindemith-Akkordbestimmung
 
@@ -244,22 +301,27 @@ Parser-Regeln:
 
 ## Datenbank
 
-Die Anwendung verwendet PostgreSQL. Im aktuellen Code sind die Verbindungswerte in `AppConfig.loadDbConfig(...)` fest gesetzt:
+Die Anwendung verwendet PostgreSQL. `AppConfig.loadDbConfig(...)` löst die
+Verbindungswerte in dieser Reihenfolge auf:
+
+1. CLI-Flags `--db-url=`, `--db-user=`, `--db-pass=`
+2. Environment-Variablen `HINDEMITH_DB_URL`, `HINDEMITH_DB_USER`,
+   `HINDEMITH_DB_PASSWORD`
+3. Defaults
 
 ```text
-jdbc:postgresql://localhost:5432/syrincsdb
+jdbc:postgresql://localhost:5432/hindemith
 user: syrincs
 password: syrincs
 ```
 
-In `AppConfig` sind CLI- und Environment-basierte Konfigurationspfade bereits vorbereitet, aber derzeit auskommentiert. Die `Main`-Klasse filtert `--db-url=`, `--db-user=` und `--db-pass=` zwar aus den Picocli-Argumenten, `AppConfig` nutzt aktuell aber die festen Werte.
-
-Erwartete Tabellen:
+`syrincs init` legt die folgenden Tabellen an bzw. ergänzt fehlende
+Rhythmus-Spalten:
 
 ```sql
-CREATE TABLE public.hindemithChords (
-    id BIGSERIAL PRIMARY KEY,
-    notes INT4[] NOT NULL,
+CREATE TABLE IF NOT EXISTS public.hindemithChords (
+    id SERIAL PRIMARY KEY,
+    notes INT[] NOT NULL,
     numNotes INT NOT NULL,
     minNote INT NOT NULL,
     maxNote INT NOT NULL,
@@ -267,7 +329,7 @@ CREATE TABLE public.hindemithChords (
     chordGroup INT NOT NULL
 );
 
-CREATE TABLE public.huffmanRhythms (
+CREATE TABLE IF NOT EXISTS public.huffmanRhythms (
     id BIGSERIAL PRIMARY KEY,
     rhythmstring VARCHAR(100),
     numerator SMALLINT NOT NULL,
@@ -277,7 +339,8 @@ CREATE TABLE public.huffmanRhythms (
 );
 ```
 
-Es sind keine Migrationsskripte im Repository enthalten.
+`scripts/init-postgres.sh` bündelt die lokalen PostgreSQL-Setup-Schritte für die
+Defaults und ruft anschließend `syrincs init` auf.
 
 ## Tests
 

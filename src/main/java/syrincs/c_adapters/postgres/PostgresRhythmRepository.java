@@ -20,7 +20,8 @@ import java.util.Objects;
  *   rhythmstring VARCHAR(100),
  *   numerator SMALLINT NOT NULL,
  *   denominator SMALLINT NOT NULL,
- *   info SMALLINT NOT NULL
+ *   info SMALLINT NOT NULL,
+ *   deviation DOUBLE PRECISION
  */
 public class PostgresRhythmRepository implements RhythmRepository {
 
@@ -143,8 +144,10 @@ public class PostgresRhythmRepository implements RhythmRepository {
         return result;
     }
 
-
+    @Override
     public List<HuffmanRhythm> getAllByInformationAndMinDeviation(Integer information, Double minDeviation){
+        Objects.requireNonNull(information, "information must not be null");
+        Objects.requireNonNull(minDeviation, "minDeviation must not be null");
         String sql = "SELECT rhythmstring, numerator, denominator FROM public.huffmanRhythms WHERE info = ? AND deviation > ? ORDER BY id";
         List<HuffmanRhythm> result = new ArrayList<>();
         try (Connection con = getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
@@ -159,7 +162,7 @@ public class PostgresRhythmRepository implements RhythmRepository {
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to load HuffmanRhythms by information", e);
+            throw new RuntimeException("Failed to load HuffmanRhythms by information and minimum deviation", e);
         }
         return result;
     }

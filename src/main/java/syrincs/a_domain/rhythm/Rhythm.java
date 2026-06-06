@@ -66,12 +66,13 @@ public class Rhythm {
     }
 
     public List<String> getOnsetListPerBeat() {
-        return onsetListPerBeat;
+        return List.copyOf(onsetListPerBeat);
     }
 
     private List<String> makeOnsetBeatPerList(String onsetList){
         List<String> onsetListPerBeat = new ArrayList<>();
-        for(int i = 0; i < numerator; i++){
+        int beats = onsetList.length() / positionsPerBeat;
+        for(int i = 0; i < beats; i++){
             int beginnIndex = i * positionsPerBeat;
             String subString = onsetList.substring(beginnIndex, beginnIndex +  positionsPerBeat);
             onsetListPerBeat.add(subString);
@@ -79,5 +80,4 @@ public class Rhythm {
         return onsetListPerBeat;
     }
 }
-
 

@@ -4,6 +4,10 @@ import java.util.Objects;
 
 /**
  * Frameworks & Drivers configuration utilities.
+ *
+ * Centralizes robust resolution of configuration coming from CLI, environment variables,
+ * and safe defaults. Keeps Main thin and prevents accidental usage of wrong DB users
+ * (e.g., OS user fallback like "philipp").
  */
 public final class AppConfig {
 
@@ -31,9 +35,11 @@ public final class AppConfig {
      * 1) CLI flags: --db-url=, --db-user=, --db-pass=
      * 2) Environment variables: HINDEMITH_DB_URL, HINDEMITH_DB_USER, HINDEMITH_DB_PASSWORD
      * 3) Safe defaults
+     *
      * Additionally:
      * - Treat blank env as unset (so we don't fall back to OS user).
      * - Log effective values (URL and user) for transparency.
+     * - Fail fast if the user resolves to a disallowed value (e.g., "philipp").
      */
     public static DbConfig loadDbConfig(String[] args) {
         String cliUrl = null, cliUser = null, cliPass = null;
@@ -46,21 +52,17 @@ public final class AppConfig {
             }
         }
 
-//        String url  = (cliUrl  != null && !cliUrl.isBlank())  ? cliUrl  : envOr("HINDEMITH_DB_URL",  "jdbc:postgresql://localhost:5432/syrincsDb");
-//        String user = (cliUser != null && !cliUser.isBlank()) ? cliUser : envOr("HINDEMITH_DB_USER", "syrincs");
-//        String pass = (cliPass != null && !cliPass.isBlank()) ? cliPass : envOr("HINDEMITH_DB_PASSWORD", "syrincs");
+        String url  = (cliUrl  != null && !cliUrl.isBlank())  ? cliUrl  : envOr("HINDEMITH_DB_URL",  "jdbc:postgresql://localhost:5432/hindemith");
+        String user = (cliUser != null && !cliUser.isBlank()) ? cliUser : envOr("HINDEMITH_DB_USER", "syrincs");
+        String pass = (cliPass != null && !cliPass.isBlank()) ? cliPass : envOr("HINDEMITH_DB_PASSWORD", "syrincs");
 
-        String url = "jdbc:postgresql://localhost:5432/syrincsdb";
-        String user = "syrincs";
-        String pass = "syrincs";
-
-//        if (user == null || user.isBlank()) {
-//            throw new IllegalStateException("DB user is blank after resolution. Set HINDEMITH_DB_USER or --db-user.");
-//        }
-//        // Guardrail to prevent accidental OS user or unwanted account
-//        if ("philipp".equalsIgnoreCase(user)) {
-//            throw new IllegalStateException("Refusing to run with DB user 'philipp'. Set HINDEMITH_DB_USER or --db-user.");
-//        }
+        if (user == null || user.isBlank()) {
+            throw new IllegalStateException("DB user is blank after resolution. Set HINDEMITH_DB_USER or --db-user.");
+        }
+        // Guardrail to prevent accidental OS user or unwanted account
+        if ("philipp".equalsIgnoreCase(user)) {
+            throw new IllegalStateException("Refusing to run with DB user 'philipp'. Set HINDEMITH_DB_USER or --db-user.");
+        }
         return new DbConfig(url, user, pass);
     }
 }

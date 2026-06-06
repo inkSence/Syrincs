@@ -1,6 +1,5 @@
 package syrincs.a_domain.rhythm;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import picocli.CommandLine;
 import syrincs.b_application.UseCaseInteractor;
@@ -85,11 +84,6 @@ public class RhythmE2ETest {
             "voice snare note=38 channel=10 vel=90 gate=50\n\n" +
             "pattern kick:  | x - - - | x - - - | x - - - | x - - - |\n" +
             "pattern snare: | - - - - | x - - - | - - - - | x - - - |\n";
-
-    @BeforeAll
-    public static void setupMidi(){
-        DeviceService.loadStandardMidiDevice();
-    }
 
     @Test
     public void play_happyPath_buildsCorrectEvents() throws Exception {

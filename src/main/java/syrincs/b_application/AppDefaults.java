@@ -11,4 +11,7 @@ public final class AppDefaults {
 
     /** Default tempo in beats per minute, used when no tempo is specified. */
     public static final int DEFAULT_TEMPO_BPM = 120;
+
+    /** Minimum beat-information deviation for DB rhythm playback candidates. */
+    public static final double MIN_HUFFMAN_RHYTHM_DEVIATION = 0.7;
 }

@@ -27,7 +27,11 @@ public class RhythmPlaybackService implements RhythmPlaybackPort {
     @Override
     public void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws Exception {
         Sequence seq = sequenceBuilder.build(pattern, spec, voices);
-        MidiDevice device = DeviceService.getMidiDevice();
+        MidiDevice.Info info = DeviceService.autoSelectDefaultOutput();
+        if (info == null) {
+            throw new IllegalStateException("No suitable MIDI output device found.");
+        }
+        MidiDevice device = MidiSystem.getMidiDevice(info);
         sequencePlayer.play(seq, device);
     }
 }
