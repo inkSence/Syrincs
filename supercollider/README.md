@@ -1,25 +1,19 @@
 # SuperCollider OSC Consumer
 
 Dieser Ordner enthält den lokalen SuperCollider-Consumer für Syrincs. Syrincs
-sendet musikalische Preset-Namen per OSC; SuperCollider entscheidet anhand
-dieser Presets, welcher SynthDef mit welchen Parametern gespielt wird.
+sendet musikalische Preset-Namen per OSC; SuperCollider entscheidet intern,
+welcher SynthDef mit welchen Default-Parametern gespielt wird.
 
-## Projektanbindung
-
-- Sprache/Build: Java 21 mit Maven.
-- CLI: Picocli in `syrincs.c_adapters.cli.RootCmd`.
-- OSC-Ausgabe: `SuperColliderOscOutputAdapter` sendet UDP/OSC ohne zusätzliche
-  Maven-Abhängigkeit.
-- SuperCollider-Skript: `supercollider/syrincs_osc_consumer.scd`.
-
-Die Generator- und Hindemith-Logik wird für diesen Consumer nicht umgebaut. Der
-Proof of Concept ergänzt einen kleinen vertikalen Slice:
+Die aktuelle Stufe bleibt bewusst klein:
 
 ```text
-Syrincs CLI -> SuperColliderOscOutputAdapter -> OSC -> SuperCollider preset -> SynthDef -> Audio
+Syrincs CLI -> SuperColliderOscOutputAdapter -> OSC -> Preset -> Synth/Drum -> Audio
 ```
 
-## SuperCollider starten
+Nicht enthalten sind Samples, Plugin-Bridge, globale Effekt-Busse oder eine
+realistische Orchesteremulation.
+
+## SuperCollider Starten
 
 Headless ohne IDE:
 
@@ -27,14 +21,14 @@ Headless ohne IDE:
 bash scripts/start-supercollider-consumer.sh
 ```
 
-Das Skript startet `sclang`, führt `supercollider/syrincs_osc_consumer.scd` aus
-und läuft im Vordergrund. Stoppen kannst du es mit `Ctrl+C`.
+Das Skript startet `sclang`, lädt `supercollider/syrincs_osc_consumer.scd` und
+läuft im Vordergrund. Stoppen kannst du es mit `Ctrl+C`.
 
 Alternativ kannst du in der SuperCollider IDE
 `supercollider/syrincs_osc_consumer.scd` öffnen und den kompletten Block
 ausführen.
 
-Im Terminal bzw. Post Window sollte stehen:
+Wenn der Consumer bereit ist, erscheint:
 
 ```text
 Syrincs OSC consumer listening on /note, /chord and /drum at UDP 57120
@@ -48,20 +42,15 @@ Einzelne Note:
 /note preset midiNote velocity duration pan
 ```
 
-Beispiel:
-
-```text
-/note pad.warm 60 0.7 1.5 0.0
-```
-
 Akkord:
 
 ```text
 /chord preset midiNote1 midiNote2 ... velocity duration pan
 ```
 
-Bei `/chord` gilt: erstes Argument ist das Preset, die letzten drei Argumente
-sind `velocity`, `duration` und `pan`; alles dazwischen sind MIDI-Noten.
+Konvention fuer `/chord`: erstes Argument ist das Preset, die letzten drei
+Argumente sind `velocity`, `duration` und `pan`; alles dazwischen sind
+MIDI-Noten.
 
 Drum:
 
@@ -69,72 +58,199 @@ Drum:
 /drum drumPreset velocity pan
 ```
 
-Beispiel:
+Die OSC-API ist in dieser Stufe unverändert geblieben.
+
+## SynthDef-Familien
+
+SuperCollider enthält mehrere kleine SynthDef-Familien. Die App kennt diese
+Namen nicht; sie sendet nur Presets.
+
+- `syrincsBasicWave`: Testsounds mit Sine, Triangle, Saw, Pulse und Noise.
+- `syrincsSubVoice`: Bass, Lead, Pads, Strings und Brass-artige Synth-Sounds.
+- `syrincsFmVoice`: FM-E-Piano, Mallets und Bells.
+- `syrincsPluckVoice`: Karplus-Strong-artige Plucks.
+- `syrincsOrganVoice`: additive Orgelregister.
+- `syrincsWindVoice`: einfache Wind-Andeutungen mit Noise, Filter und Vibrato.
+- `syrincsKick`, `syrincsSnare`, `syrincsHatClosed`, `syrincsHatOpen`,
+  `syrincsTom`: synthetische Drums ohne Samples.
+
+## Preset-Struktur
+
+Presets werden im SuperCollider-Skript zentral in `~presets` registriert. Ein
+Preset kann diese Felder verwenden:
 
 ```text
-/drum drum.kick 0.9 0.0
+synth, wave, ampScale, atk, dec, sus, rel, cutoff, rq, pan,
+detune, drive, modRatio, modIndex, decay, coef, family, description
 ```
 
-## Presets
+Zusaetzliche interne Felder wie `harm2`, `harm3`, `harm4`, `noiseMix`,
+`vibratoRate`, `vibratoDepth`, `pitchStart`, `pitchEnd`, `click`, `tone` und
+`drum` werden von einzelnen SynthDef-Familien genutzt.
 
-Aktuell definiert:
+Nicht jedes Preset setzt jedes Feld. Fehlende Werte werden ueber zentrale
+Defaults ergaenzt. Velocity wird musikalisch auf Amplitude skaliert, Duration
+wird begrenzt und Pan wird auf `-1..1` geklemmt. Akkorde werden leicht
+abgesenkt, damit sie nicht sofort uebersteuern.
+
+Fallback-Verhalten:
+
+- unbekanntes tonales Preset: Warnung und Fallback auf `test.sine`
+- unbekanntes Drum-Preset: Warnung und Fallback auf `drum.kick`
+- Drum-Preset auf `/note` oder tonales Preset auf `/drum`: Warnung und
+  passender Fallback
+
+## Presets Nach Familie
+
+Test -> `syrincsBasicWave`:
 
 - `test.sine`
+- `test.triangle`
 - `test.saw`
 - `test.pulse`
+- `test.noise`
+
+Bass -> `syrincsSubVoice`:
+
+- `bass.sub`
 - `bass.round`
+- `bass.pulse`
+- `bass.soft`
+
+Lead:
+
+- `lead.sine` -> `syrincsBasicWave`
+- `lead.saw` -> `syrincsSubVoice`
+- `lead.square` -> `syrincsSubVoice`
+
+Pads / Strings / Brass -> `syrincsSubVoice`:
+
 - `pad.warm`
+- `pad.dark`
+- `pad.string`
+- `strings.pad`
+- `strings.slow`
+- `brass.soft`
+- `brass.bright`
+
+Organ -> `syrincsOrganVoice`:
+
+- `organ.soft`
 - `organ.full`
+- `organ.bright`
+- `pad.organ`
+
+Keys / Mallets -> `syrincsFmVoice`:
+
+- `keys.fm_epiano`
+- `keys.mallet`
+- `keys.bell`
+
+Plucked -> `syrincsPluckVoice`:
+
 - `pluck.harplike`
-- `drum.kick`
-- `drum.snare`
-- `drum.hat.closed`
+- `pluck.guitarish`
+- `pluck.pizzicato`
 
-Zusätzlich existiert `basic.sine` als Kompatibilitäts-Alias für den ersten
-SuperCollider-Proof-of-Concept.
+Wind -> `syrincsWindVoice`:
 
-## Syrincs-Hörtests
+- `wind.fluteish`
+- `wind.clarinetish`
+- `wind.oboeish`
 
-Ein einzelner Ton:
+Drums:
+
+- `drum.kick` -> `syrincsKick`
+- `drum.kick.deep` -> `syrincsKick`
+- `drum.snare` -> `syrincsSnare`
+- `drum.snare.tight` -> `syrincsSnare`
+- `drum.hat.closed` -> `syrincsHatClosed`
+- `drum.hat.open` -> `syrincsHatOpen`
+- `drum.tom.low` -> `syrincsTom`
+- `drum.tom.high` -> `syrincsTom`
+
+Kompatibilitaet:
+
+- `basic.sine` ist ein Alias auf `test.sine`.
+
+## Sinnvolle Hindemith-Presets
+
+Fuer Hindemith-Akkorde sind besonders brauchbar:
+
+- `organ.full`: klare harmonische Darstellung
+- `organ.soft`: weniger dicht, gut fuer lange Tests
+- `pad.warm`: weicher Akkordklang
+- `strings.pad`: langsamer, tragender Klang
+- `brass.soft`: klarer, aber weniger hart als `brass.bright`
+- `wind.fluteish`: einfache monophone/akkordische Wind-Skizze
+
+Fuer schnelle rhythmische Figuren:
+
+- `pluck.harplike`
+- `keys.fm_epiano`
+- `keys.mallet`
+
+## CLI-Beispiele
+
+Einzelne Note:
 
 ```bash
-mvn exec:java -Dexec.args="play sc 60 --preset test.sine --velocity 0.7 --duration 0.5"
+mvn exec:java -Dexec.args="play sc 60 --preset test.sine"
+mvn exec:java -Dexec.args="play sc 60 --preset wind.fluteish --velocity 0.6 --duration 1.0"
 ```
 
-Mehrere einzelne Noten mit demselben Preset:
+Akkord:
 
 ```bash
-mvn exec:java -Dexec.args="play sc 60 64 67 --preset pad.warm --velocity 0.45 --duration 1.2"
+mvn exec:java -Dexec.args="play sc chord 60 64 67 --preset organ.full"
+mvn exec:java -Dexec.args="play sc chord 48 55 60 64 --preset strings.pad --velocity 0.5 --duration 2.0"
 ```
 
-Ein echter `/chord`:
+Drums:
 
 ```bash
-mvn exec:java -Dexec.args="play sc chord 60 64 67 --preset organ.full --velocity 0.55 --duration 1.0"
+mvn exec:java -Dexec.args="play sc drum drum.kick"
+mvn exec:java -Dexec.args="play sc drum drum.hat.open --velocity 0.45 --pan -0.2"
 ```
 
-Ein einzelner Drum-Hit:
+`--synth` existiert noch als Alias fuer `--preset`, neue Beispiele sollten aber
+`--preset` verwenden.
+
+## Manueller Hoertest
+
+Starte in einem Terminal den Consumer:
 
 ```bash
-mvn exec:java -Dexec.args="play sc drum drum.kick --velocity 0.9"
+bash scripts/start-supercollider-consumer.sh
 ```
 
-Der lokale Preset-Demo-Test:
+Starte in einem zweiten Terminal die Demo:
 
 ```bash
 mvn exec:java -Dexec.args="play sc demo"
 ```
 
-Wenn es funktioniert, hörst du nacheinander eine Sinusnote, einen Orgelakkord,
-einen warmen Pad-Akkord, eine gezupfte Figur und ein kleines Drum-Pattern.
-SuperCollider schreibt parallel die empfangenen OSC-Nachrichten ins Post
-Window bzw. Terminal.
+Die Demo sendet:
+
+- Testsounds mit `test.sine`, `test.triangle`, `test.saw`, `test.pulse`
+- denselben Akkord mit `organ.full`, `pad.warm`, `strings.pad`, `brass.soft`,
+  `wind.fluteish`
+- kurze Figuren mit `pluck.harplike`, `keys.fm_epiano`, `keys.bell`
+- Bass mit `bass.round` und `bass.sub`
+- synthetische Drums mit Kick, Snare, Closed/Open Hat und Low/High Tom
+
+Erfolgskriterien:
+
+- du hoerst die Sequenz,
+- die Familien sind grob unterscheidbar,
+- SuperCollider loggt eingehende `/note`, `/chord` und `/drum`-Nachrichten,
+- unbekannte Presets beenden den Consumer nicht, sondern erzeugen eine Warnung.
 
 ## Automatisierter Smoke-Test
 
 Der JUnit-Test startet keinen SuperCollider-Server. Er bindet lokal einen
-UDP-Port und prüft, dass Syrincs OSC-Pakete für `/note`, `/chord` und `/drum`
-erzeugt:
+UDP-Port und prueft, dass Syrincs OSC-Pakete fuer `/note`, `/chord` und
+`/drum` erzeugt:
 
 ```bash
 mvn -Dtest=SuperColliderOscOutputAdapterTest test
@@ -144,17 +260,26 @@ mvn -Dtest=SuperColliderOscOutputAdapterTest test
 
 Falls kein Klang kommt:
 
-- Prüfen, ob der SuperCollider-Server wirklich gebootet ist.
-- Prüfen, ob `sclang`/SuperCollider Audio an das richtige Gerät ausgibt.
-- Bei PipeWire/JACK mit `qpwgraph`, `helvum` oder ähnlichen Tools prüfen, ob
-  SuperCollider mit dem Systemausgang verbunden ist.
-- Bei PulseAudio/PipeWire zusätzlich `pavucontrol` prüfen.
-- Sicherstellen, dass kein anderes Programm UDP-Port `57120` exklusiv nutzt.
+- pruefen, ob der SuperCollider-Server wirklich gebootet ist,
+- pruefen, ob `sclang`/SuperCollider Audio an das richtige Geraet ausgibt,
+- bei PipeWire/JACK mit `qpwgraph`, `helvum` oder aehnlichen Tools pruefen, ob
+  SuperCollider mit dem Systemausgang verbunden ist,
+- bei PulseAudio/PipeWire zusaetzlich `pavucontrol` pruefen,
+- sicherstellen, dass kein anderes Programm UDP-Port `57120` exklusiv nutzt.
 
-## Nächste sinnvolle Schritte
+## Grenzen Dieser Stufe
 
+- keine Samples
+- keine Effekt-Bus-Architektur
+- keine Plugin-Bridge
+- keine realistische Orchesteremulation
+- keine neue Java-Output-Architektur
+- keine Datenbank- oder Runtime-Konsolidierung
+
+## Naechste Sinnvolle Schritte
+
+- Presets spaeter aus einer Datei oder Registry laden.
 - App-seitig eine allgemeinere Output-Abstraktion neben `MidiOutputPort`.
-- Preset-Datei oder Preset-Registry statt hart kodierter SC-Dictionary-Einträge.
-- Einfache Parameterautomation per OSC.
-- Kleine FX-Busse für Reverb und Delay.
-- Drum-Pattern-Ausgabe aus der Rhythmus-Domäne an `/drum`.
+- Parameterautomation per OSC.
+- Kleine FX-Busse fuer Reverb und Delay.
+- Rhythmus-Domaene spaeter auf `/drum` routen.

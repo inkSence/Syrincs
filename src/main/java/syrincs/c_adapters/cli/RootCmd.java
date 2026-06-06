@@ -255,27 +255,60 @@ public class RootCmd implements Runnable {
                 public Integer call() throws Exception {
                     var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, 0.0);
 
-                    adapter.sendNote("test.sine", 60, 0.75, 0.45, -0.15);
-                    Thread.sleep(500);
+                    String[] testPresets = {"test.sine", "test.triangle", "test.saw", "test.pulse"};
+                    int[] testNotes = {60, 62, 64, 67};
+                    for (int i = 0; i < testPresets.length; i++) {
+                        adapter.sendNote(testPresets[i], testNotes[i], 0.70, 0.32, -0.30 + (i * 0.20));
+                        Thread.sleep(330);
+                    }
 
-                    adapter.sendChord("organ.full", new int[]{60, 64, 67}, 0.55, 1.0, 0.0);
-                    Thread.sleep(900);
+                    int[] chord = {48, 55, 60, 64};
+                    String[] chordPresets = {"organ.full", "pad.warm", "strings.pad", "brass.soft", "wind.fluteish"};
+                    for (String preset : chordPresets) {
+                        adapter.sendChord(preset, chord, 0.50, 1.15, 0.0);
+                        Thread.sleep(860);
+                    }
 
-                    adapter.sendChord("pad.warm", new int[]{57, 60, 64, 69}, 0.45, 1.8, 0.0);
-                    Thread.sleep(1_200);
-
-                    int[] pluckFigure = {72, 76, 79, 84, 79, 76};
+                    int[] pluckFigure = {72, 76, 79, 84, 79, 76, 72};
                     for (int note : pluckFigure) {
                         adapter.sendNote("pluck.harplike", note, 0.65, 0.35, 0.12);
                         Thread.sleep(170);
                     }
 
-                    for (int step = 0; step < 8; step++) {
+                    int[] keysFigure = {60, 64, 67, 72};
+                    for (int note : keysFigure) {
+                        adapter.sendNote("keys.fm_epiano", note, 0.58, 0.45, -0.08);
+                        Thread.sleep(210);
+                    }
+                    for (int note : new int[]{79, 76, 72}) {
+                        adapter.sendNote("keys.bell", note, 0.52, 0.70, 0.14);
+                        Thread.sleep(260);
+                    }
+
+                    int[] bassLine = {36, 36, 43, 41, 36, 43, 48, 43};
+                    for (int i = 0; i < bassLine.length; i++) {
+                        adapter.sendNote(i < 4 ? "bass.round" : "bass.sub", bassLine[i], 0.68, 0.22, -0.10);
+                        Thread.sleep(180);
+                    }
+
+                    for (int step = 0; step < 16; step++) {
                         if (step == 0 || step == 4) {
                             adapter.sendDrum("drum.kick", 0.95, 0.0);
                         }
-                        if (step == 2 || step == 6) {
+                        if (step == 8 || step == 12) {
+                            adapter.sendDrum("drum.kick.deep", 0.82, 0.0);
+                        }
+                        if (step == 4 || step == 12) {
                             adapter.sendDrum("drum.snare", 0.75, 0.02);
+                        }
+                        if (step == 7) {
+                            adapter.sendDrum("drum.hat.open", 0.44, -0.18);
+                        }
+                        if (step == 10) {
+                            adapter.sendDrum("drum.tom.low", 0.66, -0.10);
+                        }
+                        if (step == 14) {
+                            adapter.sendDrum("drum.tom.high", 0.58, 0.12);
                         }
                         adapter.sendDrum("drum.hat.closed", step % 2 == 0 ? 0.45 : 0.28, -0.18);
                         Thread.sleep(150);
