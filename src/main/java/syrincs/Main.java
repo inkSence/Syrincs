@@ -33,7 +33,7 @@ public class Main {
         // If root-level help requested, print extended help including subcommand usages and exit
         if (isRootHelpRequest(filtered)) {
             var root = new CommandLine(new RootCmd(defaultInteractor, midiInteractor, midiAdapter, runtime));
-            printExtendedHelp(root);
+            RootCmd.printExtendedHelp(root);
             return;
         }
 
@@ -77,39 +77,5 @@ public class Main {
         if (args.length != 1) return false;
         String a0 = args[0];
         return "-h".equals(a0) || "--help".equals(a0);
-    }
-
-    private static void printExtendedHelp(CommandLine root) {
-        root.usage(System.out);
-        CommandLine play = root.getSubcommands().get("play");
-        if (play != null) {
-            System.out.println();
-            System.out.println("Subcommand 'play' usage:");
-            play.usage(System.out);
-            CommandLine note = play.getSubcommands().get("note");
-            if (note != null) {
-                System.out.println();
-                System.out.println("Subcommand 'play note' usage:");
-                note.usage(System.out);
-            }
-            CommandLine chords = play.getSubcommands().get("chords");
-            if (chords != null) {
-                System.out.println();
-                System.out.println("Subcommand 'play chords' usage:");
-                chords.usage(System.out);
-            }
-            CommandLine rhythm = play.getSubcommands().get("rhythm");
-            if (rhythm != null) {
-                System.out.println();
-                System.out.println("Subcommand 'play rhythm' usage:");
-                rhythm.usage(System.out);
-            }
-            CommandLine sc = play.getSubcommands().get("sc");
-            if (sc != null) {
-                System.out.println();
-                System.out.println("Subcommand 'play sc' usage:");
-                sc.usage(System.out);
-            }
-        }
     }
 }

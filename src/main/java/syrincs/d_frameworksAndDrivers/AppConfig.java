@@ -25,16 +25,22 @@ public final class AppConfig {
         }
     }
 
-    private static String envOr(String key, String def) {
-        String v = System.getenv(key);
-        return (v == null || v.isBlank()) ? def : v;
+    private static String envOr(String primaryKey, String legacyKey, String def) {
+        String primary = System.getenv(primaryKey);
+        if (primary != null && !primary.isBlank()) {
+            return primary;
+        }
+
+        String legacy = System.getenv(legacyKey);
+        return (legacy == null || legacy.isBlank()) ? def : legacy;
     }
 
     /**
      * Resolve DB configuration from, in order of precedence:
      * 1) CLI flags: --db-url=, --db-user=, --db-pass=
-     * 2) Environment variables: HINDEMITH_DB_URL, HINDEMITH_DB_USER, HINDEMITH_DB_PASSWORD
-     * 3) Safe defaults
+     * 2) Environment variables: SYRINCS_DB_URL, SYRINCS_DB_USER, SYRINCS_DB_PASSWORD
+     * 3) Legacy environment variables: HINDEMITH_DB_URL, HINDEMITH_DB_USER, HINDEMITH_DB_PASSWORD
+     * 4) Safe defaults
      *
      * Additionally:
      * - Treat blank env as unset (so we don't fall back to OS user).
@@ -52,16 +58,16 @@ public final class AppConfig {
             }
         }
 
-        String url  = (cliUrl  != null && !cliUrl.isBlank())  ? cliUrl  : envOr("HINDEMITH_DB_URL",  "jdbc:postgresql://localhost:5432/hindemith");
-        String user = (cliUser != null && !cliUser.isBlank()) ? cliUser : envOr("HINDEMITH_DB_USER", "syrincs");
-        String pass = (cliPass != null && !cliPass.isBlank()) ? cliPass : envOr("HINDEMITH_DB_PASSWORD", "syrincs");
+        String url  = (cliUrl  != null && !cliUrl.isBlank())  ? cliUrl  : envOr("SYRINCS_DB_URL", "HINDEMITH_DB_URL", "jdbc:postgresql://localhost:5432/hindemith");
+        String user = (cliUser != null && !cliUser.isBlank()) ? cliUser : envOr("SYRINCS_DB_USER", "HINDEMITH_DB_USER", "syrincs");
+        String pass = (cliPass != null && !cliPass.isBlank()) ? cliPass : envOr("SYRINCS_DB_PASSWORD", "HINDEMITH_DB_PASSWORD", "syrincs");
 
         if (user == null || user.isBlank()) {
-            throw new IllegalStateException("DB user is blank after resolution. Set HINDEMITH_DB_USER or --db-user.");
+            throw new IllegalStateException("DB user is blank after resolution. Set SYRINCS_DB_USER or --db-user.");
         }
         // Guardrail to prevent accidental OS user or unwanted account
         if ("philipp".equalsIgnoreCase(user)) {
-            throw new IllegalStateException("Refusing to run with DB user 'philipp'. Set HINDEMITH_DB_USER or --db-user.");
+            throw new IllegalStateException("Refusing to run with DB user 'philipp'. Set SYRINCS_DB_USER or --db-user.");
         }
         return new DbConfig(url, user, pass);
     }

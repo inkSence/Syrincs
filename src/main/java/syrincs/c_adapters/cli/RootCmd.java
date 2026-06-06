@@ -2,6 +2,7 @@ package syrincs.c_adapters.cli;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import picocli.CommandLine.ParentCommand;
@@ -59,7 +60,10 @@ public class RootCmd implements Runnable {
 
     @Override
     public void run() {
-        CommandLine root = new CommandLine(this);
+        printExtendedHelp(new CommandLine(this));
+    }
+
+    public static void printExtendedHelp(CommandLine root) {
         root.usage(System.out);
         CommandLine play = root.getSubcommands().get("play");
         if (play != null) {
@@ -73,7 +77,7 @@ public class RootCmd implements Runnable {
         }
     }
 
-    private void printSubcommandUsage(CommandLine parent, String name) {
+    private static void printSubcommandUsage(CommandLine parent, String name) {
         CommandLine subcommand = parent.getSubcommands().get(name);
         if (subcommand != null) {
             System.out.println();
@@ -292,14 +296,11 @@ public class RootCmd implements Runnable {
                 }
         )
         public static class SuperColliderCmd implements Callable<Integer> {
+            @Mixin
+            OscOptions osc = new OscOptions();
+
             @Parameters(arity = "0..*", description = "MIDI notes. Default: 60 64 67")
             int[] notes;
-
-            @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
-            String host;
-
-            @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
-            int port;
 
             @Option(names = {"--preset", "--synth"}, description = "SuperCollider preset name", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_PRESET)
             String preset;
@@ -316,7 +317,7 @@ public class RootCmd implements Runnable {
             @Override
             public Integer call() throws Exception {
                 int[] notesToSend = (notes == null || notes.length == 0) ? new int[]{60, 64, 67} : notes;
-                var adapter = new SuperColliderOscOutputAdapter(host, port, preset, pan);
+                var adapter = osc.adapter(preset, pan);
 
                 for (int note : notesToSend) {
                     adapter.sendNote(preset, note, velocity, durationSeconds, pan);
@@ -324,8 +325,8 @@ public class RootCmd implements Runnable {
 
                 System.out.printf(
                         "[OSC] Sent /note to %s:%d preset=%s notes=%s velocity=%.3f duration=%.3fs pan=%.3f%n",
-                        host,
-                        port,
+                        osc.host,
+                        osc.port,
                         preset,
                         Arrays.toString(notesToSend),
                         velocity,
@@ -335,16 +336,29 @@ public class RootCmd implements Runnable {
                 return 0;
             }
 
-            @Command(name = "chord", mixinStandardHelpOptions = true, description = "Send one OSC /chord message to SuperCollider")
-            public static class ChordCmd implements Callable<Integer> {
-                @Parameters(arity = "1..*", description = "MIDI notes")
-                int[] notes;
-
+            static class OscOptions {
                 @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
                 String host;
 
                 @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
                 int port;
+
+                SuperColliderOscOutputAdapter adapter() {
+                    return adapter(SuperColliderOscOutputAdapter.DEFAULT_PRESET, SuperColliderOscOutputAdapter.DEFAULT_PAN);
+                }
+
+                SuperColliderOscOutputAdapter adapter(String preset, double pan) {
+                    return new SuperColliderOscOutputAdapter(host, port, preset, pan);
+                }
+            }
+
+            @Command(name = "chord", mixinStandardHelpOptions = true, description = "Send one OSC /chord message to SuperCollider")
+            public static class ChordCmd implements Callable<Integer> {
+                @Mixin
+                OscOptions osc = new OscOptions();
+
+                @Parameters(arity = "1..*", description = "MIDI notes")
+                int[] notes;
 
                 @Option(names = {"--preset", "--synth"}, description = "SuperCollider preset name", defaultValue = "organ.full")
                 String preset;
@@ -360,12 +374,12 @@ public class RootCmd implements Runnable {
 
                 @Override
                 public Integer call() throws Exception {
-                    var adapter = new SuperColliderOscOutputAdapter(host, port, preset, pan);
+                    var adapter = osc.adapter(preset, pan);
                     adapter.sendChord(preset, notes, velocity, durationSeconds, pan);
                     System.out.printf(
                             "[OSC] Sent /chord to %s:%d preset=%s notes=%s velocity=%.3f duration=%.3fs pan=%.3f%n",
-                            host,
-                            port,
+                            osc.host,
+                            osc.port,
                             preset,
                             Arrays.toString(notes),
                             velocity,
@@ -378,14 +392,11 @@ public class RootCmd implements Runnable {
 
             @Command(name = "drum", mixinStandardHelpOptions = true, description = "Send one OSC /drum message to SuperCollider")
             public static class DrumCmd implements Callable<Integer> {
+                @Mixin
+                OscOptions osc = new OscOptions();
+
                 @Parameters(index = "0", description = "Drum preset, e.g. drum.kick")
                 String preset;
-
-                @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
-                String host;
-
-                @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
-                int port;
 
                 @Option(names = {"--velocity", "--vel"}, description = "Velocity 0..1", defaultValue = "0.8")
                 double velocity;
@@ -395,12 +406,12 @@ public class RootCmd implements Runnable {
 
                 @Override
                 public Integer call() throws Exception {
-                    var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, pan);
+                    var adapter = osc.adapter(SuperColliderOscOutputAdapter.DEFAULT_PRESET, pan);
                     adapter.sendDrum(preset, velocity, pan);
                     System.out.printf(
                             "[OSC] Sent /drum to %s:%d preset=%s velocity=%.3f pan=%.3f%n",
-                            host,
-                            port,
+                            osc.host,
+                            osc.port,
                             preset,
                             velocity,
                             pan
@@ -411,6 +422,9 @@ public class RootCmd implements Runnable {
 
             @Command(name = "fx", mixinStandardHelpOptions = true, description = "Send one OSC /fx message to SuperCollider")
             public static class FxCmd implements Callable<Integer> {
+                @Mixin
+                OscOptions osc = new OscOptions();
+
                 @Parameters(index = "0", description = "Effect name: reverb, delay, chorus or master")
                 String effectName;
 
@@ -420,24 +434,18 @@ public class RootCmd implements Runnable {
                 @Parameters(index = "2", description = "Parameter value")
                 double value;
 
-                @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
-                String host;
-
-                @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
-                int port;
-
                 @Option(names = "--off", description = "Send enabled=0 and disable/reset the selected effect")
                 boolean off;
 
                 @Override
                 public Integer call() throws Exception {
-                    var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, 0.0);
+                    var adapter = osc.adapter();
                     boolean enabled = !off;
                     adapter.sendFx(effectName, enabled, paramName, value);
                     System.out.printf(
                             "[OSC] Sent /fx to %s:%d effect=%s enabled=%d param=%s value=%.3f%n",
-                            host,
-                            port,
+                            osc.host,
+                            osc.port,
                             effectName,
                             enabled ? 1 : 0,
                             paramName,
@@ -449,6 +457,9 @@ public class RootCmd implements Runnable {
 
             @Command(name = "set", mixinStandardHelpOptions = true, description = "Send one OSC /set automation message to SuperCollider")
             public static class SetCmd implements Callable<Integer> {
+                @Mixin
+                OscOptions osc = new OscOptions();
+
                 @Parameters(index = "0", description = "Target: master, reverb, delay, chorus, preset:<name> or family:<name>")
                 String target;
 
@@ -458,20 +469,14 @@ public class RootCmd implements Runnable {
                 @Parameters(index = "2", description = "Parameter value")
                 double value;
 
-                @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
-                String host;
-
-                @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
-                int port;
-
                 @Override
                 public Integer call() throws Exception {
-                    var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, 0.0);
+                    var adapter = osc.adapter();
                     adapter.sendSet(target, paramName, value);
                     System.out.printf(
                             "[OSC] Sent /set to %s:%d target=%s param=%s value=%.3f%n",
-                            host,
-                            port,
+                            osc.host,
+                            osc.port,
                             target,
                             paramName,
                             value
@@ -482,6 +487,9 @@ public class RootCmd implements Runnable {
 
             @Command(name = "ramp", mixinStandardHelpOptions = true, description = "Send one OSC /ramp automation message to SuperCollider")
             public static class RampCmd implements Callable<Integer> {
+                @Mixin
+                OscOptions osc = new OscOptions();
+
                 @Parameters(index = "0", description = "Target: master, reverb, delay, chorus, preset:<name> or family:<name>")
                 String target;
 
@@ -494,20 +502,14 @@ public class RootCmd implements Runnable {
                 @Parameters(index = "3", description = "Ramp duration in seconds")
                 double seconds;
 
-                @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
-                String host;
-
-                @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
-                int port;
-
                 @Override
                 public Integer call() throws Exception {
-                    var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, 0.0);
+                    var adapter = osc.adapter();
                     adapter.sendRamp(target, paramName, value, seconds);
                     System.out.printf(
                             "[OSC] Sent /ramp to %s:%d target=%s param=%s value=%.3f seconds=%.3f%n",
-                            host,
-                            port,
+                            osc.host,
+                            osc.port,
                             target,
                             paramName,
                             value,
@@ -519,23 +521,20 @@ public class RootCmd implements Runnable {
 
             @Command(name = "scene", mixinStandardHelpOptions = true, description = "Send one OSC /scene message to SuperCollider")
             public static class SceneCmd implements Callable<Integer> {
+                @Mixin
+                OscOptions osc = new OscOptions();
+
                 @Parameters(index = "0", description = "Scene name, e.g. scene.chorale")
                 String sceneName;
 
-                @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
-                String host;
-
-                @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
-                int port;
-
                 @Override
                 public Integer call() throws Exception {
-                    var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, 0.0);
+                    var adapter = osc.adapter();
                     adapter.sendScene(sceneName);
                     System.out.printf(
                             "[OSC] Sent /scene to %s:%d scene=%s%n",
-                            host,
-                            port,
+                            osc.host,
+                            osc.port,
                             sceneName
                     );
                     return 0;
@@ -544,26 +543,23 @@ public class RootCmd implements Runnable {
 
             @Command(name = "role", mixinStandardHelpOptions = true, description = "Send one OSC /role session override to SuperCollider")
             public static class RoleCmd implements Callable<Integer> {
+                @Mixin
+                OscOptions osc = new OscOptions();
+
                 @Parameters(index = "0", description = "Role name, e.g. harmony or role:harmony")
                 String roleName;
 
                 @Parameters(index = "1", description = "Preset name, e.g. pad.warm")
                 String presetName;
 
-                @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
-                String host;
-
-                @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
-                int port;
-
                 @Override
                 public Integer call() throws Exception {
-                    var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, 0.0);
+                    var adapter = osc.adapter();
                     adapter.sendRole(roleName, presetName);
                     System.out.printf(
                             "[OSC] Sent /role to %s:%d role=%s preset=%s%n",
-                            host,
-                            port,
+                            osc.host,
+                            osc.port,
                             roleName,
                             presetName
                     );
@@ -573,15 +569,12 @@ public class RootCmd implements Runnable {
 
             @Command(name = "scene-demo", mixinStandardHelpOptions = true, description = "Send a short role/scene SuperCollider smoke-test sequence")
             public static class SceneDemoCmd implements Callable<Integer> {
-                @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
-                String host;
-
-                @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
-                int port;
+                @Mixin
+                OscOptions osc = new OscOptions();
 
                 @Override
                 public Integer call() throws Exception {
-                    var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, 0.0);
+                    var adapter = osc.adapter();
                     int[] chord = {48, 55, 60, 64};
                     int[] melody = {72, 74, 76};
                     int[] counter = {67, 65, 64};
@@ -618,22 +611,19 @@ public class RootCmd implements Runnable {
                     }
 
                     adapter.sendScene("scene.hindemith_lab");
-                    System.out.printf("[OSC] Sent SuperCollider scene demo to %s:%d%n", host, port);
+                    System.out.printf("[OSC] Sent SuperCollider scene demo to %s:%d%n", osc.host, osc.port);
                     return 0;
                 }
             }
 
             @Command(name = "demo", mixinStandardHelpOptions = true, description = "Send a short SuperCollider preset smoke-test sequence")
             public static class DemoCmd implements Callable<Integer> {
-                @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
-                String host;
-
-                @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
-                int port;
+                @Mixin
+                OscOptions osc = new OscOptions();
 
                 @Override
                 public Integer call() throws Exception {
-                    var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, 0.0);
+                    var adapter = osc.adapter();
 
                     int[] chord = {48, 55, 60, 64};
 
@@ -730,7 +720,7 @@ public class RootCmd implements Runnable {
                     adapter.sendFx("master", true, "volume", 0.82);
                     adapter.sendSet("preset:pad.warm", "cutoff", 2_100);
 
-                    System.out.printf("[OSC] Sent SuperCollider preset, FX and automation demo to %s:%d%n", host, port);
+                    System.out.printf("[OSC] Sent SuperCollider preset, FX and automation demo to %s:%d%n", osc.host, osc.port);
                     return 0;
                 }
             }

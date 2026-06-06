@@ -322,9 +322,11 @@ Die Anwendung verwendet PostgreSQL. `AppConfig.loadDbConfig(...)` löst die
 Verbindungswerte in dieser Reihenfolge auf:
 
 1. CLI-Flags `--db-url=`, `--db-user=`, `--db-pass=`
-2. Environment-Variablen `HINDEMITH_DB_URL`, `HINDEMITH_DB_USER`,
+2. Environment-Variablen `SYRINCS_DB_URL`, `SYRINCS_DB_USER`,
+   `SYRINCS_DB_PASSWORD`
+3. Legacy-Environment-Variablen `HINDEMITH_DB_URL`, `HINDEMITH_DB_USER`,
    `HINDEMITH_DB_PASSWORD`
-3. Defaults
+4. Defaults
 
 ```text
 jdbc:postgresql://localhost:5432/hindemith
