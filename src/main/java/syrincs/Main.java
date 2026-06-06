@@ -60,7 +60,7 @@ public class Main {
     private static void printExtendedHelp(CommandLine root) {
         // Print root usage
         root.usage(System.out);
-        // Also show usage for 'play', 'play note' and 'play chords'
+        // Also show usage for 'play' and its common subcommands
         CommandLine play = root.getSubcommands().get("play");
         if (play != null) {
             System.out.println();
@@ -77,6 +77,12 @@ public class Main {
                 System.out.println();
                 System.out.println("Subcommand 'play chords' usage:");
                 chords.usage(System.out);
+            }
+            CommandLine sc = play.getSubcommands().get("sc");
+            if (sc != null) {
+                System.out.println();
+                System.out.println("Subcommand 'play sc' usage:");
+                sc.usage(System.out);
             }
         }
     }
