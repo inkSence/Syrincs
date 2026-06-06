@@ -5,32 +5,69 @@ import org.junit.jupiter.api.Test;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.abort;
 
 class SuperColliderOscOutputAdapterTest {
 
     @Test
     void sendsNoteAsOscUdpPacket() throws Exception {
+        assertOscPacket(
+                adapter -> adapter.sendNote("test.sine", 60, 0.7, 0.5, 0.0),
+                "/note",
+                ",sifff",
+                "test.sine"
+        );
+    }
+
+    @Test
+    void sendsChordAsOscUdpPacket() throws Exception {
+        assertOscPacket(
+                adapter -> adapter.sendChord("organ.full", new int[]{60, 64, 67}, 0.6, 1.0, 0.0),
+                "/chord",
+                ",siiifff",
+                "organ.full"
+        );
+    }
+
+    @Test
+    void sendsDrumAsOscUdpPacket() throws Exception {
+        assertOscPacket(
+                adapter -> adapter.sendDrum("drum.kick", 0.9, 0.0),
+                "/drum",
+                ",sff",
+                "drum.kick"
+        );
+    }
+
+    private static void assertOscPacket(OscSend send, String... expectedText) throws Exception {
         InetAddress loopback = InetAddress.getLoopbackAddress();
 
         try (DatagramSocket receiver = new DatagramSocket(0, loopback)) {
             receiver.setSoTimeout(1_000);
             int port = receiver.getLocalPort();
             SuperColliderOscOutputAdapter adapter =
-                    new SuperColliderOscOutputAdapter("127.0.0.1", port, "basic.sine", 0.0);
-
-            adapter.sendNote("basic.sine", 60, 0.7, 0.5, 0.0);
+                    new SuperColliderOscOutputAdapter("127.0.0.1", port, "test.sine", 0.0);
+            send.send(adapter);
 
             byte[] buffer = new byte[512];
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
             receiver.receive(packet);
 
             String text = new String(packet.getData(), 0, packet.getLength(), StandardCharsets.UTF_8);
-            assertTrue(text.contains("/note"));
-            assertTrue(text.contains(",sifff"));
-            assertTrue(text.contains("basic.sine"));
+            for (String expected : expectedText) {
+                assertTrue(text.contains(expected), () -> "OSC packet should contain " + expected);
+            }
+        } catch (SocketException e) {
+            abort("UDP loopback is not available: " + e.getMessage());
         }
+    }
+
+    @FunctionalInterface
+    private interface OscSend {
+        void send(SuperColliderOscOutputAdapter adapter) throws Exception;
     }
 }

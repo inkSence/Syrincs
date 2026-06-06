@@ -16,25 +16,25 @@ import java.net.InetAddress;
 public class SuperColliderOscOutputAdapter implements MidiOutputPort {
     public static final String DEFAULT_HOST = "127.0.0.1";
     public static final int DEFAULT_PORT = 57120;
-    public static final String DEFAULT_SYNTH = "basic.sine";
+    public static final String DEFAULT_PRESET = "test.sine";
     public static final double DEFAULT_PAN = 0.0;
 
     private final String host;
     private final int port;
-    private final String defaultSynth;
+    private final String defaultPreset;
     private final double defaultPan;
 
     public SuperColliderOscOutputAdapter() {
-        this(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_SYNTH, DEFAULT_PAN);
+        this(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_PRESET, DEFAULT_PAN);
     }
 
-    public SuperColliderOscOutputAdapter(String host, int port, String defaultSynth, double defaultPan) {
+    public SuperColliderOscOutputAdapter(String host, int port, String defaultPreset, double defaultPan) {
         this.host = requireText(host, "host");
         if (port < 1 || port > 65_535) {
             throw new IllegalArgumentException("port must be between 1 and 65535");
         }
         this.port = port;
-        this.defaultSynth = requireText(defaultSynth, "defaultSynth");
+        this.defaultPreset = requireText(defaultPreset, "defaultPreset");
         this.defaultPan = clampFinite(defaultPan, -1.0, 1.0, "defaultPan");
     }
 
@@ -57,7 +57,7 @@ public class SuperColliderOscOutputAdapter implements MidiOutputPort {
 
         try {
             sendNote(
-                    defaultSynth,
+                    defaultPreset,
                     (int) Math.round(tone.getMidiPitch()),
                     tone.getLoudness(),
                     tone.getDurationInMilliseconds() / 1000.0,
@@ -74,26 +74,55 @@ public class SuperColliderOscOutputAdapter implements MidiOutputPort {
             return;
         }
 
-        for (Integer note : chord.getNotes()) {
-            if (note == null) {
-                continue;
-            }
-            try {
-                sendNote(defaultSynth, note, 0.7, duration / 1000.0, defaultPan);
-            } catch (IOException e) {
-                System.out.println("[OSC] Failed to send note to SuperCollider: " + e.getMessage());
-                return;
-            }
+        int[] midiNotes = chord.getNotes().stream()
+                .filter(note -> note != null)
+                .mapToInt(Integer::intValue)
+                .toArray();
+        if (midiNotes.length == 0) {
+            return;
+        }
+
+        try {
+            sendChord(defaultPreset, midiNotes, 0.7, duration / 1000.0, defaultPan);
+        } catch (IOException e) {
+            System.out.println("[OSC] Failed to send chord to SuperCollider: " + e.getMessage());
         }
     }
 
-    public void sendNote(String synth, int midiNote, double velocity, double durationSeconds, double pan) throws IOException {
+    public void sendNote(String preset, int midiNote, double velocity, double durationSeconds, double pan) throws IOException {
         byte[] packet = OscMessageBuilder.build(
                 "/note",
-                requireText(synth, "synth"),
+                requireText(preset, "preset"),
                 clampMidiNote(midiNote),
                 (float) clampFinite(velocity, 0.0, 1.0, "velocity"),
                 (float) Math.max(0.01, requireFinite(durationSeconds, "durationSeconds")),
+                (float) clampFinite(pan, -1.0, 1.0, "pan")
+        );
+        send(packet);
+    }
+
+    public void sendChord(String preset, int[] midiNotes, double velocity, double durationSeconds, double pan) throws IOException {
+        if (midiNotes == null || midiNotes.length == 0) {
+            throw new IllegalArgumentException("midiNotes must contain at least one note");
+        }
+
+        Object[] arguments = new Object[1 + midiNotes.length + 3];
+        arguments[0] = requireText(preset, "preset");
+        for (int i = 0; i < midiNotes.length; i++) {
+            arguments[i + 1] = clampMidiNote(midiNotes[i]);
+        }
+        arguments[arguments.length - 3] = (float) clampFinite(velocity, 0.0, 1.0, "velocity");
+        arguments[arguments.length - 2] = (float) Math.max(0.01, requireFinite(durationSeconds, "durationSeconds"));
+        arguments[arguments.length - 1] = (float) clampFinite(pan, -1.0, 1.0, "pan");
+
+        send(OscMessageBuilder.build("/chord", arguments));
+    }
+
+    public void sendDrum(String preset, double velocity, double pan) throws IOException {
+        byte[] packet = OscMessageBuilder.build(
+                "/drum",
+                requireText(preset, "preset"),
+                (float) clampFinite(velocity, 0.0, 1.0, "velocity"),
                 (float) clampFinite(pan, -1.0, 1.0, "pan")
         );
         send(packet);
