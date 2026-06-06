@@ -81,6 +81,12 @@ Status prüfen:
 syrincs status
 ```
 
+Schema initialisieren:
+
+```bash
+syrincs init
+```
+
 Lokale Laufzeit starten:
 
 ```bash
@@ -98,7 +104,7 @@ Nur SuperCollider starten:
 syrincs start sc
 ```
 
-Nur die Datenbank prüfen/starten:
+Nur die Datenbank prüfen:
 
 ```bash
 syrincs start db
@@ -120,8 +126,18 @@ konfigurierte Datenbank fehlt. Für die Defaults:
 sudo -u postgres createdb -O syrincs hindemith
 ```
 
-Danach die Tabelle aus dem Abschnitt `Datenbank` anlegen oder ein zukünftiges
-Migrations-/Init-Kommando verwenden.
+Danach das Anwendungsschema anlegen:
+
+```bash
+syrincs init
+```
+
+Für den kompletten manuellen PostgreSQL-Setup kannst du zusätzlich den Wrapper
+nutzen:
+
+```bash
+bash scripts/init-postgres.sh
+```
 
 ## Ausgabe
 
@@ -324,12 +340,12 @@ user: syrincs
 password: syrincs
 ```
 
-Erwartete Tabellen:
+`syrincs init` legt die folgenden Tabellen an:
 
 ```sql
-CREATE TABLE public.hindemithChords (
-    id BIGSERIAL PRIMARY KEY,
-    notes INT4[] NOT NULL,
+CREATE TABLE IF NOT EXISTS public.hindemithChords (
+    id SERIAL PRIMARY KEY,
+    notes INT[] NOT NULL,
     numNotes INT NOT NULL,
     minNote INT NOT NULL,
     maxNote INT NOT NULL,
@@ -337,17 +353,16 @@ CREATE TABLE public.hindemithChords (
     chordGroup INT NOT NULL
 );
 
-CREATE TABLE public.huffmanRhythms (
-    id BIGSERIAL PRIMARY KEY,
-    rhythmstring VARCHAR(100),
+CREATE TABLE IF NOT EXISTS public.huffmanRhythms (
+    id BIGINT PRIMARY KEY,
     numerator SMALLINT NOT NULL,
     denominator SMALLINT NOT NULL,
-    info SMALLINT NOT NULL,
-    deviation DOUBLE PRECISION
+    info SMALLINT NOT NULL
 );
 ```
 
-Es sind keine Migrationsskripte im Repository enthalten.
+`scripts/init-postgres.sh` bündelt die lokalen PostgreSQL-Setup-Schritte für die
+Defaults und ruft anschließend `syrincs init` auf.
 
 ## Tests
 

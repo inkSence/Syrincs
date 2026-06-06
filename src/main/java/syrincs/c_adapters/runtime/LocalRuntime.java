@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -58,6 +59,33 @@ public class LocalRuntime {
             case DB -> startDatabase(out, err);
             case SC -> startSuperCollider(out, err);
         };
+    }
+
+    public int initializeDatabaseSchema(PrintStream out, PrintStream err) {
+        DatabaseStatus dbStatus = databaseStatus();
+        if (!dbStatus.reachable()) {
+            err.printf("[INIT] %s%n", dbStatus.label());
+            if (!dbStatus.message().isBlank()) {
+                err.printf("[INIT] %s%n", dbStatus.message());
+            }
+            err.println("[INIT] Start PostgreSQL and create the configured database first.");
+            err.println("[INIT] See: scripts/init-postgres.sh");
+            return 1;
+        }
+
+        try (var con = DriverManager.getConnection(dbConfig.url, dbConfig.user, dbConfig.password);
+             var st = con.createStatement()) {
+            con.setAutoCommit(false);
+            for (String sql : schemaStatements()) {
+                st.execute(sql);
+            }
+            con.commit();
+            out.println("[INIT] Database schema is ready.");
+            return 0;
+        } catch (SQLException e) {
+            err.printf("[INIT] Failed to initialize database schema: %s%n", e.getMessage());
+            return 1;
+        }
     }
 
     public int printStatus(PrintStream out) {
@@ -176,6 +204,30 @@ public class LocalRuntime {
     }
 
     public record DatabaseStatus(boolean reachable, String label, String message) {
+    }
+
+    public static List<String> schemaStatements() {
+        return Arrays.asList(
+                """
+                CREATE TABLE IF NOT EXISTS public.hindemithChords (
+                    id SERIAL PRIMARY KEY,
+                    notes INT[] NOT NULL,
+                    numNotes INT NOT NULL,
+                    minNote INT NOT NULL,
+                    maxNote INT NOT NULL,
+                    rootNote INT NOT NULL,
+                    chordGroup INT NOT NULL
+                )
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS public.huffmanRhythms (
+                    id BIGINT PRIMARY KEY,
+                    numerator SMALLINT NOT NULL,
+                    denominator SMALLINT NOT NULL,
+                    info SMALLINT NOT NULL
+                )
+                """
+        );
     }
 
     private enum RuntimeTarget {

@@ -28,6 +28,7 @@ import java.util.concurrent.Callable;
         description = "MIDI Utilities and Hindemith chords",
         subcommands = {
                 RootCmd.ListCmd.class,
+                RootCmd.InitCmd.class,
                 RootCmd.StartCmd.class,
                 RootCmd.StatusCmd.class,
                 RootCmd.PlayCmd.class,
@@ -93,6 +94,20 @@ public class RootCmd implements Runnable {
                 System.out.printf("[MIDI] %s | %s | %s%n", i.getName(), i.getDescription(), i.getVendor());
             }
             return 0;
+        }
+    }
+
+    @Command(name = "init", description = "Initialize the configured PostgreSQL database schema")
+    public static class InitCmd implements Callable<Integer> {
+        @ParentCommand RootCmd parent;
+
+        @Override
+        public Integer call() {
+            if (parent.runtime == null) {
+                System.err.println("[INIT] Runtime management is not configured.");
+                return 1;
+            }
+            return parent.runtime.initializeDatabaseSchema(System.out, System.err);
         }
     }
 
