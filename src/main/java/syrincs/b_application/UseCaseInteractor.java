@@ -1,15 +1,14 @@
 package syrincs.b_application;
 
-import syrincs.a_domain.chord.NoteCombinator;
 import syrincs.a_domain.hindemith.HindemithChord;
 import syrincs.a_domain.Tone;
-import syrincs.a_domain.hindemith.ChordAnalysis;
 import syrincs.b_application.ports.HindemithChordRepositoryPort;
-import syrincs.b_application.ports.MidiOutputPort;
+import syrincs.a_domain.rhythm.Pattern;
+import syrincs.a_domain.rhythm.RhythmSpec;
+import syrincs.a_domain.rhythm.VoiceSpec;
+import syrincs.a_domain.rhythm.HuffmanRhythm;
+import syrincs.b_application.ports.RhythmRepository;
 
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiDevice;
-import javax.sound.midi.MidiUnavailableException;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
@@ -24,18 +23,67 @@ public class UseCaseInteractor {
     private final SendToMidiUseCase send;
     private final HindemithChordRepositoryPort repository;
     private final Logger LOGGER = Logger.getLogger(UseCaseInteractor.class.getName());
-    private List<HindemithChord> hindemithChords;
+    private List<syrincs.a_domain.hindemith.HindemithChord> hindemithChords;
+    private final ValidatePatternsUseCase validate;
+    private final PlaybackRhythmUseCase rhythmPlayback;
+    private final AnalyseRhythmUseCase analyseRhythmUseCase;
+    private final GenerateAndPersistRhythmUseCase generateAndPersistRhythmUseCase;
+    private final PlayHuffmanRhythmsUseCase playHuffmanRhythmsUseCase; // optional
+    private final RhythmRepository huffmanRhythmRepository; // optional
 
 
-    public UseCaseInteractor(MidiOutputPort midiOutput, HindemithChordRepositoryPort repository) {
-        this.repository = repository;
-        this.generateChordsUseCase = new GenerateChordsUseCase(
-                new NoteCombinator(), new ChordAnalysis(), 3
-        );
-        this.analyseChordByHindemithUseCase = new AnalyseChordByHindemithUseCase();
-        this.persistUseCase = new PersistHindemithChordUseCase(repository);
-        this.getHindemithChordsFromDbUseCase = new GetHindemithChordsFromDbUseCase(repository);
-        this.send = new SendToMidiUseCase(midiOutput);
+    public UseCaseInteractor(SendToMidiUseCase send,
+                             ValidatePatternsUseCase validate,
+                             PlaybackRhythmUseCase playRhythm,
+                             AnalyseRhythmUseCase analyseRhythmUseCase,
+                             HindemithChordRepositoryPort repository,
+                             GenerateChordsUseCase generateChordsUseCase,
+                             AnalyseChordByHindemithUseCase analyseChordByHindemithUseCase,
+                             GetHindemithChordsFromDbUseCase getHindemithChordsFromDbUseCase,
+                             PersistHindemithChordUseCase persistUseCase) {
+        this(send, validate, playRhythm, analyseRhythmUseCase, repository, generateChordsUseCase,
+                analyseChordByHindemithUseCase, getHindemithChordsFromDbUseCase, persistUseCase, null, null, null);
+    }
+
+    public UseCaseInteractor(SendToMidiUseCase send,
+                             ValidatePatternsUseCase validate,
+                             PlaybackRhythmUseCase playRhythm,
+                             AnalyseRhythmUseCase analyseRhythmUseCase,
+                             HindemithChordRepositoryPort repository,
+                             GenerateChordsUseCase generateChordsUseCase,
+                             AnalyseChordByHindemithUseCase analyseChordByHindemithUseCase,
+                             GetHindemithChordsFromDbUseCase getHindemithChordsFromDbUseCase,
+                             PersistHindemithChordUseCase persistUseCase,
+                             GenerateAndPersistRhythmUseCase generateAndPersistRhythmUseCase) {
+        this(send, validate, playRhythm, analyseRhythmUseCase, repository, generateChordsUseCase,
+                analyseChordByHindemithUseCase, getHindemithChordsFromDbUseCase, persistUseCase,
+                generateAndPersistRhythmUseCase, null, null);
+    }
+
+    public UseCaseInteractor(SendToMidiUseCase send,
+                             ValidatePatternsUseCase validate,
+                             PlaybackRhythmUseCase playRhythm,
+                             AnalyseRhythmUseCase analyseRhythmUseCase,
+                             HindemithChordRepositoryPort repository,
+                             GenerateChordsUseCase generateChordsUseCase,
+                             AnalyseChordByHindemithUseCase analyseChordByHindemithUseCase,
+                             GetHindemithChordsFromDbUseCase getHindemithChordsFromDbUseCase,
+                             PersistHindemithChordUseCase persistUseCase,
+                             GenerateAndPersistRhythmUseCase generateAndPersistRhythmUseCase,
+                             PlayHuffmanRhythmsUseCase playHuffmanRhythmsUseCase,
+                             RhythmRepository huffmanRhythmRepository) {
+        this.send = Objects.requireNonNull(send);
+        this.validate = Objects.requireNonNull(validate);
+        this.rhythmPlayback = Objects.requireNonNull(playRhythm);
+        this.analyseRhythmUseCase = Objects.requireNonNull(analyseRhythmUseCase);
+        this.repository = Objects.requireNonNull(repository);
+        this.generateChordsUseCase = Objects.requireNonNull(generateChordsUseCase);
+        this.analyseChordByHindemithUseCase = Objects.requireNonNull(analyseChordByHindemithUseCase);
+        this.getHindemithChordsFromDbUseCase = Objects.requireNonNull(getHindemithChordsFromDbUseCase);
+        this.persistUseCase = Objects.requireNonNull(persistUseCase);
+        this.generateAndPersistRhythmUseCase = generateAndPersistRhythmUseCase; // optional
+        this.playHuffmanRhythmsUseCase = playHuffmanRhythmsUseCase; // optional
+        this.huffmanRhythmRepository = huffmanRhythmRepository; // optional
     }
 
     public List<HindemithChord> findChordsFor(List<Integer> numNotes, List<Integer> groups, Integer rootNote) {
@@ -62,23 +110,17 @@ public class UseCaseInteractor {
         return acc;
     }
 
-
-    public MidiDevice.Info[] listMidiOutputs() {
-        return send.listMidiOutputs();
+    public void validatePattern(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws ValidatePatternsUseCase.ValidationException {
+        validate.validate(pattern, spec, voices);
     }
 
-    public MidiDevice.Info findOutputByName(String nameSubstring) {
-        return send.findOutputByName(nameSubstring);
-    }
-
-    public void sendToneToDevice(Tone tone, String deviceNameSubstring) throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
-        System.out.printf("[PLAY] Playing note %d.%n", (int) tone.getMidiPitch());
+    public void sendToneToDevice(Tone tone, String deviceNameSubstring) {
+        // Application layer should not print; delegate to adapter
         send.sendToneToDevice(tone, deviceNameSubstring);
     }
 
-    public void sendChordToDevice(HindemithChord hindemithChord, String deviceNameSubstring, Long duration) throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
-        send.sendChordToDevice(hindemithChord, deviceNameSubstring, duration);
-
+    public void sendChordToDevice(HindemithChord hindemithChord, Long duration) {
+        send.sendChordToDevice(hindemithChord, duration);
     }
 
     public void loadHindemithChordsWithMaxGroup(Integer rootNote, Integer maxGroup ){
@@ -89,7 +131,7 @@ public class UseCaseInteractor {
         hindemithChords = getHindemithChordsFromDbUseCase.loadHindemithChordsWithGroups(rootNote, groups);
     }
 
-    public ChordAnalysis.Result analyzeChordByHindemith(List<Integer> midiNotes) {
+    public syrincs.a_domain.hindemith.ChordAnalysis.Result analyzeChordByHindemith(List<Integer> midiNotes) {
         return analyseChordByHindemithUseCase.analyze(midiNotes);
     }
 
@@ -106,32 +148,70 @@ public class UseCaseInteractor {
         repository.truncate();
     }
 
-    // Play the chords using the MIDI output adapter
-    public void playChords(List<Integer> numNotes, List<Integer> groups, Integer rootNote,
-                           Long durationMs, String deviceNameSubstring)
-            throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
-        var chords = findChordsFor(numNotes, groups, rootNote);
-        if (chords == null || chords.isEmpty()) {
-            System.out.println("[PLAY] No chords available after loading.");
-            return;
-        }
-        for (var hc : chords) {
-            sendChordToDevice(hc, deviceNameSubstring, durationMs);
-        }
-    }
 
-    // Overload: also filter by range
     public void playChords(List<Integer> numNotes, List<Integer> groups, Integer rootNote, Integer range,
-                           Long durationMs, String deviceNameSubstring)
-            throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
-        var chords = findChordsFor(numNotes, groups, rootNote, range);
+                           Long durationMs, Integer channelZeroBased) {
+        var chords = (range == null)
+                ? findChordsFor(numNotes, groups, rootNote)
+                : findChordsFor(numNotes, groups, rootNote, range);
         if (chords == null || chords.isEmpty()) {
-            System.out.println("[PLAY] No chords available after loading.");
             return;
         }
-        for (var hc : chords) {
-            sendChordToDevice(hc, deviceNameSubstring, durationMs);
+        for (var chord : chords) {
+            if (channelZeroBased == null) {
+                sendChordToDevice(chord, durationMs);
+            } else {
+                send.sendChordToDevice(chord, durationMs, channelZeroBased);
+            }
         }
     }
 
+    public void playRhythm(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws Exception {
+        validate.validate(pattern, spec, voices);
+        rhythmPlayback.playRhythm(pattern, spec, voices);
+    }
+
+    public Integer analyzeRhythm(String onsetList) {
+        return analyseRhythmUseCase.analyzeInformation(onsetList);
+    }
+
+    public void generateAllRhythmsOfFourQuarters() {
+        if (generateAndPersistRhythmUseCase == null) {
+            throw new IllegalStateException("GenerateAndPersistRhythmUseCase not wired in UseCaseInteractor");
+        }
+        generateAndPersistRhythmUseCase.generateAllRhythmsOfFourQuarters();
+    }
+
+    public void playRhythms(List<HuffmanRhythm> rhythms) throws Exception {
+        if (playHuffmanRhythmsUseCase == null) {
+            throw new IllegalStateException("PlayHuffmanRhythmsUseCase not wired in UseCaseInteractor");
+        }
+        playHuffmanRhythmsUseCase.playRhythms(rhythms);
+    }
+
+    /**
+     * Loads, for each requested information grade, matching rhythms with enough beat-to-beat
+     * variation and picks one at random.
+     * The selected rhythms are then played sequentially.
+     */
+    public void playRhythmsByInformationGrades(List<Integer> informationGrades) throws Exception {
+        if (huffmanRhythmRepository == null) {
+            throw new IllegalStateException("RhythmRepository not wired in UseCaseInteractor");
+        }
+        if (informationGrades == null || informationGrades.isEmpty()) return;
+        java.util.List<HuffmanRhythm> selection = new java.util.ArrayList<>();
+        java.util.concurrent.ThreadLocalRandom rnd = java.util.concurrent.ThreadLocalRandom.current();
+        for (Integer info : informationGrades) {
+            if (info == null) continue;
+            List<HuffmanRhythm> candidates = huffmanRhythmRepository.getAllByInformationAndMinDeviation(
+                    info,
+                    AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION
+            );
+            if (candidates == null || candidates.isEmpty()) continue;
+            int idx = (candidates.size() == 1) ? 0 : rnd.nextInt(candidates.size());
+            selection.add(candidates.get(idx));
+        }
+        if (selection.isEmpty()) return;
+        playRhythms(selection);
+    }
 }

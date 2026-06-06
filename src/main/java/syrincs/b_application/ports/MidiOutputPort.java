@@ -1,24 +1,26 @@
 package syrincs.b_application.ports;
 
 import syrincs.a_domain.chord.Chord;
-import syrincs.a_domain.hindemith.HindemithChord;
 import syrincs.a_domain.Tone;
-
-import javax.sound.midi.MidiDevice;
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiUnavailableException;
+import syrincs.b_application.errors.MidiPortException;
 
 /**
- * Application port for sending tones to a MIDI output and discovering outputs.
- * Implementations belong to the d_frameworksAndDrivers layer.
+ * Application port for sending tones and chords to a MIDI output.
+ * Implementations belong to the outer adapter layer.
+ *
+ * Clean Architecture: This port does not expose framework types like javax.sound.midi.Sequence or MidiDevice.Info.
+ * Device discovery belongs to MidiDeviceQueryPort; rhythm playback uses RhythmPlaybackPort.
+ * No framework-specific checked exceptions are exposed; failures should throw MidiPortException.
  */
 public interface MidiOutputPort {
-    MidiDevice.Info[] listMidiOutputs();
 
-    MidiDevice.Info findOutputByName(String nameSubstring);
+    void sendToneToDevice(Tone tone, String deviceNameSubstring) throws MidiPortException;
 
-    void sendToneToDevice(Tone tone, String deviceNameSubstring)
-            throws MidiUnavailableException, InvalidMidiDataException, InterruptedException;
+    void sendChordToDevice(Chord chord, long duration) throws MidiPortException;
 
-    void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration);
+    /**
+     * Variant that allows specifying the target MIDI channel (0-15). For user-facing CLI, map 1-16 → 0-15 before calling.
+     */
+    void sendChordToDevice(Chord chord, long duration, int channelZeroBased) throws MidiPortException;
+
 }

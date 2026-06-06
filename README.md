@@ -72,8 +72,8 @@ mvn exec:java -Dexec.args="--help"
 
 Für den normalen lokalen Betrieb sind zwei externe Dienste relevant:
 
-- PostgreSQL für gespeicherte Hindemith-Akkorde.
-- SuperCollider als Standard-Audio-Consumer.
+- PostgreSQL für gespeicherte Hindemith-Akkorde und Huffman-Rhythmen.
+- SuperCollider als Standard-Audio-Consumer für Noten und Akkorde.
 
 Status prüfen:
 
@@ -95,8 +95,7 @@ syrincs start
 
 `syrincs start` prüft PostgreSQL und startet danach den SuperCollider-Consumer
 im Vordergrund. Stoppen mit `Ctrl+C`. Syrincs führt keine privilegierten
-DB-Startbefehle automatisch aus, damit kein versteckter `sudo`-/PolicyKit-Dialog
-aus der Anwendung heraus entsteht.
+DB-Startbefehle automatisch aus.
 
 Nur SuperCollider starten:
 
@@ -110,30 +109,7 @@ Nur die Datenbank prüfen:
 syrincs start db
 ```
 
-Wenn PostgreSQL nicht automatisch gestartet werden kann:
-
-```bash
-pg_lsclusters
-sudo pg_ctlcluster <version> <cluster> start
-sudo systemctl start postgresql
-pg_isready -h localhost -p 5432
-```
-
-Wenn `syrincs status` `DATABASE_MISSING` meldet, läuft PostgreSQL, aber die
-konfigurierte Datenbank fehlt. Für die Defaults:
-
-```bash
-sudo -u postgres createdb -O syrincs hindemith
-```
-
-Danach das Anwendungsschema anlegen:
-
-```bash
-syrincs init
-```
-
-Für den kompletten manuellen PostgreSQL-Setup kannst du zusätzlich den Wrapper
-nutzen:
+Für den kompletten lokalen PostgreSQL-Setup mit den Defaults:
 
 ```bash
 bash scripts/init-postgres.sh
@@ -141,19 +117,18 @@ bash scripts/init-postgres.sh
 
 ## Ausgabe
 
-Der Standard-Output für `play` ist SuperCollider über OSC. MIDI ist weiterhin
-als expliziter Output verfügbar:
+Der Standard-Output für Noten und Akkorde ist SuperCollider über OSC. MIDI ist
+weiterhin explizit verfügbar:
 
 ```bash
 syrincs play note note 60 --output midi
 syrincs play chords --output midi
 ```
 
-MIDI-Ausgänge anzeigen:
+Rhythmus-Playback nutzt auf diesem Branch weiterhin den MIDI-Sequencer.
+Das MIDI-Gerät wird erst beim tatsächlichen MIDI-Playback aufgelöst.
 
-```bash
-syrincs list
-```
+MIDI-Kanäle werden intern nullbasiert verwendet: `channel=9` entspricht dem üblichen MIDI-Kanal 10 für General-MIDI-Drums.
 
 ## CLI
 
@@ -190,12 +165,12 @@ mvn exec:java -Dexec.args="calculate 48 84"
 Akkorde aus der Datenbank spielen. Standard: SuperCollider:
 
 ```bash
-mvn exec:java -Dexec.args="play chords numnotes 3 4 group 1 2 3 rootnote 60 range 24 duration 200"
+mvn exec:java -Dexec.args="play chords numNotes 3 4 groups 1 2 3 rootNote 60 range 24 duration 200 channel 0"
 ```
 
 Die Picocli-Optionen für `play chords` sind im aktuellen Stand teils ohne
-führende Bindestriche definiert, zum Beispiel `numnotes`, `group`, `rootnote`,
-`range` und `duration`. Der Ausgabeweg wird mit `--output sc` oder
+führende Bindestriche definiert, zum Beispiel `numNotes`, `groups`, `rootNote`,
+`range`, `duration` und `channel`. Der Ausgabeweg wird mit `--output sc` oder
 `--output midi` gewählt; Default ist `sc`.
 
 Rhythmusdatei abspielen:
@@ -224,7 +199,7 @@ Zufällige gespeicherte Rhythmen nach Informationsgraden spielen:
 mvn exec:java -Dexec.args="play rhythm db 3 5 7"
 ```
 
-Pro angegebenem Informationsgrad wird ein Rhythmus aus der Datenbank geladen. Der aktuelle Code filtert dabei zusätzlich auf `deviation > 0.7`.
+Pro angegebenem Informationsgrad wird ein Rhythmus aus der Datenbank geladen. Der aktuelle Default filtert dabei zusätzlich auf `deviation > 0.7` (`AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION`).
 
 ## Hindemith-Akkordbestimmung
 
@@ -340,7 +315,8 @@ user: syrincs
 password: syrincs
 ```
 
-`syrincs init` legt die folgenden Tabellen an:
+`syrincs init` legt die folgenden Tabellen an bzw. ergänzt fehlende
+Rhythmus-Spalten:
 
 ```sql
 CREATE TABLE IF NOT EXISTS public.hindemithChords (
@@ -354,10 +330,12 @@ CREATE TABLE IF NOT EXISTS public.hindemithChords (
 );
 
 CREATE TABLE IF NOT EXISTS public.huffmanRhythms (
-    id BIGINT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
+    rhythmstring VARCHAR(100),
     numerator SMALLINT NOT NULL,
     denominator SMALLINT NOT NULL,
-    info SMALLINT NOT NULL
+    info SMALLINT NOT NULL,
+    deviation DOUBLE PRECISION
 );
 ```
 

@@ -2,13 +2,10 @@ package syrincs.c_adapters.osc;
 
 import syrincs.a_domain.Tone;
 import syrincs.a_domain.chord.Chord;
+import syrincs.b_application.errors.MidiPortException;
 import syrincs.b_application.ports.MidiOutputPort;
 
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiDevice;
-import javax.sound.midi.MidiUnavailableException;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -39,18 +36,7 @@ public class SuperColliderOscOutputAdapter implements MidiOutputPort {
     }
 
     @Override
-    public MidiDevice.Info[] listMidiOutputs() {
-        return new MidiDevice.Info[0];
-    }
-
-    @Override
-    public MidiDevice.Info findOutputByName(String nameSubstring) {
-        return null;
-    }
-
-    @Override
-    public void sendToneToDevice(Tone tone, String deviceNameSubstring)
-            throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
+    public void sendToneToDevice(Tone tone, String deviceNameSubstring) throws MidiPortException {
         if (tone == null) {
             return;
         }
@@ -64,12 +50,17 @@ public class SuperColliderOscOutputAdapter implements MidiOutputPort {
                     defaultPan
             );
         } catch (IOException e) {
-            throw new UncheckedIOException("Failed to send OSC note to SuperCollider", e);
+            throw new MidiPortException("Failed to send OSC note to SuperCollider", e);
         }
     }
 
     @Override
-    public void sendChordToDevice(Chord chord, String deviceNameSubstring, long duration) {
+    public void sendChordToDevice(Chord chord, long duration) throws MidiPortException {
+        sendChordToDevice(chord, duration, 0);
+    }
+
+    @Override
+    public void sendChordToDevice(Chord chord, long duration, int channelZeroBased) throws MidiPortException {
         if (chord == null || chord.getNotes() == null) {
             return;
         }
@@ -81,8 +72,7 @@ public class SuperColliderOscOutputAdapter implements MidiOutputPort {
             try {
                 sendNote(defaultSynth, note, 0.7, duration / 1000.0, defaultPan);
             } catch (IOException e) {
-                System.out.println("[OSC] Failed to send note to SuperCollider: " + e.getMessage());
-                return;
+                throw new MidiPortException("Failed to send OSC chord note to SuperCollider", e);
             }
         }
     }

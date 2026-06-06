@@ -10,11 +10,11 @@ Diese Hinweise gelten für das gesamte Repository.
 
 ## Projektüberblick
 
-Syrincs ist ein Java-21/Maven-Projekt für MIDI-Generierung:
+Syrincs ist ein Java-21/Maven-Projekt für MIDI-/OSC-Generierung:
 
-- Akkorde werden nach Hindemith analysiert, erzeugt, in PostgreSQL persistiert und als MIDI gespielt.
-- Rhythmen werden entweder aus RDL-0-Dateien gespielt oder als 16tel-Onset-Strings nach einer projektinternen Huffman-Komplexität bewertet.
-- MIDI läuft über `javax.sound.midi`; die CLI läuft über Picocli.
+- Akkorde werden nach Hindemith analysiert, erzeugt, in PostgreSQL persistiert und standardmäßig über SuperCollider/OSC gespielt.
+- Rhythmen werden entweder aus RDL-0-Dateien gespielt oder als 16tel-Onset-Strings nach einer projektinternen Huffman-Komplexität bewertet und in PostgreSQL persistiert.
+- Rhythmus-Playback nutzt aktuell weiterhin `javax.sound.midi`; die CLI läuft über Picocli.
 
 Die Schichten sind grob Clean Architecture:
 
@@ -36,13 +36,14 @@ mvn package
 mvn exec:java -Dexec.args="--help"
 ```
 
-Bekannter Test-Hinweis:
+Bekannte Test-Hinweise:
 
-- `mvn test` kann in Umgebungen ohne MIDI-Gerät `Roland Digital Piano` an `RhythmE2ETest.setupMidi` scheitern.
-- Für die nicht umgebungsabhängigen Tests ist dieser Befehl sinnvoll:
+- `SuperColliderOscOutputAdapterTest` bindet lokal einen UDP-Port und überspringt sich, wenn die Umgebung UDP verbietet.
+- MIDI-Tests überspringen echte Sendetests, wenn kein MIDI-Gerät `Roland Digital Piano`/`DP603` verfügbar ist.
+- Für fokussierte Rhythmus-/Runtime-Tests ist dieser Befehl sinnvoll:
 
 ```bash
-mvn -Dtest='*,!RhythmE2ETest' test
+mvn -Dtest='HuffmanRhythmTest,RhythmTest,RootCmdChordsCliTest,LocalRuntimeTest' test
 ```
 
 Wenn Tests wegen fehlendem MIDI-Gerät, fehlender PostgreSQL-Instanz oder lokaler Audio/MIDI-Konfiguration scheitern, melde das klar als Umgebungsproblem. Nicht stillschweigend Defaults ändern, nur damit Tests lokal grün werden.
@@ -85,9 +86,9 @@ Konventionen:
 - Der aktuelle Analysepfad geht von 4/4 und 16tel-Raster aus.
 - RDL-0-Pattern nutzen `x` für Hit und `-` für Pause; `|` und Whitespace werden ignoriert.
 - Die Wiedergabe validiert aktuell genau die Stimmen `kick` und `snare`.
-- `play rhythm db ...` lädt pro Informationsgrad zufällig einen Rhythmus und filtert aktuell zusätzlich mit `deviation > 0.7`.
+- `play rhythm db ...` lädt pro Informationsgrad zufällig einen Rhythmus und filtert aktuell zusätzlich mit `AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION` (`deviation > 0.7`).
 
-Bei Arbeiten an der Huffman-Komplexität die erwarteten Informationswerte in `HuffmanRhythmTest` beachten. Einige Klassen geben aktuell Diagnoseausgaben auf `System.out` aus; nicht nebenbei entfernen, wenn die Aufgabe das nicht betrifft.
+Bei Arbeiten an der Huffman-Komplexität die erwarteten Informationswerte in `HuffmanRhythmTest` beachten. Domänenobjekte sollen keine Diagnoseausgaben auf `System.out` schreiben.
 
 ## CLI-Besonderheiten
 
@@ -116,13 +117,14 @@ MIDI:
 
 - Default-Gerät steht in `c_adapters/midi/MidiConfig.java`: `Roland Digital Piano`.
 - MIDI-Kanäle sind intern nullbasiert; `channel=9` ist General-MIDI-Kanal 10.
-- Nicht jede Umgebung hat ein echtes MIDI-Out. Tests und CLI können deshalb lokal scheitern.
+- Nicht jede Umgebung hat ein echtes MIDI-Out. MIDI-Rhythmus-Playback kann deshalb lokal scheitern.
+- Noten und Akkorde laufen standardmäßig über SuperCollider/OSC; MIDI ist mit `--output midi` explizit wählbar.
 
 Datenbank:
 
-- `AppConfig.loadDbConfig(...)` nutzt aktuell fest `jdbc:postgresql://localhost:5432/syrincsdb`, User `syrincs`, Passwort `syrincs`.
-- CLI-/Environment-Konfiguration ist im Code vorbereitet, aber aktuell auskommentiert.
-- Es gibt keine Migrationsskripte. Erwartete Tabellen stehen in `README.md`.
+- `AppConfig.loadDbConfig(...)` nutzt CLI-Flags, dann `HINDEMITH_DB_*`, dann den Default `jdbc:postgresql://localhost:5432/hindemith`, User `syrincs`, Passwort `syrincs`.
+- `syrincs init` legt die Anwendungstabellen an und ergänzt auf dem Rhythmus-Branch fehlende `huffmanRhythms`-Spalten wie `rhythmstring` und `deviation`.
+- `scripts/init-postgres.sh` bündelt den lokalen PostgreSQL-Setup und ruft anschließend `syrincs init` auf.
 
 Bei DB- oder MIDI-Änderungen lieber Konfiguration testbar machen, statt Werte tiefer in Domäne oder Use Cases zu verschieben.
 
