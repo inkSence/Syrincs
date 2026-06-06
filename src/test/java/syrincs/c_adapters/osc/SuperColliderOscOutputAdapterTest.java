@@ -43,6 +43,17 @@ class SuperColliderOscOutputAdapterTest {
         );
     }
 
+    @Test
+    void sendsFxAsOscUdpPacket() throws Exception {
+        assertOscPacket(
+                adapter -> adapter.sendFx("reverb", true, "mix", 0.25),
+                "/fx",
+                ",sisf",
+                "reverb",
+                "mix"
+        );
+    }
+
     private static void assertOscPacket(OscSend send, String... expectedText) throws Exception {
         InetAddress loopback = InetAddress.getLoopbackAddress();
 

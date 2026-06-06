@@ -7,11 +7,19 @@ welcher SynthDef mit welchen Default-Parametern gespielt wird.
 Die aktuelle Stufe bleibt bewusst klein:
 
 ```text
-Syrincs CLI -> SuperColliderOscOutputAdapter -> OSC -> Preset -> Synth/Drum -> Audio
+Syrincs CLI
+-> SuperColliderOscOutputAdapter
+-> OSC
+-> Preset
+-> Synth/Drum
+-> Dry/FX Sends
+-> Reverb/Delay/Chorus
+-> Master Limiter
+-> Audio
 ```
 
-Nicht enthalten sind Samples, Plugin-Bridge, globale Effekt-Busse oder eine
-realistische Orchesteremulation.
+Nicht enthalten sind Samples, Plugin-Bridge, DAW-artige Effektketten,
+Automation ueber Zeit oder eine realistische Orchesteremulation.
 
 ## SuperCollider Starten
 
@@ -31,7 +39,7 @@ ausführen.
 Wenn der Consumer bereit ist, erscheint:
 
 ```text
-Syrincs OSC consumer listening on /note, /chord and /drum at UDP 57120
+Syrincs OSC consumer listening on /note, /chord, /drum and /fx at UDP 57120
 ```
 
 ## OSC-API
@@ -58,7 +66,64 @@ Drum:
 /drum drumPreset velocity pan
 ```
 
-Die OSC-API ist in dieser Stufe unverändert geblieben.
+Effektsteuerung:
+
+```text
+/fx effectName enabled paramName paramValue
+```
+
+Beispiele:
+
+```text
+/fx reverb 1 mix 0.25
+/fx reverb 1 room 0.7
+/fx delay 1 time 0.375
+/fx delay 1 feedback 0.35
+/fx chorus 0 mix 0.0
+/fx master 1 volume 0.8
+```
+
+`enabled = 0` schaltet Reverb, Delay oder Chorus praktisch aus, indem der
+Mix auf `0` gesetzt wird. Beim Delay wird zusaetzlich das Feedback auf `0`
+gesetzt. Fuer `master` setzt `enabled = 0` konservative Master-Defaults.
+Unbekannte Effekte oder Parameter werden geloggt und ignoriert.
+
+Die bestehenden `/note`-, `/chord`- und `/drum`-Formate bleiben kompatibel.
+
+## Audio-Routing
+
+Der Consumer nutzt zentrale Stereo-Busse:
+
+- `~dryBus`: trockene Instrumente und Drums
+- `~reverbBus`: Reverb-Send
+- `~delayBus`: Delay-Send
+- `~chorusBus`: Chorus-Send
+- `~masterBus`: FX-Returns
+
+Die Node-Reihenfolge ist:
+
+```text
+~voiceGroup -> ~fxGroup -> ~masterGroup
+```
+
+Voices schreiben trocken auf `~dryBus` und optional skaliert auf die
+FX-Send-Busse. Reverb, Delay und Chorus laufen als globale Synths genau einmal
+und schreiben auf `~masterBus`. `syrincsMasterOut` summiert Dry und FX, filtert
+optional, begrenzt den Pegel mit `Limiter` und schreibt auf Hardware-Out `0/1`.
+
+## Globale FX
+
+- `syrincsReverbFx`: `mix`, `room`, `damp`, `amp`
+- `syrincsDelayFx`: `mix`, `time`, `feedback`, `amp`
+- `syrincsChorusFx`: `mix`, `rate`, `depth`, `amp`
+- `syrincsMasterOut`: `volume`, `drive`, `lowpass`, `highpass`
+
+Sicherheitsgrenzen:
+
+- Delay-Zeit wird auf `0.03..1.5` Sekunden begrenzt.
+- Delay-Feedback wird auf maximal `0.72` begrenzt.
+- FX-Mix-Werte sind konservativ geklemmt.
+- Der Master-Out nutzt `LeakDC` und `Limiter`.
 
 ## SynthDef-Familien
 
@@ -81,7 +146,8 @@ Preset kann diese Felder verwenden:
 
 ```text
 synth, wave, ampScale, atk, dec, sus, rel, cutoff, rq, pan,
-detune, drive, modRatio, modIndex, decay, coef, family, description
+detune, drive, modRatio, modIndex, decay, coef, reverbSend,
+delaySend, chorusSend, family, description
 ```
 
 Zusaetzliche interne Felder wie `harm2`, `harm3`, `harm4`, `noiseMix`,
@@ -92,6 +158,15 @@ Nicht jedes Preset setzt jedes Feld. Fehlende Werte werden ueber zentrale
 Defaults ergaenzt. Velocity wird musikalisch auf Amplitude skaliert, Duration
 wird begrenzt und Pan wird auf `-1..1` geklemmt. Akkorde werden leicht
 abgesenkt, damit sie nicht sofort uebersteuern.
+
+Preset-Sends sind bewusst niedrig gehalten:
+
+- Pads und Strings nutzen Reverb und Chorus.
+- Orgel nutzt etwas Reverb und nur wenig Chorus.
+- Plucks und FM-Keys nutzen etwas Reverb und optional Delay.
+- Leads koennen wenig Delay senden.
+- Bass bleibt fast trocken.
+- Kick bleibt trocken, Snare und Hats bekommen nur wenig Reverb.
 
 Fallback-Verhalten:
 
@@ -213,6 +288,17 @@ mvn exec:java -Dexec.args="play sc drum drum.kick"
 mvn exec:java -Dexec.args="play sc drum drum.hat.open --velocity 0.45 --pan -0.2"
 ```
 
+FX:
+
+```bash
+mvn exec:java -Dexec.args="play sc fx reverb mix 0.25"
+mvn exec:java -Dexec.args="play sc fx delay time 0.375"
+mvn exec:java -Dexec.args="play sc fx delay feedback 0.35"
+mvn exec:java -Dexec.args="play sc fx chorus mix 0.18"
+mvn exec:java -Dexec.args="play sc fx master volume 0.8"
+mvn exec:java -Dexec.args="play sc fx delay mix 0.0 --off"
+```
+
 `--synth` existiert noch als Alias fuer `--preset`, neue Beispiele sollten aber
 `--preset` verwenden.
 
@@ -232,25 +318,28 @@ mvn exec:java -Dexec.args="play sc demo"
 
 Die Demo sendet:
 
-- Testsounds mit `test.sine`, `test.triangle`, `test.saw`, `test.pulse`
-- denselben Akkord mit `organ.full`, `pad.warm`, `strings.pad`, `brass.soft`,
-  `wind.fluteish`
+- einen trockenen Akkord mit `organ.full`
+- denselben Akkord mit aktiviertem Reverb
+- `pad.warm` und `strings.pad` mit Chorus/Reverb
 - kurze Figuren mit `pluck.harplike`, `keys.fm_epiano`, `keys.bell`
 - Bass mit `bass.round` und `bass.sub`
 - synthetische Drums mit Kick, Snare, Closed/Open Hat und Low/High Tom
+- am Ende konservative FX- und Master-Werte
 
 Erfolgskriterien:
 
 - du hoerst die Sequenz,
 - die Familien sind grob unterscheidbar,
-- SuperCollider loggt eingehende `/note`, `/chord` und `/drum`-Nachrichten,
+- Reverb, Delay und Chorus sind im Verlauf der Demo hoerbar,
+- SuperCollider loggt eingehende `/note`, `/chord`, `/drum` und
+  `/fx`-Nachrichten,
 - unbekannte Presets beenden den Consumer nicht, sondern erzeugen eine Warnung.
 
 ## Automatisierter Smoke-Test
 
 Der JUnit-Test startet keinen SuperCollider-Server. Er bindet lokal einen
-UDP-Port und prueft, dass Syrincs OSC-Pakete fuer `/note`, `/chord` und
-`/drum` erzeugt:
+UDP-Port und prueft, dass Syrincs OSC-Pakete fuer `/note`, `/chord`, `/drum`
+und `/fx` erzeugt:
 
 ```bash
 mvn -Dtest=SuperColliderOscOutputAdapterTest test
@@ -270,8 +359,9 @@ Falls kein Klang kommt:
 ## Grenzen Dieser Stufe
 
 - keine Samples
-- keine Effekt-Bus-Architektur
 - keine Plugin-Bridge
+- keine DAW-artige Effektkette
+- keine Automation ueber Zeit
 - keine realistische Orchesteremulation
 - keine neue Java-Output-Architektur
 - keine Datenbank- oder Runtime-Konsolidierung
@@ -281,5 +371,5 @@ Falls kein Klang kommt:
 - Presets spaeter aus einer Datei oder Registry laden.
 - App-seitig eine allgemeinere Output-Abstraktion neben `MidiOutputPort`.
 - Parameterautomation per OSC.
-- Kleine FX-Busse fuer Reverb und Delay.
+- Feinere FX-Presets oder Szenen fuer Reverb/Delay/Chorus.
 - Rhythmus-Domaene spaeter auf `/drum` routen.

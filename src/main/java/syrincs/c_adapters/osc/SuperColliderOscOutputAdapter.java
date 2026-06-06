@@ -128,6 +128,17 @@ public class SuperColliderOscOutputAdapter implements MidiOutputPort {
         send(packet);
     }
 
+    public void sendFx(String effectName, boolean enabled, String paramName, double value) throws IOException {
+        byte[] packet = OscMessageBuilder.build(
+                "/fx",
+                requireText(effectName, "effectName"),
+                enabled ? 1 : 0,
+                requireText(paramName, "paramName"),
+                (float) requireFinite(value, "value")
+        );
+        send(packet);
+    }
+
     private void send(byte[] packet) throws IOException {
         InetAddress address = InetAddress.getByName(host);
         DatagramPacket datagram = new DatagramPacket(packet, packet.length, address, port);
