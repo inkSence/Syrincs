@@ -8,6 +8,7 @@ import picocli.CommandLine.ParentCommand;
 import syrincs.a_domain.Tone;
 import syrincs.a_domain.hindemith.HindemithChord;
 import syrincs.b_application.UseCaseInteractor;
+import syrincs.c_adapters.osc.SuperColliderOscOutputAdapter;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiUnavailableException;
@@ -40,7 +41,7 @@ public class RootCmd implements Runnable {
 
     @Override
     public void run() {
-        // Show root usage and also explicitly show help for 'play', 'play note' and 'play chords' subcommands
+        // Show root usage and also explicitly show help for 'play' and its common subcommands
         CommandLine root = new CommandLine(this);
         root.usage(System.out);
         CommandLine play = root.getSubcommands().get("play");
@@ -60,6 +61,12 @@ public class RootCmd implements Runnable {
                 System.out.println("Subcommand 'play chords' usage:");
                 chords.usage(System.out);
             }
+            CommandLine sc = play.getSubcommands().get("sc");
+            if (sc != null) {
+                System.out.println();
+                System.out.println("Subcommand 'play sc' usage:");
+                sc.usage(System.out);
+            }
         }
     }
 
@@ -77,7 +84,7 @@ public class RootCmd implements Runnable {
         }
     }
 
-    @Command(name = "play", description = "Play a single note (default) or use subcommands 'note' and 'chords'", subcommands = { PlayCmd.NoteCmd.class, PlayChordsCmd.class })
+    @Command(name = "play", description = "Play a single note (default) or use subcommands 'note', 'chords' and 'sc'", subcommands = { PlayCmd.NoteCmd.class, PlayChordsCmd.class, PlayCmd.SuperColliderCmd.class })
     public static class PlayCmd implements Callable<Integer> {
         @ParentCommand RootCmd parent;
 
@@ -103,6 +110,52 @@ public class RootCmd implements Runnable {
             public Integer call() throws MidiUnavailableException, InvalidMidiDataException, InterruptedException {
                 var interactor = parentPlay.parent.interactor;
                 interactor.sendToneToDevice(new Tone(100L, note, vel), null);
+                return 0;
+            }
+        }
+
+        @Command(name = "sc", aliases = {"supercollider"}, description = "Send notes as OSC /note messages to SuperCollider")
+        public static class SuperColliderCmd implements Callable<Integer> {
+            @Parameters(arity = "0..*", description = "MIDI notes. Default: 60 64 67")
+            int[] notes;
+
+            @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
+            String host;
+
+            @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
+            int port;
+
+            @Option(names = {"--synth", "--preset"}, description = "Synth or preset name", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_SYNTH)
+            String synth;
+
+            @Option(names = {"--velocity", "--vel"}, description = "Velocity 0..1", defaultValue = "0.7")
+            double velocity;
+
+            @Option(names = {"--duration", "--dur"}, description = "Duration in seconds", defaultValue = "0.5")
+            double durationSeconds;
+
+            @Option(names = "--pan", description = "Pan -1..1", defaultValue = "0.0")
+            double pan;
+
+            @Override
+            public Integer call() throws Exception {
+                int[] notesToSend = (notes == null || notes.length == 0) ? new int[]{60, 64, 67} : notes;
+                var adapter = new SuperColliderOscOutputAdapter(host, port, synth, pan);
+
+                for (int note : notesToSend) {
+                    adapter.sendNote(synth, note, velocity, durationSeconds, pan);
+                }
+
+                System.out.printf(
+                        "[OSC] Sent /note to %s:%d synth=%s notes=%s velocity=%.3f duration=%.3fs pan=%.3f%n",
+                        host,
+                        port,
+                        synth,
+                        Arrays.toString(notesToSend),
+                        velocity,
+                        durationSeconds,
+                        pan
+                );
                 return 0;
             }
         }
