@@ -84,6 +84,28 @@ class SuperColliderOscOutputAdapterTest {
         );
     }
 
+    @Test
+    void sendsSetAsOscUdpPacket() throws Exception {
+        assertOscPacket(
+                adapter -> adapter.sendSet("master", "volume", 0.8),
+                "/set",
+                ",ssf",
+                "master",
+                "volume"
+        );
+    }
+
+    @Test
+    void sendsRampAsOscUdpPacket() throws Exception {
+        assertOscPacket(
+                adapter -> adapter.sendRamp("reverb", "mix", 0.4, 2.0),
+                "/ramp",
+                ",ssff",
+                "reverb",
+                "mix"
+        );
+    }
+
     private static void assertOscPacket(OscSend send, String... expectedText) throws Exception {
         InetAddress loopback = InetAddress.getLoopbackAddress();
 

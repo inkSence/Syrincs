@@ -19,8 +19,8 @@ Syrincs CLI
 ```
 
 Nicht enthalten sind grosse Sample-Libraries, Multisampling, Velocity-Layer,
-Round-Robin, Plugin-Bridge, DAW-artige Effektketten, Automation ueber Zeit
-oder eine realistische Orchesteremulation.
+Round-Robin, Plugin-Bridge, DAW-artige Effektketten, Automation-Lanes oder
+eine realistische Orchesteremulation.
 
 ## SuperCollider Starten
 
@@ -40,7 +40,7 @@ ausführen.
 Wenn der Consumer bereit ist, erscheint:
 
 ```text
-Syrincs OSC consumer listening on /note, /chord, /drum and /fx at UDP 57120
+Syrincs OSC consumer listening on /note, /chord, /drum, /fx, /set and /ramp at UDP 57120
 ```
 
 ## OSC-API
@@ -89,7 +89,43 @@ Mix auf `0` gesetzt wird. Beim Delay wird zusaetzlich das Feedback auf `0`
 gesetzt. Fuer `master` setzt `enabled = 0` konservative Master-Defaults.
 Unbekannte Effekte oder Parameter werden geloggt und ignoriert.
 
-Die bestehenden `/note`-, `/chord`- und `/drum`-Formate bleiben kompatibel.
+Parameter setzen:
+
+```text
+/set target param value
+```
+
+Parameter ueber Zeit veraendern:
+
+```text
+/ramp target param value seconds
+```
+
+Targets:
+
+- `master`
+- `reverb`
+- `delay`
+- `chorus`
+- `preset:<name>`
+- `family:<name>`
+
+Beispiele:
+
+```text
+/set master volume 0.8
+/set reverb mix 0.25
+/set delay feedback 0.35
+/set preset:pad.warm cutoff 1200
+/set preset:pad.warm reverbSend 0.45
+/set family:pad cutoff 900
+/ramp reverb mix 0.4 2.0
+/ramp master volume 0.6 1.5
+/ramp family:pad cutoff 5000 4.0
+```
+
+Die bestehenden `/note`-, `/chord`-, `/drum`- und `/fx`-Formate bleiben
+kompatibel.
 
 ## Audio-Routing
 
@@ -122,9 +158,53 @@ optional, begrenzt den Pegel mit `Limiter` und schreibt auf Hardware-Out `0/1`.
 Sicherheitsgrenzen:
 
 - Delay-Zeit wird auf `0.03..1.5` Sekunden begrenzt.
-- Delay-Feedback wird auf maximal `0.72` begrenzt.
+- Delay-Feedback wird auf maximal `0.85` begrenzt; der Delay-Synth selbst
+  begrenzt zusaetzlich konservativ.
 - FX-Mix-Werte sind konservativ geklemmt.
 - Der Master-Out nutzt `LeakDC` und `Limiter`.
+
+## Parameterautomation
+
+`/set` und `/ramp` teilen sich eine kleine Automationsschicht. Globale Targets
+veraendern laufende FX-/Master-Synths. Preset- und Family-Targets veraendern
+die gespeicherten Presetwerte fuer zukuenftige Noten, Akkorde oder Drums.
+Bereits laufende tonale Voices werden in dieser Stufe nicht nachtraeglich
+referenziert.
+
+Preset-Aenderungen gelten nur fuer die laufende SuperCollider-Session. Nach
+dem erneuten Laden von `syrincs_osc_consumer.scd` werden die Original-Presets
+wiederhergestellt. Es gibt bewusst keine Persistenz.
+
+Automatisierbare Preset-/Family-Parameter sind numerische Klangparameter wie:
+
+```text
+wave, ampScale, atk, dec, sus, rel, cutoff, rq, pan,
+detune, drive, modRatio, modIndex, decay, coef, transpose,
+noiseMix, vibratoRate, vibratoDepth, harm2, harm3, harm4,
+noise, body, snap, spread, reverbSend, delaySend, chorusSend,
+rootMidi, rate, startPos, freq, pitchStart, pitchEnd, click, tone
+```
+
+Nicht per OSC mutiert werden technische oder strukturelle Felder wie `synth`,
+`sample`, `sampleFallback`, `family`, `description` oder `drum`.
+
+Zentrale Parametergrenzen:
+
+- `volume`: `0.0..1.2`
+- `mix`: `0.0..1.0`
+- `feedback`: `0.0..0.85`
+- `time`: `0.03..1.5`
+- `depth`: `0.0..0.05`
+- `rate`: `0.01..10.0`
+- `cutoff`: `40..18000`
+- `rq`: `0.05..1.0`
+- `drive`: `0.0..1.0`
+- `reverbSend`, `delaySend`, `chorusSend`: `0.0..1.0`
+- `pan`: `-1.0..1.0`
+
+Wenn fuer dasselbe `target:param` eine neue Rampe gestartet wird, stoppt sie
+die vorherige Rampe. Das verhindert konkurrierende Automation auf demselben
+Parameter.
 
 ## SynthDef-Familien
 
@@ -423,6 +503,17 @@ mvn exec:java -Dexec.args="play sc fx master volume 0.8"
 mvn exec:java -Dexec.args="play sc fx delay mix 0.0 --off"
 ```
 
+Automation:
+
+```bash
+mvn exec:java -Dexec.args="play sc set master volume 0.8"
+mvn exec:java -Dexec.args="play sc set reverb mix 0.25"
+mvn exec:java -Dexec.args="play sc set preset:pad.warm cutoff 1200"
+mvn exec:java -Dexec.args="play sc set family:strings chorusSend 0.3"
+mvn exec:java -Dexec.args="play sc ramp reverb mix 0.4 2.0"
+mvn exec:java -Dexec.args="play sc ramp family:pad cutoff 5000 4.0"
+```
+
 `--synth` existiert noch als Alias fuer `--preset`, neue Beispiele sollten aber
 `--preset` verwenden.
 
@@ -445,6 +536,8 @@ Die Demo sendet:
 - einen trockenen Akkord mit `organ.full`
 - denselben Akkord mit aktiviertem Reverb
 - `pad.warm` und `strings.pad` mit Chorus/Reverb
+- einen Cutoff-Ramp auf `preset:pad.warm`
+- einen kurzen Reverb-Mix-Ramp
 - kurze Figuren mit `pluck.harplike`, `keys.fm_epiano`, `keys.bell`
 - Bass mit `bass.round` und `bass.sub`
 - ein Drum-Pattern mit Kick auf 1/3, Snare auf 2/4, Closed Hats als Achtel,
@@ -456,8 +549,9 @@ Erfolgskriterien:
 - du hoerst die Sequenz,
 - die Familien sind grob unterscheidbar,
 - Reverb, Delay und Chorus sind im Verlauf der Demo hoerbar,
-- SuperCollider loggt eingehende `/note`, `/chord`, `/drum` und
-  `/fx`-Nachrichten,
+- Automation ist im Pad-Abschnitt als oeffnender Filter hoerbar,
+- SuperCollider loggt eingehende `/note`, `/chord`, `/drum`, `/fx`, `/set`
+  und `/ramp`-Nachrichten,
 - unbekannte Presets beenden den Consumer nicht, sondern erzeugen eine Warnung.
 
 Die Demo bleibt bewusst synthetisch stabil. Sample-Presets kannst du separat
@@ -475,8 +569,8 @@ mvn exec:java -Dexec.args="play sc 64 --preset pluck.sample --duration 0.7"
 
 Der JUnit-Test startet keinen SuperCollider-Server. Er bindet lokal einen
 UDP-Port und prueft, dass Syrincs OSC-Pakete fuer `/note`, `/chord`, `/drum`
-und `/fx` erzeugt. Sample-Presetnamen werden dabei wie normale Preset-Strings
-geprueft; echte Audiodateien sind nicht noetig:
+`/fx`, `/set` und `/ramp` erzeugt. Sample-Presetnamen werden dabei wie normale
+Preset-Strings geprueft; echte Audiodateien sind nicht noetig:
 
 ```bash
 mvn -Dtest=SuperColliderOscOutputAdapterTest test
@@ -502,8 +596,11 @@ Falls kein Klang kommt:
 - keine SFZ- oder SoundFont-Engine
 - keine realistischen Akustikdrums als vollstaendige Library
 - keine Plugin-Bridge
+- keine Plugin-Parameterautomation
 - keine DAW-artige Effektkette
-- keine Automation ueber Zeit
+- keine Automation-Lanes oder Timeline
+- keine Persistenz fuer Preset-Aenderungen
+- keine komplexe Voice-ID-Steuerung
 - keine realistische Orchesteremulation
 - keine neue Java-Output-Architektur
 - keine Datenbank- oder Runtime-Konsolidierung
@@ -512,6 +609,7 @@ Falls kein Klang kommt:
 
 - Presets spaeter aus einer Datei oder Registry laden.
 - App-seitig eine allgemeinere Output-Abstraktion neben `MidiOutputPort`.
-- Parameterautomation per OSC.
+- Preset-Aenderungen optional persistierbar machen.
+- Komplexere Automation-Lanes nur bei konkretem Bedarf.
 - Feinere FX-Presets oder Szenen fuer Reverb/Delay/Chorus.
 - Rhythmus-Domaene spaeter auf `/drum` routen.

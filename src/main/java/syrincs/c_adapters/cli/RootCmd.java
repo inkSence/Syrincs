@@ -123,6 +123,8 @@ public class RootCmd implements Runnable {
                         SuperColliderCmd.ChordCmd.class,
                         SuperColliderCmd.DrumCmd.class,
                         SuperColliderCmd.FxCmd.class,
+                        SuperColliderCmd.SetCmd.class,
+                        SuperColliderCmd.RampCmd.class,
                         SuperColliderCmd.DemoCmd.class
                 }
         )
@@ -282,6 +284,76 @@ public class RootCmd implements Runnable {
                 }
             }
 
+            @Command(name = "set", mixinStandardHelpOptions = true, description = "Send one OSC /set automation message to SuperCollider")
+            public static class SetCmd implements Callable<Integer> {
+                @Parameters(index = "0", description = "Target: master, reverb, delay, chorus, preset:<name> or family:<name>")
+                String target;
+
+                @Parameters(index = "1", description = "Parameter name, e.g. volume, mix, feedback, cutoff, reverbSend")
+                String paramName;
+
+                @Parameters(index = "2", description = "Parameter value")
+                double value;
+
+                @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
+                String host;
+
+                @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
+                int port;
+
+                @Override
+                public Integer call() throws Exception {
+                    var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, 0.0);
+                    adapter.sendSet(target, paramName, value);
+                    System.out.printf(
+                            "[OSC] Sent /set to %s:%d target=%s param=%s value=%.3f%n",
+                            host,
+                            port,
+                            target,
+                            paramName,
+                            value
+                    );
+                    return 0;
+                }
+            }
+
+            @Command(name = "ramp", mixinStandardHelpOptions = true, description = "Send one OSC /ramp automation message to SuperCollider")
+            public static class RampCmd implements Callable<Integer> {
+                @Parameters(index = "0", description = "Target: master, reverb, delay, chorus, preset:<name> or family:<name>")
+                String target;
+
+                @Parameters(index = "1", description = "Parameter name, e.g. volume, mix, feedback, cutoff, reverbSend")
+                String paramName;
+
+                @Parameters(index = "2", description = "Target parameter value")
+                double value;
+
+                @Parameters(index = "3", description = "Ramp duration in seconds")
+                double seconds;
+
+                @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
+                String host;
+
+                @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
+                int port;
+
+                @Override
+                public Integer call() throws Exception {
+                    var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, 0.0);
+                    adapter.sendRamp(target, paramName, value, seconds);
+                    System.out.printf(
+                            "[OSC] Sent /ramp to %s:%d target=%s param=%s value=%.3f seconds=%.3f%n",
+                            host,
+                            port,
+                            target,
+                            paramName,
+                            value,
+                            seconds
+                    );
+                    return 0;
+                }
+            }
+
             @Command(name = "demo", mixinStandardHelpOptions = true, description = "Send a short SuperCollider preset smoke-test sequence")
             public static class DemoCmd implements Callable<Integer> {
                 @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
@@ -311,8 +383,13 @@ public class RootCmd implements Runnable {
 
                     adapter.sendFx("chorus", true, "mix", 0.18);
                     adapter.sendFx("chorus", true, "depth", 0.014);
-                    adapter.sendChord("pad.warm", chord, 0.46, 1.35, 0.0);
-                    Thread.sleep(1_080);
+                    adapter.sendSet("preset:pad.warm", "cutoff", 850);
+                    adapter.sendRamp("preset:pad.warm", "cutoff", 5_000, 3.0);
+                    adapter.sendRamp("reverb", "mix", 0.28, 2.0);
+                    for (int i = 0; i < 3; i++) {
+                        adapter.sendChord("pad.warm", chord, 0.46, 1.15, 0.0);
+                        Thread.sleep(880);
+                    }
 
                     adapter.sendChord("strings.pad", chord, 0.43, 1.35, 0.0);
                     Thread.sleep(920);
@@ -382,8 +459,9 @@ public class RootCmd implements Runnable {
                     adapter.sendFx("chorus", false, "mix", 0.0);
                     adapter.sendFx("reverb", true, "mix", 0.16);
                     adapter.sendFx("master", true, "volume", 0.82);
+                    adapter.sendSet("preset:pad.warm", "cutoff", 2_100);
 
-                    System.out.printf("[OSC] Sent SuperCollider preset and FX demo to %s:%d%n", host, port);
+                    System.out.printf("[OSC] Sent SuperCollider preset, FX and automation demo to %s:%d%n", host, port);
                     return 0;
                 }
             }

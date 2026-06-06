@@ -139,6 +139,27 @@ public class SuperColliderOscOutputAdapter implements MidiOutputPort {
         send(packet);
     }
 
+    public void sendSet(String target, String paramName, double value) throws IOException {
+        byte[] packet = OscMessageBuilder.build(
+                "/set",
+                requireText(target, "target"),
+                requireText(paramName, "paramName"),
+                (float) requireFinite(value, "value")
+        );
+        send(packet);
+    }
+
+    public void sendRamp(String target, String paramName, double value, double seconds) throws IOException {
+        byte[] packet = OscMessageBuilder.build(
+                "/ramp",
+                requireText(target, "target"),
+                requireText(paramName, "paramName"),
+                (float) requireFinite(value, "value"),
+                (float) Math.max(0.0, requireFinite(seconds, "seconds"))
+        );
+        send(packet);
+    }
+
     private void send(byte[] packet) throws IOException {
         InetAddress address = InetAddress.getByName(host);
         DatagramPacket datagram = new DatagramPacket(packet, packet.length, address, port);

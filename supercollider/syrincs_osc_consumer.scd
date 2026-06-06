@@ -7,6 +7,11 @@ s.waitForBoot({
         [~reverbFx, ~delayFx, ~chorusFx, ~masterOut].do({ |node|
             if(node.notNil) { node.free };
         });
+        if(~automationRamps.notNil) {
+            ~automationRamps.keysValuesDo({ |key, routine|
+                if(routine.notNil) { routine.stop };
+            });
+        };
         [~voiceGroup, ~fxGroup, ~masterGroup].do({ |group|
             if(group.notNil) {
                 group.freeAll;
@@ -844,75 +849,262 @@ s.waitForBoot({
         };
     };
 
-    ~clipFxParam = { |effect, param, value|
+    ~globalParamValues = (
+        reverb: (mix: 0.16, room: 0.55, damp: 0.45, amp: 0.9),
+        delay: (mix: 0, time: 0.375, feedback: 0.28, amp: 0.85),
+        chorus: (mix: 0.08, rate: 0.33, depth: 0.012, amp: 0.8),
+        master: (volume: 0.82, drive: 0, lowpass: 18000, highpass: 30)
+    );
+
+    ~automationRamps = Dictionary.new;
+
+    ~globalTargets = ["reverb", "delay", "chorus", "master"];
+
+    ~allowedGlobalParamsFor = { |targetName|
+        var target = targetName.asString;
+
+        case
+        { target == "reverb" } { [\mix, \room, \damp, \amp] }
+        { target == "delay" } { [\mix, \time, \feedback, \amp] }
+        { target == "chorus" } { [\mix, \rate, \depth, \amp] }
+        { target == "master" } { [\volume, \drive, \lowpass, \highpass] }
+        { [] };
+    };
+
+    ~globalNodeFor = { |targetName|
+        var target = targetName.asString;
+
+        case
+        { target == "reverb" } { ~reverbFx }
+        { target == "delay" } { ~delayFx }
+        { target == "chorus" } { ~chorusFx }
+        { target == "master" } { ~masterOut }
+        { nil };
+    };
+
+    ~allowedPresetParams = [
+        \wave, \ampScale, \atk, \dec, \sus, \rel, \cutoff, \rq, \pan,
+        \detune, \drive, \modRatio, \modIndex, \decay, \coef, \transpose,
+        \noiseMix, \vibratoRate, \vibratoDepth, \harm2, \harm3, \harm4,
+        \noise, \body, \snap, \spread, \reverbSend, \delaySend,
+        \chorusSend, \rootMidi, \rate, \startPos, \freq, \pitchStart,
+        \pitchEnd, \click, \tone
+    ];
+
+    ~clampParam = { |paramName, value|
+        var param = paramName.asString.asSymbol;
         var v = value.asFloat;
 
         case
-        { param == \mix } { v.clip(0, if(effect == "delay") { 0.55 } { 0.65 }) }
+        { param == \volume } { v.clip(0, 1.2) }
+        { param == \mix } { v.clip(0, 1) }
         { param == \room } { v.clip(0.05, 0.9) }
         { param == \damp } { v.clip(0, 1) }
         { param == \time } { v.clip(0.03, 1.5) }
-        { param == \feedback } { v.clip(0, 0.72) }
-        { param == \rate } { v.clip(0.05, 6) }
-        { param == \depth } { v.clip(0.001, 0.035) }
-        { param == \amp } { v.clip(0, 1.2) }
-        { param == \volume } { v.clip(0, 1.2) }
-        { param == \drive } { v.clip(0, 3) }
+        { param == \feedback } { v.clip(0, 0.85) }
+        { param == \depth } { v.clip(0, 0.05) }
+        { param == \rate } { v.clip(0.01, 10) }
+        { param == \cutoff } { v.clip(40, 18000) }
+        { param == \rq } { v.clip(0.05, 1) }
+        { param == \drive } { v.clip(0, 1) }
+        { [\reverbSend, \delaySend, \chorusSend, \sus, \noise, \body, \snap, \noiseMix, \harm2, \harm3, \harm4].includes(param) } { v.clip(0, 1) }
+        { param == \pan } { v.clip(-1, 1) }
+        { [\amp, \ampScale].includes(param) } { v.clip(0, 1.2) }
+        { [\atk, \dec, \rel].includes(param) } { v.clip(0.001, 4) }
+        { param == \decay } { v.clip(0.01, 8) }
+        { param == \detune } { v.clip(0, 0.08) }
+        { param == \modRatio } { v.clip(0.25, 12) }
+        { param == \modIndex } { v.clip(0, 5) }
+        { param == \coef } { v.clip(0.05, 0.95) }
+        { param == \transpose } { v.clip(-48, 48).round(1) }
+        { param == \wave } { v.clip(0, 4) }
+        { param == \rootMidi } { v.clip(0, 127).round(1) }
+        { param == \startPos } { v.max(0) }
+        { [\freq, \pitchStart, \pitchEnd, \tone].includes(param) } { v.clip(20, 12000) }
+        { param == \click } { v.clip(0, 0.35) }
+        { param == \spread } { v.clip(0.001, 0.12) }
         { param == \lowpass } { v.clip(1000, 20000) }
         { param == \highpass } { v.clip(20, 1000) }
         { v };
+    };
+
+    ~setGlobalParam = { |targetName, paramName, value|
+        var target = targetName.asString;
+        var targetSymbol = target.asSymbol;
+        var param = paramName.asString.asSymbol;
+        var node = ~globalNodeFor.(target);
+        var allowed = ~allowedGlobalParamsFor.(target);
+        var values = ~globalParamValues[targetSymbol];
+        var clipped;
+
+        if(node.isNil) {
+            ("Syrincs unknown /set global target '" ++ target ++ "'").warn;
+        } {
+            if(allowed.includes(param).not) {
+                ("Syrincs unknown global parameter '" ++ param.asString ++ "' for target '" ++ target ++ "'").warn;
+            } {
+                clipped = ~clampParam.(param, value);
+                node.set(param, clipped);
+                if(values.notNil) { values.put(param, clipped) };
+                ["Syrincs /set global", target, param, clipped].postln;
+            };
+        };
+    };
+
+    ~setPresetParam = { |presetName, paramName, value, quiet = false|
+        var name = presetName.asString;
+        var param = paramName.asString.asSymbol;
+        var preset = ~presets.at(name);
+        var clipped;
+
+        if(preset.isNil) {
+            ("Syrincs unknown preset target '" ++ name ++ "'").warn;
+        } {
+            if(~allowedPresetParams.includes(param).not) {
+                ("Syrincs parameter '" ++ param.asString ++ "' is not automatable for presets").warn;
+            } {
+                clipped = ~clampParam.(param, value);
+                preset.put(param, clipped);
+                if(quiet.not) { ["Syrincs /set preset", name, param, clipped].postln };
+            };
+        };
+    };
+
+    ~setFamilyParam = { |familyName, paramName, value|
+        var family = familyName.asString;
+        var param = paramName.asString.asSymbol;
+        var count = 0;
+
+        if(~allowedPresetParams.includes(param).not) {
+            ("Syrincs parameter '" ++ param.asString ++ "' is not automatable for families").warn;
+        } {
+            ~presets.keysValuesDo({ |name, preset|
+                if(preset[\family] == family) {
+                    ~setPresetParam.(name, param, value, true);
+                    count = count + 1;
+                };
+            });
+            if(count == 0) {
+                ("Syrincs unknown family target '" ++ family ++ "'").warn;
+            } {
+                ["Syrincs /set family", family, param, ~clampParam.(param, value), "presets", count].postln;
+            };
+        };
+    };
+
+    ~setParam = { |targetName, paramName, value|
+        var target = targetName.asString;
+        var param = paramName.asString.asSymbol;
+
+        case
+        { ~globalTargets.includes(target) } {
+            ~setGlobalParam.(target, param, value);
+        }
+        { target.find("preset:") == 0 } {
+            ~setPresetParam.(target.copyRange(7, target.size - 1), param, value);
+        }
+        { target.find("family:") == 0 } {
+            ~setFamilyParam.(target.copyRange(7, target.size - 1), param, value);
+        }
+        {
+            ("Syrincs unknown /set target '" ++ target ++ "'").warn;
+        };
+    };
+
+    ~currentParamValue = { |targetName, paramName|
+        var target = targetName.asString;
+        var param = paramName.asString.asSymbol;
+        var value = nil;
+        var values;
+        var preset;
+        var family;
+
+        if(~globalTargets.includes(target)) {
+            values = ~globalParamValues[target.asSymbol];
+            if(values.notNil) { value = values[param] };
+        } {
+            if(target.find("preset:") == 0) {
+                preset = ~presets.at(target.copyRange(7, target.size - 1));
+                if(preset.notNil) { value = preset[param] };
+            } {
+                if(target.find("family:") == 0) {
+                    family = target.copyRange(7, target.size - 1);
+                    ~presets.keysValuesDo({ |name, item|
+                        if(value.isNil) {
+                            if(item[\family] == family) { value = item[param] };
+                        };
+                    });
+                };
+            };
+        };
+
+        ~fallback.(value, ~fallback.(~defaults[param], 0)).asFloat;
+    };
+
+    ~rampParam = { |targetName, paramName, value, seconds = 1|
+        var target = targetName.asString;
+        var param = paramName.asString.asSymbol;
+        var duration = seconds.asFloat.clip(0, 60);
+        var rampKey = target ++ ":" ++ param.asString;
+        var oldRamp = ~automationRamps.at(rampKey);
+        var startValue = ~currentParamValue.(target, param);
+        var endValue = ~clampParam.(param, value);
+        var steps = (duration * 20).asInteger.max(1);
+        var routine;
+
+        if(oldRamp.notNil) { oldRamp.stop };
+
+        if(duration <= 0.02) {
+            ~setParam.(target, param, endValue);
+        } {
+            routine = Routine({
+                steps.do({ |index|
+                    var blend = (index + 1) / steps;
+                    var current = startValue + ((endValue - startValue) * blend);
+
+                    ~setParam.(target, param, current);
+                    (duration / steps).wait;
+                });
+                ~automationRamps.removeAt(rampKey);
+                ["Syrincs /ramp complete", target, param, endValue, duration].postln;
+            });
+            ~automationRamps.put(rampKey, routine);
+            ["Syrincs /ramp start", target, param, startValue, "->", endValue, duration].postln;
+            routine.play(SystemClock);
+        };
     };
 
     ~setFx = { |effectName, enabled = 1, paramName = "mix", value = 0|
         var effect = effectName.asString;
         var param = paramName.asString.asSymbol;
         var isEnabled = enabled.asInteger != 0;
-        var target = nil;
-        var allowed = [];
-        var clipped;
 
-        case
-        { effect == "reverb" } {
-            target = ~reverbFx;
-            allowed = [\mix, \room, \damp, \amp];
-        }
-        { effect == "delay" } {
-            target = ~delayFx;
-            allowed = [\mix, \time, \feedback, \amp];
-        }
-        { effect == "chorus" } {
-            target = ~chorusFx;
-            allowed = [\mix, \rate, \depth, \amp];
-        }
-        { effect == "master" } {
-            target = ~masterOut;
-            allowed = [\volume, \drive, \lowpass, \highpass];
-        }
-        {
-            ("Syrincs unknown /fx effect '" ++ effect ++ "'").warn;
-        };
-
-        if(target.notNil) {
-            if(isEnabled.not) {
-                if(effect == "master") {
-                    target.set(\volume, 0.82, \drive, 0, \lowpass, 18000, \highpass, 30);
-                    "Syrincs /fx master reset to conservative defaults".postln;
-                } {
-                    if(effect == "delay") {
-                        target.set(\mix, 0, \feedback, 0);
-                    } {
-                        target.set(\mix, 0);
-                    };
-                    ("Syrincs /fx " ++ effect ++ " disabled").postln;
-                };
+        if(isEnabled.not) {
+            case
+            { effect == "master" } {
+                ~setGlobalParam.("master", \volume, 0.82);
+                ~setGlobalParam.("master", \drive, 0);
+                ~setGlobalParam.("master", \lowpass, 18000);
+                ~setGlobalParam.("master", \highpass, 30);
+                "Syrincs /fx master reset to conservative defaults".postln;
+            }
+            { effect == "delay" } {
+                ~setGlobalParam.("delay", \mix, 0);
+                ~setGlobalParam.("delay", \feedback, 0);
+                "Syrincs /fx delay disabled".postln;
+            }
+            { ["reverb", "chorus"].includes(effect) } {
+                ~setGlobalParam.(effect, \mix, 0);
+                ("Syrincs /fx " ++ effect ++ " disabled").postln;
+            }
+            {
+                ("Syrincs unknown /fx effect '" ++ effect ++ "'").warn;
+            };
+        } {
+            if(~globalTargets.includes(effect).not) {
+                ("Syrincs unknown /fx effect '" ++ effect ++ "'").warn;
             } {
-                if(allowed.includes(param).not) {
-                    ("Syrincs unknown /fx parameter '" ++ param.asString ++ "' for effect '" ++ effect ++ "'").warn;
-                } {
-                    clipped = ~clipFxParam.(effect, param, value);
-                    target.set(param, clipped);
-                    ["Syrincs /fx", effect, param, clipped].postln;
-                };
+                ~setGlobalParam.(effect, param, value);
             };
         };
     };
@@ -977,7 +1169,43 @@ s.waitForBoot({
         };
     }, '/fx', recvPort: 57120);
 
-    ("Syrincs OSC consumer listening on /note, /chord, /drum and /fx at UDP 57120; presets: " ++ ~presets.size).postln;
+    OSCdef(\syrincsSet, { |msg|
+        var target;
+        var param;
+        var value;
+
+        if(msg.size < 4) {
+            ("Syrincs invalid /set message: " ++ msg).warn;
+        } {
+            target = msg[1].asString;
+            param = msg[2].asString;
+            value = msg[3].asFloat;
+
+            ["Syrincs /set", target, param, value].postln;
+            ~setParam.(target, param, value);
+        };
+    }, '/set', recvPort: 57120);
+
+    OSCdef(\syrincsRamp, { |msg|
+        var target;
+        var param;
+        var value;
+        var seconds;
+
+        if(msg.size < 5) {
+            ("Syrincs invalid /ramp message: " ++ msg).warn;
+        } {
+            target = msg[1].asString;
+            param = msg[2].asString;
+            value = msg[3].asFloat;
+            seconds = msg[4].asFloat;
+
+            ["Syrincs /ramp", target, param, value, seconds].postln;
+            ~rampParam.(target, param, value, seconds);
+        };
+    }, '/ramp', recvPort: 57120);
+
+    ("Syrincs OSC consumer listening on /note, /chord, /drum, /fx, /set and /ramp at UDP 57120; presets: " ++ ~presets.size).postln;
     }).play;
 });
 )
