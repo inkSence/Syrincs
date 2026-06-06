@@ -28,4 +28,6 @@ public interface RhythmRepository {
      * Returns all rhythms that have the given information grade (matches column 'info').
      */
     List<HuffmanRhythm> getAllByInformation(Integer information);
+
+    List<HuffmanRhythm> getAllByInformationAndMinDeviation(Integer information, Double minDeviation);
 }

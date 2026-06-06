@@ -1,15 +1,38 @@
 package syrincs.a_domain.rhythm;
 
+import syrincs.a_domain.statistics.StandardDeviation;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class HuffmanRhythm extends Rhythm {
 
+
     int information;
+    double standardDeviation;
 
     public HuffmanRhythm(int numerator, int denominator, int tempo, String onsetList) {
         super(numerator, denominator, tempo, onsetList);
-        this.information = calculateInformation(this.onsetList);
+        List<Integer> informationOfEachBeat = calculateInformationForEachBeat();
+        this.information = informationOfEachBeat.stream().mapToInt(Integer::intValue).sum();
+        this.standardDeviation = StandardDeviation.calc(informationOfEachBeat);
+
+        System.out.println("onsetList: " + onsetList + ", informationOfEachBeat: " + informationOfEachBeat + ", standardDeviation = " + standardDeviation);
+
+    }
+
+    private List<Integer> calculateInformationForEachBeat() {
+        List<Integer> output = new ArrayList<>();
+        boolean playing = false; // fortgeführter Zustand über Beat-Grenzen
+        int idx = 0;
+        for (String onsets : getOnsetListPerBeat()) {
+            Beat beat = new Beat(idx * positionsPerBeat, onsets, playing);
+            Integer info = calculateInformation(beat);
+            output.add(info);
+            playing = playingAfterBeat(playing, onsets);
+            idx++;
+        }
+        return output;
     }
 
     // --- State Pattern implementation (Idle/Playing × NoteValue) ---
@@ -32,10 +55,48 @@ public class HuffmanRhythm extends Rhythm {
         private final List<String> codeList = new ArrayList<>();
     }
 
-    int calculateInformation(String onsetString){
+    // Beat als ganze Zählzeit (4 Onsets bei 4/4) mit fortgeführtem Spielzustand am Beat-Anfang
+    private static final class Beat {
+        final int globalIndex; // Index des ersten Onsets dieses Beats (0,4,8,...)
+        final String onsets;   // genau 4 Zeichen 'x' oder 'o'
+        final boolean playing; // Zustand am Beat-Beginn
+        Beat(int globalIndex, String onsets, boolean playing) {
+            this.globalIndex = globalIndex;
+            this.onsets = onsets;
+            this.playing = playing;
+        }
+    }
+
+    // Leitet den Spielzustand nach dem Beat aus dem Startzustand und den 4 Onsets ab
+    private boolean playingAfterBeat(boolean playingAtStart, String onsets) {
+        boolean playing = playingAtStart;
+        for (int pos = 0; pos < onsets.length(); pos++) {
+            char c = onsets.charAt(pos);
+            if (c == 'x') {
+                playing = true;
+            } else { // 'o'
+                if (pos == 0) playing = false; // nur auf Zählzeit 0 stoppen
+            }
+        }
+        return playing;
+    }
+
+    private int calculateInformation(Beat beat){
+        FSMContext ctx = new FSMContext();
+        // Startzustand anhand des Beat-Startzustands setzen
+        ctx.setState(beat.playing ? PlayingAndQuarter.INSTANCE : IdleAndQuarter.INSTANCE);
+        for (int pos = 0; pos < beat.onsets.length(); pos++) {
+            char c = beat.onsets.charAt(pos);
+            int position = pos; // 0..3 innerhalb des Beats
+            ctx.state.handle(ctx, c, position);
+        }
+        return ctx.getCodeList().size();
+    }
+
+    private int calculateInformation(String onsetString){
 
         FSMContext ctx = new FSMContext();
-        for (int i = 0; i < onsetList.length(); i++) { // bewusst onsetList.length() wie zuvor
+        for (int i = 0; i < onsetString.length(); i++) {
             char c = onsetString.charAt(i);
             int position = getPositionOfBeat(i);
             ctx.state.handle(ctx, c, position);
@@ -151,5 +212,9 @@ public class HuffmanRhythm extends Rhythm {
 
     public int getInformation() {
         return information;
+    }
+
+    public double getStandardDeviation() {
+        return standardDeviation;
     }
 }

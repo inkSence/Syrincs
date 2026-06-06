@@ -1,5 +1,8 @@
 package syrincs.a_domain.rhythm;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Rhythm {
     // "regular recurring motion" https://en.wikipedia.org/wiki/Rhythm
     int numerator = 4;
@@ -7,22 +10,32 @@ public class Rhythm {
     int positionsPerBeat = 4;
     int tempo; // bpm, must be provided by callers
     String onsetList;
+    List<String> onsetListPerBeat;
 
     public Rhythm(int numerator, int denominator, int tempo, String onsetList) {
         this.numerator = numerator;
         this.denominator = denominator;
         this.tempo = tempo;
         this.onsetList = onsetList.replaceAll(" ", "").toLowerCase();
+        hasValidLength(this.onsetList);
+        hasValidCharacters(this.onsetList);
+        this.onsetListPerBeat = makeOnsetBeatPerList(this.onsetList);
     }
 
-    boolean hasValidLength(String onsetList){
+    private void hasValidLength(String onsetList){
         int length = onsetList.length();
         int positionsPerBar = positionsPerBeat * numerator;
-        return length % positionsPerBar == 0 && length > 0;
+        boolean valid = length % positionsPerBar == 0 && length > 0;
+        if(!valid){
+            throw new IllegalArgumentException(String.format("length %d is not valid in %s", length, onsetList));
+        }
     }
 
-    boolean hasValidCharacters(String onsetList){
-        return onsetList.matches("[xo]*");
+    private void hasValidCharacters(String onsetList){
+        boolean matching =  onsetList.matches("[xo]*");
+        if(!matching){
+            throw new IllegalArgumentException("onsets containing invalid characters");
+        }
     }
 
     boolean isOnBeat(int positionInString){
@@ -50,6 +63,20 @@ public class Rhythm {
 
     public String getOnsetList() {
         return onsetList;
+    }
+
+    public List<String> getOnsetListPerBeat() {
+        return onsetListPerBeat;
+    }
+
+    private List<String> makeOnsetBeatPerList(String onsetList){
+        List<String> onsetListPerBeat = new ArrayList<>();
+        for(int i = 0; i < numerator; i++){
+            int beginnIndex = i * positionsPerBeat;
+            String subString = onsetList.substring(beginnIndex, beginnIndex +  positionsPerBeat);
+            onsetListPerBeat.add(subString);
+        }
+        return onsetListPerBeat;
     }
 }
 
