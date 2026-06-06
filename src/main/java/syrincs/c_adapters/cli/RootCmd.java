@@ -125,6 +125,9 @@ public class RootCmd implements Runnable {
                         SuperColliderCmd.FxCmd.class,
                         SuperColliderCmd.SetCmd.class,
                         SuperColliderCmd.RampCmd.class,
+                        SuperColliderCmd.SceneCmd.class,
+                        SuperColliderCmd.RoleCmd.class,
+                        SuperColliderCmd.SceneDemoCmd.class,
                         SuperColliderCmd.DemoCmd.class
                 }
         )
@@ -350,6 +353,112 @@ public class RootCmd implements Runnable {
                             value,
                             seconds
                     );
+                    return 0;
+                }
+            }
+
+            @Command(name = "scene", mixinStandardHelpOptions = true, description = "Send one OSC /scene message to SuperCollider")
+            public static class SceneCmd implements Callable<Integer> {
+                @Parameters(index = "0", description = "Scene name, e.g. scene.chorale")
+                String sceneName;
+
+                @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
+                String host;
+
+                @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
+                int port;
+
+                @Override
+                public Integer call() throws Exception {
+                    var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, 0.0);
+                    adapter.sendScene(sceneName);
+                    System.out.printf(
+                            "[OSC] Sent /scene to %s:%d scene=%s%n",
+                            host,
+                            port,
+                            sceneName
+                    );
+                    return 0;
+                }
+            }
+
+            @Command(name = "role", mixinStandardHelpOptions = true, description = "Send one OSC /role session override to SuperCollider")
+            public static class RoleCmd implements Callable<Integer> {
+                @Parameters(index = "0", description = "Role name, e.g. harmony or role:harmony")
+                String roleName;
+
+                @Parameters(index = "1", description = "Preset name, e.g. pad.warm")
+                String presetName;
+
+                @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
+                String host;
+
+                @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
+                int port;
+
+                @Override
+                public Integer call() throws Exception {
+                    var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, 0.0);
+                    adapter.sendRole(roleName, presetName);
+                    System.out.printf(
+                            "[OSC] Sent /role to %s:%d role=%s preset=%s%n",
+                            host,
+                            port,
+                            roleName,
+                            presetName
+                    );
+                    return 0;
+                }
+            }
+
+            @Command(name = "scene-demo", mixinStandardHelpOptions = true, description = "Send a short role/scene SuperCollider smoke-test sequence")
+            public static class SceneDemoCmd implements Callable<Integer> {
+                @Option(names = "--host", description = "OSC host", defaultValue = SuperColliderOscOutputAdapter.DEFAULT_HOST)
+                String host;
+
+                @Option(names = "--port", description = "OSC UDP port", defaultValue = "57120")
+                int port;
+
+                @Override
+                public Integer call() throws Exception {
+                    var adapter = new SuperColliderOscOutputAdapter(host, port, SuperColliderOscOutputAdapter.DEFAULT_PRESET, 0.0);
+                    int[] chord = {48, 55, 60, 64};
+                    int[] melody = {72, 74, 76};
+                    int[] counter = {67, 65, 64};
+
+                    adapter.sendScene("scene.chorale");
+                    Thread.sleep(180);
+                    adapter.sendChord("role:harmony", chord, 0.58, 1.4, 0.0);
+                    Thread.sleep(520);
+                    for (int i = 0; i < melody.length; i++) {
+                        adapter.sendNote("role:melody", melody[i], 0.55, 0.45, 0.12);
+                        adapter.sendNote("role:counter", counter[i], 0.42, 0.40, -0.12);
+                        Thread.sleep(320);
+                    }
+
+                    Thread.sleep(420);
+                    adapter.sendScene("scene.electronic");
+                    Thread.sleep(180);
+                    adapter.sendChord("role:harmony", chord, 0.58, 1.2, 0.0);
+                    Thread.sleep(420);
+                    adapter.sendNote("role:bass", 36, 0.68, 0.45, -0.10);
+                    for (int i = 0; i < melody.length; i++) {
+                        adapter.sendNote("role:melody", melody[i], 0.58, 0.32, 0.12);
+                        adapter.sendNote("role:counter", counter[i] + 12, 0.46, 0.28, -0.12);
+                        if (i == 0) {
+                            adapter.sendDrum("role:drums", 0.88, 0.0);
+                        }
+                        if (i == 1) {
+                            adapter.sendDrum("drum.snare", 0.62, 0.04);
+                        }
+                        if (i == 2) {
+                            adapter.sendDrum("drum.hat.open", 0.36, -0.18);
+                        }
+                        Thread.sleep(300);
+                    }
+
+                    adapter.sendScene("scene.hindemith_lab");
+                    System.out.printf("[OSC] Sent SuperCollider scene demo to %s:%d%n", host, port);
                     return 0;
                 }
             }

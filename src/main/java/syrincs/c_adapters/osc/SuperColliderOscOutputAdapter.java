@@ -160,6 +160,23 @@ public class SuperColliderOscOutputAdapter implements MidiOutputPort {
         send(packet);
     }
 
+    public void sendScene(String sceneName) throws IOException {
+        byte[] packet = OscMessageBuilder.build(
+                "/scene",
+                requireText(sceneName, "sceneName")
+        );
+        send(packet);
+    }
+
+    public void sendRole(String roleName, String presetName) throws IOException {
+        byte[] packet = OscMessageBuilder.build(
+                "/role",
+                requireText(roleName, "roleName"),
+                requireText(presetName, "presetName")
+        );
+        send(packet);
+    }
+
     private void send(byte[] packet) throws IOException {
         InetAddress address = InetAddress.getByName(host);
         DatagramPacket datagram = new DatagramPacket(packet, packet.length, address, port);

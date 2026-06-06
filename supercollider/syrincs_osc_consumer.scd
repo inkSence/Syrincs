@@ -670,8 +670,223 @@ s.waitForBoot({
     // Compatibility alias for the first proof of concept.
     ~presets.put("basic.sine", ~presets.at("test.sine"));
 
+    ~basePresets = Dictionary.new;
+    ~presets.keysValuesDo({ |name, preset|
+        ~basePresets.put(name, preset.copy);
+    });
+
+    ~resetPresetDefaults = {
+        ~basePresets.keysValuesDo({ |name, preset|
+            ~presets.put(name, preset.copy);
+        });
+    };
+
+    ~currentScene = nil;
+    ~roleOverrides = ();
+    ~roleDefaults = (
+        bass: "bass.round",
+        harmony: "pad.warm",
+        melody: "lead.saw",
+        counter: "pluck.harplike",
+        pad: "pad.warm",
+        keys: "keys.fm_epiano",
+        drums: "drum.kick"
+    );
+
+    ~scenes = Dictionary.new;
+    ~putScene = { |name, description, roles, globals, familyParams, presetParams|
+        ~scenes.put(name, (
+            description: description,
+            roles: roles,
+            globals: globals,
+            familyParams: familyParams,
+            presetParams: presetParams
+        ));
+    };
+
+    ~putScene.("scene.minimal", "Dry reduced scene", (
+        bass: "bass.sub",
+        harmony: "pad.dark",
+        melody: "lead.sine",
+        counter: "pluck.pizzicato",
+        pad: "pad.dark",
+        keys: "keys.mallet",
+        drums: "drum.kick.short"
+    ), [
+        (target: "reverb", param: \mix, value: 0.06),
+        (target: "delay", param: \mix, value: 0.0),
+        (target: "delay", param: \feedback, value: 0.0),
+        (target: "chorus", param: \mix, value: 0.03),
+        (target: "master", param: \volume, value: 0.78)
+    ], [
+        (family: "pad", param: \cutoff, value: 900),
+        (family: "pad", param: \reverbSend, value: 0.08),
+        (family: "pad", param: \chorusSend, value: 0.03)
+    ], []);
+
+    ~putScene.("scene.chorale", "Clear organ and slow strings for harmonic work", (
+        bass: "organ.soft",
+        harmony: "organ.full",
+        melody: "wind.fluteish",
+        counter: "pluck.pizzicato",
+        pad: "strings.slow",
+        keys: "organ.soft",
+        drums: "drum.kick"
+    ), [
+        (target: "reverb", param: \mix, value: 0.20),
+        (target: "reverb", param: \room, value: 0.68),
+        (target: "delay", param: \mix, value: 0.0),
+        (target: "delay", param: \feedback, value: 0.0),
+        (target: "chorus", param: \mix, value: 0.04),
+        (target: "master", param: \volume, value: 0.82)
+    ], [
+        (family: "organ", param: \reverbSend, value: 0.16),
+        (family: "strings", param: \reverbSend, value: 0.28)
+    ], [
+        (preset: "organ.full", param: \cutoff, value: 8200),
+        (preset: "strings.slow", param: \chorusSend, value: 0.14)
+    ]);
+
+    ~putScene.("scene.electronic", "Broader synthetic scene with restrained delay", (
+        bass: "bass.round",
+        harmony: "pad.warm",
+        melody: "lead.saw",
+        counter: "pluck.harplike",
+        pad: "pad.warm",
+        keys: "keys.fm_epiano",
+        drums: "drum.kick"
+    ), [
+        (target: "reverb", param: \mix, value: 0.16),
+        (target: "delay", param: \mix, value: 0.16),
+        (target: "delay", param: \time, value: 0.33),
+        (target: "delay", param: \feedback, value: 0.28),
+        (target: "chorus", param: \mix, value: 0.14),
+        (target: "chorus", param: \depth, value: 0.014),
+        (target: "master", param: \volume, value: 0.82)
+    ], [
+        (family: "pad", param: \cutoff, value: 2400),
+        (family: "pad", param: \chorusSend, value: 0.22),
+        (family: "lead", param: \delaySend, value: 0.14)
+    ], []);
+
+    ~putScene.("scene.dark", "Dark filtered scene with deep bass", (
+        bass: "bass.sub",
+        harmony: "pad.dark",
+        melody: "wind.clarinetish",
+        counter: "pluck.guitarish",
+        pad: "pad.dark",
+        keys: "keys.fm_epiano",
+        drums: "drum.kick.deep"
+    ), [
+        (target: "reverb", param: \mix, value: 0.18),
+        (target: "reverb", param: \room, value: 0.62),
+        (target: "delay", param: \mix, value: 0.04),
+        (target: "delay", param: \feedback, value: 0.12),
+        (target: "chorus", param: \mix, value: 0.08),
+        (target: "master", param: \volume, value: 0.78)
+    ], [
+        (family: "pad", param: \cutoff, value: 950),
+        (family: "strings", param: \cutoff, value: 1500)
+    ], []);
+
+    ~putScene.("scene.bright", "Brighter scene for clear tests and melodic figures", (
+        bass: "bass.soft",
+        harmony: "pad.string",
+        melody: "lead.saw",
+        counter: "pluck.harplike",
+        pad: "strings.pad",
+        keys: "keys.bell",
+        drums: "drum.kick.short"
+    ), [
+        (target: "reverb", param: \mix, value: 0.14),
+        (target: "delay", param: \mix, value: 0.08),
+        (target: "delay", param: \feedback, value: 0.18),
+        (target: "chorus", param: \mix, value: 0.10),
+        (target: "master", param: \volume, value: 0.80)
+    ], [
+        (family: "pad", param: \cutoff, value: 4200),
+        (family: "strings", param: \cutoff, value: 3600),
+        (family: "brass", param: \cutoff, value: 5600)
+    ], []);
+
+    ~putScene.("scene.plucked", "Rhythmic plucked sketch scene", (
+        bass: "bass.round",
+        harmony: "pluck.guitarish",
+        melody: "pluck.harplike",
+        counter: "pluck.pizzicato",
+        pad: "pad.organ",
+        keys: "keys.mallet",
+        drums: "drum.click"
+    ), [
+        (target: "reverb", param: \mix, value: 0.16),
+        (target: "delay", param: \mix, value: 0.10),
+        (target: "delay", param: \feedback, value: 0.20),
+        (target: "chorus", param: \mix, value: 0.04),
+        (target: "master", param: \volume, value: 0.80)
+    ], [
+        (family: "pluck", param: \reverbSend, value: 0.18),
+        (family: "pluck", param: \delaySend, value: 0.08)
+    ], []);
+
+    ~putScene.("scene.hindemith_lab", "Clear default scene for Hindemith chord structures", (
+        bass: "organ.soft",
+        harmony: "organ.full",
+        melody: "lead.sine",
+        counter: "pluck.harplike",
+        pad: "strings.pad",
+        keys: "keys.fm_epiano",
+        drums: "drum.kick"
+    ), [
+        (target: "reverb", param: \mix, value: 0.16),
+        (target: "reverb", param: \room, value: 0.55),
+        (target: "delay", param: \mix, value: 0.0),
+        (target: "delay", param: \feedback, value: 0.0),
+        (target: "chorus", param: \mix, value: 0.04),
+        (target: "master", param: \volume, value: 0.82)
+    ], [
+        (family: "organ", param: \reverbSend, value: 0.14),
+        (family: "pad", param: \cutoff, value: 2600)
+    ], []);
+
+    ~resolvePresetName = { |presetName, context = \note|
+        var raw = presetName.asString;
+        var roleName;
+        var roleSymbol;
+        var scene;
+        var resolved = nil;
+
+        if(raw.find("role:") == 0) {
+            roleName = raw.copyRange(5, raw.size - 1);
+            roleSymbol = roleName.asSymbol;
+            resolved = ~roleOverrides[roleSymbol];
+
+            if(resolved.isNil) {
+                if(~currentScene.notNil) {
+                    scene = ~scenes.at(~currentScene);
+                    if(scene.notNil) {
+                        resolved = scene[\roles][roleSymbol];
+                    };
+                };
+            };
+
+            if(resolved.isNil) {
+                resolved = ~roleDefaults[roleSymbol];
+            };
+
+            if(resolved.isNil) {
+                ("Syrincs unknown role '" ++ roleName ++ "' for " ++ context.asString ++ ", falling through to preset fallback").warn;
+                raw;
+            } {
+                ["Syrincs role", roleName, "scene", ~fallback.(~currentScene, "default"), "->", resolved].postln;
+                resolved.asString;
+            };
+        } {
+            raw;
+        };
+    };
+
     ~presetForNote = { |presetName|
-        var name = presetName.asString;
+        var name = ~resolvePresetName.(presetName, \note);
         var preset = ~presets.at(name);
 
         if(preset.isNil) {
@@ -687,7 +902,7 @@ s.waitForBoot({
     };
 
     ~presetForDrum = { |presetName|
-        var name = presetName.asString;
+        var name = ~resolvePresetName.(presetName, \drum);
         var preset = ~presets.at(name);
 
         if(preset.isNil) {
@@ -1109,6 +1324,47 @@ s.waitForBoot({
         };
     };
 
+    ~activateScene = { |sceneName|
+        var name = sceneName.asString;
+        var scene = ~scenes.at(name);
+
+        if(scene.isNil) {
+            ("Syrincs unknown scene '" ++ name ++ "', keeping current scene").warn;
+        } {
+            ~currentScene = name;
+            ~resetPresetDefaults.();
+
+            ~fallback.(scene[\globals], []).do({ |entry|
+                ~setGlobalParam.(entry[\target], entry[\param], entry[\value]);
+            });
+            ~fallback.(scene[\familyParams], []).do({ |entry|
+                ~setFamilyParam.(entry[\family], entry[\param], entry[\value]);
+            });
+            ~fallback.(scene[\presetParams], []).do({ |entry|
+                ~setPresetParam.(entry[\preset], entry[\param], entry[\value], true);
+            });
+
+            ["Syrincs scene active", name, scene[\description]].postln;
+            ["Syrincs scene roles", scene[\roles]].postln;
+        };
+    };
+
+    ~setRole = { |roleName, presetName|
+        var role = roleName.asString;
+        var preset = presetName.asString;
+
+        if(role.find("role:") == 0) {
+            role = role.copyRange(5, role.size - 1);
+        };
+
+        if(~presets.at(preset).isNil) {
+            ("Syrincs cannot map role '" ++ role ++ "' to unknown preset '" ++ preset ++ "'").warn;
+        } {
+            ~roleOverrides.put(role.asSymbol, preset);
+            ["Syrincs role override", role, "->", preset].postln;
+        };
+    };
+
     OSCdef(\syrincsNote, { |msg|
         var preset = msg[1].asString;
         var midiNote = msg[2].asInteger.clip(0, 127);
@@ -1205,7 +1461,35 @@ s.waitForBoot({
         };
     }, '/ramp', recvPort: 57120);
 
-    ("Syrincs OSC consumer listening on /note, /chord, /drum, /fx, /set and /ramp at UDP 57120; presets: " ++ ~presets.size).postln;
+    OSCdef(\syrincsScene, { |msg|
+        var sceneName;
+
+        if(msg.size < 2) {
+            ("Syrincs invalid /scene message: " ++ msg).warn;
+        } {
+            sceneName = msg[1].asString;
+
+            ["Syrincs /scene", sceneName].postln;
+            ~activateScene.(sceneName);
+        };
+    }, '/scene', recvPort: 57120);
+
+    OSCdef(\syrincsRole, { |msg|
+        var roleName;
+        var presetName;
+
+        if(msg.size < 3) {
+            ("Syrincs invalid /role message: " ++ msg).warn;
+        } {
+            roleName = msg[1].asString;
+            presetName = msg[2].asString;
+
+            ["Syrincs /role", roleName, presetName].postln;
+            ~setRole.(roleName, presetName);
+        };
+    }, '/role', recvPort: 57120);
+
+    ("Syrincs OSC consumer listening on /note, /chord, /drum, /fx, /set, /ramp, /scene and /role at UDP 57120; presets: " ++ ~presets.size ++ "; scenes: " ++ ~scenes.size).postln;
     }).play;
 });
 )

@@ -10,7 +10,7 @@ Die aktuelle Stufe bleibt bewusst klein:
 Syrincs CLI
 -> SuperColliderOscOutputAdapter
 -> OSC
--> Preset
+-> Scene/Role/Preset
 -> Synth/Drum oder optionaler Sample-Player
 -> Dry/FX Sends
 -> Reverb/Delay/Chorus
@@ -40,7 +40,7 @@ ausführen.
 Wenn der Consumer bereit ist, erscheint:
 
 ```text
-Syrincs OSC consumer listening on /note, /chord, /drum, /fx, /set and /ramp at UDP 57120
+Syrincs OSC consumer listening on /note, /chord, /drum, /fx, /set, /ramp, /scene and /role at UDP 57120
 ```
 
 ## OSC-API
@@ -101,6 +101,18 @@ Parameter ueber Zeit veraendern:
 /ramp target param value seconds
 ```
 
+Szene setzen:
+
+```text
+/scene sceneName
+```
+
+Rolle fuer die laufende Session ueberschreiben:
+
+```text
+/role roleName presetName
+```
+
 Targets:
 
 - `master`
@@ -122,10 +134,12 @@ Beispiele:
 /ramp reverb mix 0.4 2.0
 /ramp master volume 0.6 1.5
 /ramp family:pad cutoff 5000 4.0
+/scene scene.chorale
+/role harmony pad.string
 ```
 
 Die bestehenden `/note`-, `/chord`-, `/drum`- und `/fx`-Formate bleiben
-kompatibel.
+kompatibel. Presets bleiben weiterhin direkt verwendbar.
 
 ## Audio-Routing
 
@@ -205,6 +219,69 @@ Zentrale Parametergrenzen:
 Wenn fuer dasselbe `target:param` eine neue Rampe gestartet wird, stoppt sie
 die vorherige Rampe. Das verhindert konkurrierende Automation auf demselben
 Parameter.
+
+## Rollen Und Szenen
+
+Neben konkreten Presetnamen kann Syrincs Rollen senden. Rollen beginnen mit
+`role:` und werden in SuperCollider anhand der aktiven Szene auf Presets
+aufgeloest.
+
+Verfuegbare Rollen:
+
+- `role:bass`
+- `role:harmony`
+- `role:melody`
+- `role:counter`
+- `role:pad`
+- `role:keys`
+- `role:drums`
+
+Globale Rollen-Fallbacks ohne aktive Szene:
+
+- `role:bass` -> `bass.round`
+- `role:harmony` -> `pad.warm`
+- `role:melody` -> `lead.saw`
+- `role:counter` -> `pluck.harplike`
+- `role:pad` -> `pad.warm`
+- `role:keys` -> `keys.fm_epiano`
+- `role:drums` -> `drum.kick`
+
+Verfuegbare Szenen:
+
+- `scene.minimal`: trocken, reduziert, dunkler Pad-Klang.
+- `scene.chorale`: klare Orgel- und String-Defaults fuer harmonische Arbeit.
+- `scene.electronic`: breiter, synthetischer, mit vorsichtigem Delay/Chorus.
+- `scene.dark`: dunkler gefiltert mit tiefem Bass.
+- `scene.bright`: heller, klarer, gut fuer Tests und melodische Figuren.
+- `scene.plucked`: rhythmisch gezupfter Skizzenklang.
+- `scene.hindemith_lab`: klare Defaults fuer Hindemith-Akkordstrukturen.
+
+Szenen enthalten Rollenzuordnungen und konservative globale FX-/Master- sowie
+Preset-/Family-Parameterdefaults. Beim Szenenwechsel werden Presets zuerst auf
+die Basiswerte der aktuellen SuperCollider-Session zurueckgesetzt und danach
+die Szenenwerte angewendet. Role-Overrides per `/role` bleiben bis zum Reload
+des Skripts bestehen.
+
+Beispiele:
+
+```text
+/scene scene.chorale
+/chord role:harmony 48 55 60 64 0.65 2.0 0.0
+/note role:melody 72 0.6 0.8 0.1
+/scene scene.electronic
+/chord role:harmony 48 55 60 64 0.65 2.0 0.0
+/role harmony pad.string
+```
+
+Fallback-Verhalten:
+
+- Normale Presetnamen wie `pad.warm` bleiben unveraendert.
+- Bekannte Rollen werden zuerst ueber `/role`-Overrides, dann ueber die aktive
+  Szene und danach ueber globale Rollen-Fallbacks aufgeloest.
+- Unbekannte Rollen fallen auf das bestehende Preset-Fallback-Verhalten
+  zurueck.
+- Szenen und Rollen gelten nur in der laufenden SuperCollider-Session.
+- Es gibt keine Persistenz fuer Szenen-, Rollen- oder Preset-Aenderungen.
 
 ## SynthDef-Familien
 
@@ -514,6 +591,18 @@ mvn exec:java -Dexec.args="play sc ramp reverb mix 0.4 2.0"
 mvn exec:java -Dexec.args="play sc ramp family:pad cutoff 5000 4.0"
 ```
 
+Szenen und Rollen:
+
+```bash
+mvn exec:java -Dexec.args="play sc scene scene.chorale"
+mvn exec:java -Dexec.args="play sc chord 48 55 60 64 --preset role:harmony --duration 2.0"
+mvn exec:java -Dexec.args="play sc 72 --preset role:melody --duration 0.8"
+mvn exec:java -Dexec.args="play sc scene scene.electronic"
+mvn exec:java -Dexec.args="play sc chord 48 55 60 64 --preset role:harmony --duration 1.5"
+mvn exec:java -Dexec.args="play sc role harmony pad.string"
+mvn exec:java -Dexec.args="play sc scene-demo"
+```
+
 `--synth` existiert noch als Alias fuer `--preset`, neue Beispiele sollten aber
 `--preset` verwenden.
 
@@ -565,12 +654,25 @@ mvn exec:java -Dexec.args="play sc 60 --preset keys.piano.sample --duration 1.0"
 mvn exec:java -Dexec.args="play sc 64 --preset pluck.sample --duration 0.7"
 ```
 
+Fuer den Rollen-/Szenen-Slice gibt es eine kurze eigene Demo:
+
+```bash
+mvn exec:java -Dexec.args="play sc scene-demo"
+```
+
+Sie aktiviert zuerst `scene.chorale` und spielt `role:harmony`,
+`role:melody` und `role:counter`. Danach aktiviert sie `scene.electronic` und
+spielt denselben musikalischen Inhalt wieder mit denselben Rollen. Der
+Klangwechsel soll aus der Szene kommen, nicht aus Java-seitig geaenderten
+Presetnamen.
+
 ## Automatisierter Smoke-Test
 
 Der JUnit-Test startet keinen SuperCollider-Server. Er bindet lokal einen
-UDP-Port und prueft, dass Syrincs OSC-Pakete fuer `/note`, `/chord`, `/drum`
-`/fx`, `/set` und `/ramp` erzeugt. Sample-Presetnamen werden dabei wie normale
-Preset-Strings geprueft; echte Audiodateien sind nicht noetig:
+UDP-Port und prueft, dass Syrincs OSC-Pakete fuer `/note`, `/chord`, `/drum`,
+`/fx`, `/set`, `/ramp`, `/scene` und `/role` erzeugt. Sample-Presetnamen werden
+dabei wie normale Preset-Strings geprueft; echte Audiodateien sind nicht
+noetig:
 
 ```bash
 mvn -Dtest=SuperColliderOscOutputAdapterTest test
@@ -599,7 +701,11 @@ Falls kein Klang kommt:
 - keine Plugin-Parameterautomation
 - keine DAW-artige Effektkette
 - keine Automation-Lanes oder Timeline
+- keine DAW-artige Szenenautomation
+- keine Kompositionslogik in SuperCollider
+- keine GUI
 - keine Persistenz fuer Preset-Aenderungen
+- keine DB-Persistenz fuer Szenen oder Rollen
 - keine komplexe Voice-ID-Steuerung
 - keine realistische Orchesteremulation
 - keine neue Java-Output-Architektur
@@ -611,5 +717,5 @@ Falls kein Klang kommt:
 - App-seitig eine allgemeinere Output-Abstraktion neben `MidiOutputPort`.
 - Preset-Aenderungen optional persistierbar machen.
 - Komplexere Automation-Lanes nur bei konkretem Bedarf.
-- Feinere FX-Presets oder Szenen fuer Reverb/Delay/Chorus.
+- Feinere FX-Presets und ausgereiftere Szenen fuer Reverb/Delay/Chorus.
 - Rhythmus-Domaene spaeter auf `/drum` routen.

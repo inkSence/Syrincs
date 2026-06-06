@@ -106,6 +106,27 @@ class SuperColliderOscOutputAdapterTest {
         );
     }
 
+    @Test
+    void sendsSceneAsOscUdpPacket() throws Exception {
+        assertOscPacket(
+                adapter -> adapter.sendScene("scene.chorale"),
+                "/scene",
+                ",s",
+                "scene.chorale"
+        );
+    }
+
+    @Test
+    void sendsRoleAsOscUdpPacket() throws Exception {
+        assertOscPacket(
+                adapter -> adapter.sendRole("harmony", "pad.warm"),
+                "/role",
+                ",ss",
+                "harmony",
+                "pad.warm"
+        );
+    }
+
     private static void assertOscPacket(OscSend send, String... expectedText) throws Exception {
         InetAddress loopback = InetAddress.getLoopbackAddress();
 
