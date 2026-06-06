@@ -44,6 +44,16 @@ class SuperColliderOscOutputAdapterTest {
     }
 
     @Test
+    void sendsClapDrumPresetAsOscUdpPacket() throws Exception {
+        assertOscPacket(
+                adapter -> adapter.sendDrum("drum.clap", 0.7, 0.0),
+                "/drum",
+                ",sff",
+                "drum.clap"
+        );
+    }
+
+    @Test
     void sendsFxAsOscUdpPacket() throws Exception {
         assertOscPacket(
                 adapter -> adapter.sendFx("reverb", true, "mix", 0.25),

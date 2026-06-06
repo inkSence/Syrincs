@@ -194,18 +194,22 @@ s.waitForBoot({
 
     SynthDef(\syrincsKick, { |freq = 120, amp = 0.8, pan = 0, decay = 0.34,
         drive = 0, pitchStart = 82, pitchEnd = 38, click = 0.05,
-        cutoff = 7000, rq = 0.5, tone = 185,
+        cutoff = 7000, rq = 0.5, tone = 185, noise = 0.02, body = 0.9,
+        snap = 0.0, spread = 0.02, vel = 1,
         out = 0, reverbOut = 0, delayOut = 0, chorusOut = 0,
         reverbSend = 0, delaySend = 0, chorusSend = 0|
 
-        var env = EnvGen.kr(Env.perc(0.001, decay.clip(0.08, 1.2)), doneAction: 2);
-        var clickEnv = EnvGen.kr(Env.perc(0.001, 0.018));
-        var pitch = EnvGen.kr(Env([pitchStart, pitchEnd], [0.055], \exp));
-        var sig = SinOsc.ar(pitch) + BPF.ar(WhiteNoise.ar(click.clip(0, 0.3)), 2600, 0.5) * clickEnv;
+        var velocity = vel.clip(0, 1);
+        var env = EnvGen.kr(Env.perc(0.001, decay.clip(0.07, 0.95), 1, -4), doneAction: 2);
+        var clickEnv = EnvGen.kr(Env.perc(0.001, 0.012 + (velocity * 0.008), 1, -7));
+        var pitch = EnvGen.kr(Env([pitchStart.clip(45, 170), pitchEnd.clip(25, 95)], [0.038 + (decay.clip(0.07, 0.95) * 0.04)], \exp));
+        var bodySig = SinOsc.ar(pitch) + LFTri.ar(pitch * 0.5, 0, body.clip(0, 1) * 0.18);
+        var clickSig = BPF.ar(WhiteNoise.ar(click.clip(0, 0.35) * (0.65 + (velocity * 0.35))), cutoff.clip(900, 9000), rq.clip(0.08, 1)) * clickEnv;
+        var sig = (bodySig * body.clip(0, 1)) + clickSig + (PinkNoise.ar(noise.clip(0, 0.12)) * env * 0.12);
         var voice;
 
-        sig = (sig * (1 + drive.clip(0, 7))).tanh;
-        voice = Pan2.ar(sig * env * amp, pan.clip(-1, 1));
+        sig = (sig * (1 + drive.clip(0, 4) + (velocity * 0.18))).tanh;
+        voice = Pan2.ar(sig * env * amp.clip(0, 0.95) * 0.86, pan.clip(-1, 1));
         Out.ar(out, voice);
         Out.ar(reverbOut, voice * reverbSend.clip(0, 1));
         Out.ar(delayOut, voice * delaySend.clip(0, 1));
@@ -214,18 +218,23 @@ s.waitForBoot({
 
     SynthDef(\syrincsSnare, { |freq = 120, amp = 0.65, pan = 0, decay = 0.22,
         cutoff = 2100, rq = 0.7, drive = 0, pitchStart = 82,
-        pitchEnd = 38, click = 0.05, tone = 185,
+        pitchEnd = 38, click = 0.05, tone = 185, noise = 0.72,
+        body = 0.28, snap = 0.35, spread = 0.02, vel = 1,
         out = 0, reverbOut = 0, delayOut = 0, chorusOut = 0,
         reverbSend = 0, delaySend = 0, chorusSend = 0|
 
-        var env = EnvGen.kr(Env.perc(0.002, decay.clip(0.05, 0.8)), doneAction: 2);
-        var noise = BPF.ar(WhiteNoise.ar, cutoff.clip(500, 9000), rq.clip(0.05, 1));
-        var body = SinOsc.ar(tone.clip(80, 350), 0, 0.25);
-        var sig = (noise + body) * env;
+        var velocity = vel.clip(0, 1);
+        var env = EnvGen.kr(Env.perc(0.002, decay.clip(0.045, 0.85), 1, -4), doneAction: 2);
+        var bodyEnv = EnvGen.kr(Env.perc(0.001, (decay * 0.45).clip(0.035, 0.28), 1, -5));
+        var snapEnv = EnvGen.kr(Env.perc(0.001, (0.025 + (velocity * 0.025)).clip(0.015, 0.08), 1, -8));
+        var tuned = SinOsc.ar(tone.clip(90, 420), 0, body.clip(0, 1)) + SinOsc.ar(tone.clip(90, 420) * 1.62, 0, body.clip(0, 1) * 0.18);
+        var noiseSig = BPF.ar(WhiteNoise.ar(noise.clip(0, 1) * (0.72 + (velocity * 0.35))), cutoff.clip(700, 9500) * (1 + (velocity * 0.08)), rq.clip(0.08, 1));
+        var snapSig = HPF.ar(WhiteNoise.ar(snap.clip(0, 1) * (0.5 + velocity)), 4500);
+        var sig = (noiseSig * env) + (tuned * bodyEnv) + (snapSig * snapEnv);
         var voice;
 
-        sig = (sig * (1 + drive.clip(0, 7))).tanh;
-        voice = Pan2.ar(sig * amp, pan.clip(-1, 1));
+        sig = (sig * (1 + drive.clip(0, 4))).tanh;
+        voice = Pan2.ar(sig * amp.clip(0, 0.9) * 0.78, pan.clip(-1, 1));
         Out.ar(out, voice);
         Out.ar(reverbOut, voice * reverbSend.clip(0, 1));
         Out.ar(delayOut, voice * delaySend.clip(0, 1));
@@ -234,16 +243,24 @@ s.waitForBoot({
 
     SynthDef(\syrincsHatClosed, { |freq = 120, amp = 0.45, pan = 0,
         decay = 0.075, drive = 0, pitchStart = 82, pitchEnd = 38,
-        click = 0.05, cutoff = 7600, rq = 0.5, tone = 185,
+        click = 0.05, cutoff = 7600, rq = 0.5, tone = 185, noise = 0.75,
+        body = 0.12, snap = 0.2, spread = 0.02, vel = 1,
         out = 0, reverbOut = 0, delayOut = 0, chorusOut = 0,
         reverbSend = 0, delaySend = 0, chorusSend = 0|
 
-        var env = EnvGen.kr(Env.perc(0.001, decay.clip(0.02, 0.22)), doneAction: 2);
-        var sig = HPF.ar(WhiteNoise.ar, cutoff.clip(3500, 14000));
+        var velocity = vel.clip(0, 1);
+        var bright = (cutoff.clip(3600, 11500) * (1 + (velocity * 0.10))).clip(3600, 12500);
+        var env = EnvGen.kr(Env.perc(0.001, decay.clip(0.018, 0.20), 1, -8), doneAction: 2);
+        var noiseSig = HPF.ar(WhiteNoise.ar(noise.clip(0, 1)), bright * 0.45);
+        var metal = Mix.new([
+            BPF.ar(noiseSig, bright * 0.74, rq.clip(0.08, 1)),
+            BPF.ar(noiseSig, bright * 1.12, rq.clip(0.08, 1) * 0.8)
+        ]) * 0.55;
+        var sig = (metal + HPF.ar(WhiteNoise.ar(snap.clip(0, 0.7)), bright)) * env;
         var voice;
 
-        sig = BPF.ar(sig, cutoff.clip(3500, 14000), rq.clip(0.05, 1));
-        voice = Pan2.ar(sig * env * amp, pan.clip(-1, 1));
+        sig = (sig * (1 + drive.clip(0, 2))).tanh;
+        voice = Pan2.ar(sig * amp.clip(0, 0.72) * 0.56, pan.clip(-1, 1));
         Out.ar(out, voice);
         Out.ar(reverbOut, voice * reverbSend.clip(0, 1));
         Out.ar(delayOut, voice * delaySend.clip(0, 1));
@@ -252,16 +269,25 @@ s.waitForBoot({
 
     SynthDef(\syrincsHatOpen, { |freq = 120, amp = 0.42, pan = 0,
         decay = 0.42, drive = 0, pitchStart = 82, pitchEnd = 38,
-        click = 0.05, cutoff = 6800, rq = 0.42, tone = 185,
+        click = 0.05, cutoff = 6800, rq = 0.42, tone = 185, noise = 0.70,
+        body = 0.10, snap = 0.16, spread = 0.02, vel = 1,
         out = 0, reverbOut = 0, delayOut = 0, chorusOut = 0,
         reverbSend = 0, delaySend = 0, chorusSend = 0|
 
-        var env = EnvGen.kr(Env.perc(0.002, decay.clip(0.12, 1.0)), doneAction: 2);
-        var sig = HPF.ar(WhiteNoise.ar, cutoff.clip(3000, 13000));
+        var velocity = vel.clip(0, 1);
+        var bright = (cutoff.clip(3200, 10500) * (1 + (velocity * 0.08))).clip(3200, 11500);
+        var env = EnvGen.kr(Env.perc(0.002, decay.clip(0.12, 0.85), 1, -5), doneAction: 2);
+        var noiseSig = HPF.ar(WhiteNoise.ar(noise.clip(0, 1)), bright * 0.38);
+        var metal = Mix.new([
+            BPF.ar(noiseSig, bright * 0.68, rq.clip(0.08, 1)),
+            BPF.ar(noiseSig, bright * 1.05, rq.clip(0.08, 1) * 0.75),
+            BPF.ar(noiseSig, bright * 1.34, rq.clip(0.08, 1) * 0.62)
+        ]) * 0.38;
+        var sig = (metal + HPF.ar(WhiteNoise.ar(snap.clip(0, 0.6)), bright)) * env;
         var voice;
 
-        sig = BPF.ar(sig, cutoff.clip(3000, 13000), rq.clip(0.05, 1));
-        voice = Pan2.ar(sig * env * amp, pan.clip(-1, 1));
+        sig = (sig * (1 + drive.clip(0, 2))).tanh;
+        voice = Pan2.ar(sig * amp.clip(0, 0.68) * 0.50, pan.clip(-1, 1));
         Out.ar(out, voice);
         Out.ar(reverbOut, voice * reverbSend.clip(0, 1));
         Out.ar(delayOut, voice * delaySend.clip(0, 1));
@@ -269,18 +295,89 @@ s.waitForBoot({
     }).add;
 
     SynthDef(\syrincsTom, { |freq = 120, amp = 0.65, pan = 0, decay = 0.35,
-        drive = 0, pitchStart = 82, pitchEnd = 78, click = 0.05,
-        cutoff = 7000, rq = 0.5, tone = 185,
+        drive = 0, pitchStart = 160, pitchEnd = 110, click = 0.05,
+        cutoff = 7000, rq = 0.5, tone = 185, noise = 0.04, body = 0.85,
+        snap = 0.08, spread = 0.02, vel = 1,
         out = 0, reverbOut = 0, delayOut = 0, chorusOut = 0,
         reverbSend = 0, delaySend = 0, chorusSend = 0|
 
-        var env = EnvGen.kr(Env.perc(0.004, decay.clip(0.08, 1.0)), doneAction: 2);
-        var pitch = EnvGen.kr(Env([freq, pitchEnd], [decay.clip(0.08, 1.0)], \exp));
-        var sig = Mix.new([SinOsc.ar(pitch), LFTri.ar(pitch * 1.01, 0, 0.35)]) + BPF.ar(WhiteNoise.ar(0.04), freq * 1.8, 0.4);
+        var velocity = vel.clip(0, 1);
+        var env = EnvGen.kr(Env.perc(0.003, decay.clip(0.10, 0.95), 1, -4), doneAction: 2);
+        var pitch = EnvGen.kr(Env([pitchStart.clip(60, 360), pitchEnd.clip(45, 260)], [(decay * 0.38).clip(0.05, 0.32)], \exp));
+        var bodySig = SinOsc.ar(pitch) + LFTri.ar(pitch * 1.01, 0, 0.34);
+        var attack = BPF.ar(WhiteNoise.ar(noise.clip(0, 0.25) * (0.6 + velocity)), cutoff.clip(500, 9000), rq.clip(0.08, 1)) * EnvGen.kr(Env.perc(0.001, 0.028, 1, -8));
+        var sig = (bodySig * body.clip(0, 1) * env) + attack;
         var voice;
 
-        sig = (sig * (1 + drive.clip(0, 7))).tanh;
-        voice = Pan2.ar(sig * env * amp, pan.clip(-1, 1));
+        sig = (sig * (1 + drive.clip(0, 3))).tanh;
+        voice = Pan2.ar(sig * amp.clip(0, 0.85) * 0.72, pan.clip(-1, 1));
+        Out.ar(out, voice);
+        Out.ar(reverbOut, voice * reverbSend.clip(0, 1));
+        Out.ar(delayOut, voice * delaySend.clip(0, 1));
+        Out.ar(chorusOut, voice * chorusSend.clip(0, 1));
+    }).add;
+
+    SynthDef(\syrincsClap, { |freq = 120, amp = 0.58, pan = 0, decay = 0.28,
+        drive = 0, pitchStart = 82, pitchEnd = 38, click = 0.05,
+        cutoff = 2600, rq = 0.55, tone = 185, noise = 0.78, body = 0.18,
+        snap = 0.36, spread = 0.024, vel = 1,
+        out = 0, reverbOut = 0, delayOut = 0, chorusOut = 0,
+        reverbSend = 0, delaySend = 0, chorusSend = 0|
+
+        var velocity = vel.clip(0, 1);
+        var cluster = EnvGen.kr(Env([0, 1, 0, 0.82, 0, 0.62, 0], [0.002, spread.clip(0.008, 0.055), 0.002, spread.clip(0.008, 0.055), 0.002, decay.clip(0.08, 0.65)], -5), doneAction: 2);
+        var tail = EnvGen.kr(Env.perc(0.004, decay.clip(0.08, 0.7), 1, -4));
+        var noiseSig = BPF.ar(WhiteNoise.ar(noise.clip(0, 1) * (0.72 + (velocity * 0.25))), cutoff.clip(900, 7000), rq.clip(0.08, 1));
+        var snapSig = HPF.ar(WhiteNoise.ar(snap.clip(0, 1)), 1800) * tail * 0.42;
+        var sig = (noiseSig * cluster) + snapSig + (SinOsc.ar(tone.clip(120, 600), 0, body.clip(0, 0.5)) * tail * 0.18);
+        var voice;
+
+        sig = (sig * (1 + drive.clip(0, 3))).tanh;
+        voice = Pan2.ar(sig * amp.clip(0, 0.82) * 0.70, pan.clip(-1, 1));
+        Out.ar(out, voice);
+        Out.ar(reverbOut, voice * reverbSend.clip(0, 1));
+        Out.ar(delayOut, voice * delaySend.clip(0, 1));
+        Out.ar(chorusOut, voice * chorusSend.clip(0, 1));
+    }).add;
+
+    SynthDef(\syrincsRim, { |freq = 120, amp = 0.48, pan = 0, decay = 0.075,
+        drive = 0, pitchStart = 82, pitchEnd = 38, click = 0.05,
+        cutoff = 5200, rq = 0.45, tone = 980, noise = 0.18, body = 0.55,
+        snap = 0.45, spread = 0.02, vel = 1,
+        out = 0, reverbOut = 0, delayOut = 0, chorusOut = 0,
+        reverbSend = 0, delaySend = 0, chorusSend = 0|
+
+        var velocity = vel.clip(0, 1);
+        var env = EnvGen.kr(Env.perc(0.001, decay.clip(0.025, 0.18), 1, -7), doneAction: 2);
+        var bodySig = SinOsc.ar(tone.clip(350, 2200), 0, body.clip(0, 1)) + SinOsc.ar(tone.clip(350, 2200) * 1.7, 0, body.clip(0, 1) * 0.24);
+        var snapSig = BPF.ar(WhiteNoise.ar((noise + snap).clip(0, 1) * (0.5 + velocity)), cutoff.clip(1400, 10000), rq.clip(0.08, 1));
+        var sig = (bodySig + snapSig) * env;
+        var voice;
+
+        sig = (sig * (1 + drive.clip(0, 3))).tanh;
+        voice = Pan2.ar(sig * amp.clip(0, 0.78) * 0.62, pan.clip(-1, 1));
+        Out.ar(out, voice);
+        Out.ar(reverbOut, voice * reverbSend.clip(0, 1));
+        Out.ar(delayOut, voice * delaySend.clip(0, 1));
+        Out.ar(chorusOut, voice * chorusSend.clip(0, 1));
+    }).add;
+
+    SynthDef(\syrincsClick, { |freq = 120, amp = 0.38, pan = 0, decay = 0.035,
+        drive = 0, pitchStart = 82, pitchEnd = 38, click = 0.05,
+        cutoff = 6500, rq = 0.35, tone = 1800, noise = 0.15, body = 0.42,
+        snap = 0.35, spread = 0.02, vel = 1,
+        out = 0, reverbOut = 0, delayOut = 0, chorusOut = 0,
+        reverbSend = 0, delaySend = 0, chorusSend = 0|
+
+        var velocity = vel.clip(0, 1);
+        var env = EnvGen.kr(Env.perc(0.001, decay.clip(0.012, 0.09), 1, -8), doneAction: 2);
+        var toneSig = SinOsc.ar(tone.clip(700, 3600), 0, body.clip(0, 1));
+        var snapSig = HPF.ar(WhiteNoise.ar((noise + snap).clip(0, 1) * (0.45 + velocity)), cutoff.clip(2000, 12000));
+        var sig = (toneSig + snapSig) * env;
+        var voice;
+
+        sig = (sig * (1 + drive.clip(0, 2))).tanh;
+        voice = Pan2.ar(sig * amp.clip(0, 0.65) * 0.52, pan.clip(-1, 1));
         Out.ar(out, voice);
         Out.ar(reverbOut, voice * reverbSend.clip(0, 1));
         Out.ar(delayOut, voice * delaySend.clip(0, 1));
@@ -393,6 +490,10 @@ s.waitForBoot({
         harm2: 0.4,
         harm3: 0.18,
         harm4: 0.08,
+        noise: 0.0,
+        body: 0.8,
+        snap: 0.2,
+        spread: 0.02,
         reverbSend: 0,
         delaySend: 0,
         chorusSend: 0,
@@ -452,14 +553,24 @@ s.waitForBoot({
     ~putPreset.("strings.pad", "strings", "Slow string pad", (synth: \syrincsSubVoice, wave: 2, ampScale: 0.11, atk: 0.55, dec: 0.35, sus: 0.78, rel: 1.4, cutoff: 2900, rq: 0.32, detune: 0.022, reverbSend: 0.28, chorusSend: 0.18));
     ~putPreset.("strings.slow", "strings", "Very slow string layer", (synth: \syrincsSubVoice, wave: 1.7, ampScale: 0.10, atk: 0.9, dec: 0.45, sus: 0.82, rel: 1.8, cutoff: 2350, rq: 0.35, detune: 0.018, reverbSend: 0.30, chorusSend: 0.16));
 
-    ~putPreset.("drum.kick", "drum", "Basic kick drum", (synth: \syrincsKick, ampScale: 0.88, decay: 0.34, drive: 0.15, pitchStart: 82, pitchEnd: 38, click: 0.06, drum: true));
-    ~putPreset.("drum.kick.deep", "drum", "Deeper kick drum", (synth: \syrincsKick, ampScale: 0.92, decay: 0.50, drive: 0.22, pitchStart: 70, pitchEnd: 31, click: 0.04, drum: true));
-    ~putPreset.("drum.snare", "drum", "Basic snare drum", (synth: \syrincsSnare, ampScale: 0.68, decay: 0.22, cutoff: 2100, rq: 0.7, drive: 0.1, tone: 185, reverbSend: 0.12, drum: true));
-    ~putPreset.("drum.snare.tight", "drum", "Tight short snare", (synth: \syrincsSnare, ampScale: 0.62, decay: 0.12, cutoff: 2900, rq: 0.55, drive: 0.18, tone: 205, reverbSend: 0.08, drum: true));
-    ~putPreset.("drum.hat.closed", "drum", "Closed hi-hat", (synth: \syrincsHatClosed, ampScale: 0.38, decay: 0.075, cutoff: 7600, rq: 0.50, pan: -0.08, reverbSend: 0.04, drum: true));
-    ~putPreset.("drum.hat.open", "drum", "Open hi-hat", (synth: \syrincsHatOpen, ampScale: 0.34, decay: 0.42, cutoff: 6800, rq: 0.42, pan: -0.12, reverbSend: 0.06, drum: true));
-    ~putPreset.("drum.tom.low", "drum", "Low tom", (synth: \syrincsTom, ampScale: 0.62, freq: 125, pitchEnd: 74, decay: 0.42, drive: 0.08, pan: -0.12, drum: true));
-    ~putPreset.("drum.tom.high", "drum", "High tom", (synth: \syrincsTom, ampScale: 0.56, freq: 185, pitchEnd: 115, decay: 0.30, drive: 0.06, pan: 0.12, drum: true));
+    ~putPreset.("drum.kick", "drum", "Defined synthetic kick", (synth: \syrincsKick, ampScale: 0.78, decay: 0.30, drive: 0.12, pitchStart: 92, pitchEnd: 42, click: 0.055, cutoff: 3900, rq: 0.45, body: 0.92, noise: 0.018, drum: true));
+    ~putPreset.("drum.kick.deep", "drum", "Deeper longer kick", (synth: \syrincsKick, ampScale: 0.82, decay: 0.48, drive: 0.18, pitchStart: 76, pitchEnd: 32, click: 0.035, cutoff: 3200, rq: 0.42, body: 0.96, noise: 0.012, drum: true));
+    ~putPreset.("drum.kick.short", "drum", "Short tight kick", (synth: \syrincsKick, ampScale: 0.72, decay: 0.17, drive: 0.10, pitchStart: 104, pitchEnd: 46, click: 0.075, cutoff: 4600, rq: 0.42, body: 0.82, noise: 0.016, drum: true));
+
+    ~putPreset.("drum.snare", "drum", "Balanced synthetic snare", (synth: \syrincsSnare, ampScale: 0.58, decay: 0.22, cutoff: 2300, rq: 0.68, drive: 0.08, tone: 185, noise: 0.70, body: 0.30, snap: 0.36, reverbSend: 0.11, drum: true));
+    ~putPreset.("drum.snare.tight", "drum", "Tight short snare", (synth: \syrincsSnare, ampScale: 0.54, decay: 0.12, cutoff: 3200, rq: 0.52, drive: 0.14, tone: 210, noise: 0.58, body: 0.24, snap: 0.46, reverbSend: 0.07, drum: true));
+    ~putPreset.("drum.snare.noisy", "drum", "Noisy wider snare", (synth: \syrincsSnare, ampScale: 0.55, decay: 0.34, cutoff: 1800, rq: 0.82, drive: 0.06, tone: 165, noise: 0.92, body: 0.22, snap: 0.54, reverbSend: 0.16, drum: true));
+
+    ~putPreset.("drum.hat.closed", "drum", "Closed hi-hat", (synth: \syrincsHatClosed, ampScale: 0.32, decay: 0.065, cutoff: 7200, rq: 0.48, noise: 0.68, snap: 0.16, pan: -0.10, reverbSend: 0.025, drum: true));
+    ~putPreset.("drum.hat.open", "drum", "Open hi-hat", (synth: \syrincsHatOpen, ampScale: 0.30, decay: 0.40, cutoff: 6500, rq: 0.42, noise: 0.62, snap: 0.12, pan: -0.14, reverbSend: 0.04, drum: true));
+
+    ~putPreset.("drum.tom.low", "drum", "Low tom", (synth: \syrincsTom, ampScale: 0.54, pitchStart: 150, pitchEnd: 84, decay: 0.44, drive: 0.06, cutoff: 2300, noise: 0.045, body: 0.88, pan: -0.18, reverbSend: 0.10, drum: true));
+    ~putPreset.("drum.tom.mid", "drum", "Mid tom", (synth: \syrincsTom, ampScale: 0.50, pitchStart: 190, pitchEnd: 116, decay: 0.36, drive: 0.05, cutoff: 3000, noise: 0.040, body: 0.84, pan: 0.02, reverbSend: 0.09, drum: true));
+    ~putPreset.("drum.tom.high", "drum", "High tom", (synth: \syrincsTom, ampScale: 0.47, pitchStart: 245, pitchEnd: 155, decay: 0.28, drive: 0.04, cutoff: 3800, noise: 0.035, body: 0.80, pan: 0.18, reverbSend: 0.08, drum: true));
+
+    ~putPreset.("drum.clap", "drum", "Synthetic hand clap", (synth: \syrincsClap, ampScale: 0.48, decay: 0.30, cutoff: 2600, rq: 0.58, noise: 0.82, body: 0.12, snap: 0.38, spread: 0.026, pan: 0.08, reverbSend: 0.18, delaySend: 0.035, drum: true));
+    ~putPreset.("drum.rim", "drum", "Short rimshot accent", (synth: \syrincsRim, ampScale: 0.42, decay: 0.075, cutoff: 5400, rq: 0.44, tone: 980, noise: 0.16, body: 0.55, snap: 0.42, pan: 0.10, reverbSend: 0.07, delaySend: 0.025, drum: true));
+    ~putPreset.("drum.click", "drum", "Small click for metronome accents", (synth: \syrincsClick, ampScale: 0.34, decay: 0.032, cutoff: 6900, rq: 0.35, tone: 1850, noise: 0.12, body: 0.44, snap: 0.32, pan: 0.0, reverbSend: 0.02, drum: true));
 
     // Compatibility alias for the first proof of concept.
     ~presets.put("basic.sine", ~presets.at("test.sine"));
@@ -552,21 +663,28 @@ s.waitForBoot({
     ~playDrum = { |presetName, velocity = 0.8, pan = 0|
         var preset = ~presetForDrum.(presetName);
         var synth = preset[\synth];
-        var amp = ~ampFor.(velocity, preset, 0.55);
+        var vel = velocity.asFloat.clip(0, 1);
+        var amp = ~ampFor.(vel, preset, 0.55);
         var outPan = ~panFor.(pan, preset);
+        var cutoff = ~fallback.(preset[\cutoff], 7000) * (1 + (vel * 0.08));
 
         Synth(synth, [
             \freq, ~fallback.(preset[\freq], 120),
             \amp, amp,
             \pan, outPan,
             \decay, ~fallback.(preset[\decay], 0.3),
-            \drive, ~fallback.(preset[\drive], 0),
+            \drive, (~fallback.(preset[\drive], 0) + (vel * 0.08)).clip(0, 4),
             \pitchStart, ~fallback.(preset[\pitchStart], 82),
             \pitchEnd, ~fallback.(preset[\pitchEnd], 38),
-            \click, ~fallback.(preset[\click], 0.05),
-            \cutoff, ~fallback.(preset[\cutoff], 7000),
+            \click, (~fallback.(preset[\click], 0.05) * (0.8 + (vel * 0.45))).clip(0, 0.35),
+            \cutoff, cutoff,
             \rq, ~fallback.(preset[\rq], 0.5),
             \tone, ~fallback.(preset[\tone], 185),
+            \noise, (~fallback.(preset[\noise], 0.0) * (0.75 + (vel * 0.35))).clip(0, 1),
+            \body, ~fallback.(preset[\body], 0.8),
+            \snap, (~fallback.(preset[\snap], 0.2) * (0.7 + (vel * 0.45))).clip(0, 1),
+            \spread, ~fallback.(preset[\spread], 0.02),
+            \vel, vel,
             \out, ~dryBus,
             \reverbOut, ~reverbBus,
             \delayOut, ~delayBus,

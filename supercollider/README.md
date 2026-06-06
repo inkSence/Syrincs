@@ -137,7 +137,8 @@ Namen nicht; sie sendet nur Presets.
 - `syrincsOrganVoice`: additive Orgelregister.
 - `syrincsWindVoice`: einfache Wind-Andeutungen mit Noise, Filter und Vibrato.
 - `syrincsKick`, `syrincsSnare`, `syrincsHatClosed`, `syrincsHatOpen`,
-  `syrincsTom`: synthetische Drums ohne Samples.
+  `syrincsTom`, `syrincsClap`, `syrincsRim`, `syrincsClick`: synthetische
+  Drums ohne Samples.
 
 ## Preset-Struktur
 
@@ -152,7 +153,8 @@ delaySend, chorusSend, family, description
 
 Zusaetzliche interne Felder wie `harm2`, `harm3`, `harm4`, `noiseMix`,
 `vibratoRate`, `vibratoDepth`, `pitchStart`, `pitchEnd`, `click`, `tone` und
-`drum` werden von einzelnen SynthDef-Familien genutzt.
+`drum` werden von einzelnen SynthDef-Familien genutzt. Drum-Presets koennen
+zusaetzlich `noise`, `body`, `snap` und `spread` setzen.
 
 Nicht jedes Preset setzt jedes Feld. Fehlende Werte werden ueber zentrale
 Defaults ergaenzt. Velocity wird musikalisch auf Amplitude skaliert, Duration
@@ -167,6 +169,7 @@ Preset-Sends sind bewusst niedrig gehalten:
 - Leads koennen wenig Delay senden.
 - Bass bleibt fast trocken.
 - Kick bleibt trocken, Snare und Hats bekommen nur wenig Reverb.
+- Clap, Rim und Toms bekommen moderate, konservative Sends.
 
 Fallback-Verhalten:
 
@@ -237,12 +240,53 @@ Drums:
 
 - `drum.kick` -> `syrincsKick`
 - `drum.kick.deep` -> `syrincsKick`
+- `drum.kick.short` -> `syrincsKick`
 - `drum.snare` -> `syrincsSnare`
 - `drum.snare.tight` -> `syrincsSnare`
+- `drum.snare.noisy` -> `syrincsSnare`
 - `drum.hat.closed` -> `syrincsHatClosed`
 - `drum.hat.open` -> `syrincsHatOpen`
 - `drum.tom.low` -> `syrincsTom`
+- `drum.tom.mid` -> `syrincsTom`
 - `drum.tom.high` -> `syrincsTom`
+- `drum.clap` -> `syrincsClap`
+- `drum.rim` -> `syrincsRim`
+- `drum.click` -> `syrincsClick`
+
+## Synthetische Drum-Engine
+
+Die Drum-Engine bleibt synthetisch und samplefrei. Die App sendet nur
+Drum-Presetnamen ueber `/drum`; SuperCollider waehlt intern SynthDef und
+Parameter.
+
+Drum-SynthDefs:
+
+- `syrincsKick`: Sinus/Triangle-Body, Pitch-Envelope und optionaler Click.
+- `syrincsSnare`: Noise, Snap und kurzer getunter Body.
+- `syrincsHatClosed`: kurze highpass-/bandpass-gefilterte Noise-Hat.
+- `syrincsHatOpen`: laengere Hat-Variante mit kontrolliertem Ausklang.
+- `syrincsTom`: gestimmter Body mit Pitch-Envelope.
+- `syrincsClap`: mehrere kurze Noise-Impulse mit diffuserem Tail.
+- `syrincsRim`: kurzer tonaler Rimshot-Akzent.
+- `syrincsClick`: kleiner Click fuer Metronom- oder Ghost-Akzente.
+
+Velocity-Verhalten:
+
+- Velocity steuert zuerst die Amplitude.
+- Kick bekommt bei hoeherer Velocity etwas mehr Click und Drive.
+- Snare bekommt bei hoeherer Velocity mehr Snap/Noise.
+- Hats werden bei hoeherer Velocity leicht heller.
+- Velocity `0.2` bleibt hoerbar leiser; Velocity `1.0` wird durch
+  konservative Preset-Pegel und den Master-Limiter abgefangen.
+
+Drum-FX-Sends:
+
+- Kick-Presets sind fast trocken.
+- Snare-Presets haben wenig Reverb.
+- Hats haben sehr wenig Reverb.
+- Toms haben moderaten Reverb.
+- Clap hat etwas mehr Reverb und sehr wenig Delay.
+- Rim kann sehr wenig Delay bekommen.
 
 Kompatibilitaet:
 
@@ -286,6 +330,9 @@ Drums:
 ```bash
 mvn exec:java -Dexec.args="play sc drum drum.kick"
 mvn exec:java -Dexec.args="play sc drum drum.hat.open --velocity 0.45 --pan -0.2"
+mvn exec:java -Dexec.args="play sc drum drum.clap --velocity 0.7 --pan 0.1"
+mvn exec:java -Dexec.args="play sc drum drum.tom.mid --velocity 0.6"
+mvn exec:java -Dexec.args="play sc drum drum.click --velocity 0.35"
 ```
 
 FX:
@@ -323,7 +370,8 @@ Die Demo sendet:
 - `pad.warm` und `strings.pad` mit Chorus/Reverb
 - kurze Figuren mit `pluck.harplike`, `keys.fm_epiano`, `keys.bell`
 - Bass mit `bass.round` und `bass.sub`
-- synthetische Drums mit Kick, Snare, Closed/Open Hat und Low/High Tom
+- ein Drum-Pattern mit Kick auf 1/3, Snare auf 2/4, Closed Hats als Achtel,
+  Open Hat, Clap, Rim und Tom-Fill mit Low/Mid/High Tom
 - am Ende konservative FX- und Master-Werte
 
 Erfolgskriterien:
@@ -359,6 +407,8 @@ Falls kein Klang kommt:
 ## Grenzen Dieser Stufe
 
 - keine Samples
+- keine realistischen Akustikdrums
+- keine Round-Robin- oder Velocity-Layer-Samples
 - keine Plugin-Bridge
 - keine DAW-artige Effektkette
 - keine Automation ueber Zeit

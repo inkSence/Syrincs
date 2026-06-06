@@ -345,25 +345,36 @@ public class RootCmd implements Runnable {
 
                     adapter.sendFx("reverb", true, "mix", 0.18);
                     for (int step = 0; step < 16; step++) {
-                        if (step == 0 || step == 4) {
+                        if (step == 0 || step == 8) {
                             adapter.sendDrum("drum.kick", 0.95, 0.0);
                         }
-                        if (step == 8 || step == 12) {
-                            adapter.sendDrum("drum.kick.deep", 0.82, 0.0);
+                        if (step == 6 || step == 14) {
+                            adapter.sendDrum("drum.kick.short", 0.48, 0.0);
                         }
                         if (step == 4 || step == 12) {
                             adapter.sendDrum("drum.snare", 0.75, 0.02);
                         }
-                        if (step == 7) {
-                            adapter.sendDrum("drum.hat.open", 0.44, -0.18);
+                        if (step == 12) {
+                            adapter.sendDrum("drum.clap", 0.58, 0.08);
                         }
-                        if (step == 10) {
-                            adapter.sendDrum("drum.tom.low", 0.66, -0.10);
+                        if (step == 3 || step == 11) {
+                            adapter.sendDrum("drum.rim", 0.36, 0.10);
+                        }
+                        if (step == 7 || step == 15) {
+                            adapter.sendDrum("drum.hat.open", 0.38, -0.18);
+                        }
+                        if (step == 13) {
+                            adapter.sendDrum("drum.tom.low", 0.64, -0.14);
                         }
                         if (step == 14) {
-                            adapter.sendDrum("drum.tom.high", 0.58, 0.12);
+                            adapter.sendDrum("drum.tom.mid", 0.58, 0.02);
                         }
-                        adapter.sendDrum("drum.hat.closed", step % 2 == 0 ? 0.45 : 0.28, -0.18);
+                        if (step == 15) {
+                            adapter.sendDrum("drum.tom.high", 0.54, 0.16);
+                        }
+                        if (step % 2 == 0) {
+                            adapter.sendDrum("drum.hat.closed", step % 4 == 0 ? 0.44 : 0.32, -0.18);
+                        }
                         Thread.sleep(150);
                     }
 
