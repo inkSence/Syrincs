@@ -15,7 +15,7 @@ public class ChordAnalysis {
     public static final class Result {
         public final Column column;
         public final int rootNote; // MIDI
-        public final int group; // 1..14
+        public final int group; // 1..18
         public final int frameInterval;
         public final List<Integer> notes; // sorted copy
 
@@ -32,13 +32,16 @@ public class ChordAnalysis {
         }
     }
 
+    private static final Map<Integer, ChordSpecification> GROUP_SPECIFICATIONS =
+            new ChordSpecificationRepository().getGroupSpecifications();
+
     private final Series2 series2 = new Series2();
 
     /**
      * Analysiert einen Akkord (Liste von MIDI-Noten) nach Hindemith.
      * - Gruppiert nach Tritonus vorhanden (Spalten A/B)
      * - Bestimmt optionalen Grundton (über bestehende Chord-Logik)
-     * - Ermittelt eine Akkordgruppe 0..13, indem die vorhandenen Constraints geprüft werden
+     * - Ermittelt eine Akkordgruppe 1..18, indem die vorhandenen Constraints geprüft werden
      */
     public Result analyze(List<Integer> midiNotes) {
         if (midiNotes == null || midiNotes.size() < 3) {
@@ -142,12 +145,10 @@ public class ChordAnalysis {
             List<HindemithInterval> pcHindemithIntervals
     ) {
         int bassNote = notes.getFirst();
-        var specs = new ChordSpecificationRepository();
-        Map<Integer, ChordSpecification> groupSpecs = specs.getGroupSpecifications();
-        List<Integer> groupSpecsList = groupSpecs.keySet().stream().sorted().toList();
+        List<Integer> groupSpecsList = GROUP_SPECIFICATIONS.keySet().stream().sorted().toList();
         // Determine by group specification order (insertion/group-number order)
         for (Integer g : groupSpecsList) {
-            ChordSpecification spec = groupSpecs.get(g);
+            ChordSpecification spec = GROUP_SPECIFICATIONS.get(g);
             if (spec == null) continue;
             boolean match1 = ChordRules.matchesIntervalsOnly(intervals, rootNoteIntervals, pcHindemithIntervals, spec);
             boolean match2 = ChordRules.rootRelation(bassNote, rootNote, spec.getRootNoteEqual());

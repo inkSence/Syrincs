@@ -12,4 +12,8 @@ import java.util.List;
  */
 public interface RhythmPlaybackPort {
     void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws Exception;
+
+    default void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring) throws Exception {
+        play(pattern, spec, voices);
+    }
 }

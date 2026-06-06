@@ -231,11 +231,14 @@ public class RootCmd implements Runnable {
             @Option(names = "--in", description = "RDL-0 input file", defaultValue = "data/beat.rdl")
             String inFile;
 
+            @Option(names = "--device", description = "MIDI output device name substring. Default: SYRINCS_MIDI_DEVICE, Roland Digital Piano/DP603, then first MIDI out")
+            String device;
+
             @Override
             public Integer call() {
                 try {
                     RhythmFileParser.MidiData res = new RhythmFileParser().parse(inFile);
-                    parentPlay.parent.midiInteractor.playRhythm(res.pattern, res.spec, res.voices);
+                    parentPlay.parent.midiInteractor.playRhythm(res.pattern, res.spec, res.voices, device);
                     return 0;
                 } catch (Exception e) {
                     System.err.println("[ERROR] " + e.getMessage());
@@ -250,16 +253,23 @@ public class RootCmd implements Runnable {
                 @Parameters(arity = "1..*", description = "Information grades to play (e.g. 1 2 3 4)")
                 int[] infoGrades;
 
+                @Option(names = "--device", description = "MIDI output device name substring. Overrides parent --device when set after db")
+                String device;
+
                 @Override
                 public Integer call() {
                     try {
                         List<Integer> infos = Arrays.stream(infoGrades).boxed().toList();
-                        parent.parentPlay.parent.midiInteractor.playRhythmsByInformationGrades(infos);
+                        parent.parentPlay.parent.midiInteractor.playRhythmsByInformationGrades(infos, effectiveDevice());
                         return 0;
                     } catch (Exception e) {
                         System.err.println("[ERROR] " + e.getMessage());
                         return 1;
                     }
+                }
+
+                private String effectiveDevice() {
+                    return device != null && !device.isBlank() ? device : parent.device;
                 }
             }
         }
@@ -768,8 +778,8 @@ public class RootCmd implements Runnable {
 
             @Override
             public Integer call() {
-                parent.parent.interactor.generateAllRhythmsOfFourQuarters();
-                System.out.println("All rhythms of four quarters generated.");
+                var ids = parent.parent.interactor.generateAllRhythmsOfFourQuarters();
+                System.out.printf("[DB] Persisted %d Huffman rhythms for 4/4 sixteenth grid.%n", ids.size());
                 return 0;
             }
         }
@@ -824,7 +834,14 @@ public class RootCmd implements Runnable {
 
             @Override
             public Integer call() {
-                System.out.println("Information: " + parent.parent.interactor.analyzeRhythm(rhythm));
+                var result = parent.parent.interactor.analyzeHuffmanRhythm(rhythm);
+                System.out.printf(
+                        "[ANALYZE] Rhythm=%s | Info=%d | Deviation=%.6f | Beats=%s%n",
+                        result.getOnsetList(),
+                        result.getInformation(),
+                        result.getStandardDeviation(),
+                        result.getOnsetListPerBeat()
+                );
                 return 0;
             }
         }

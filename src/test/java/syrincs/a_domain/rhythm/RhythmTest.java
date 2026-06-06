@@ -13,6 +13,7 @@ public class RhythmTest {
     public void testIsValidOnSetList(){
         assertDoesNotThrow( () -> new Rhythm(4,4,90, "Xooo Xooo Xooo Xooo"));
         assertDoesNotThrow( () -> new Rhythm(4,4,90, "Oooo oooo oooo oooo"));
+        assertDoesNotThrow( () -> new Rhythm(4,4,90, "xooo\txooo\nxooo xooo"));
 
         assertThrows(IllegalArgumentException.class, () -> new Rhythm(4,4,90, "xooo xooo xooo xoo"));
         assertThrows(IllegalArgumentException.class, () -> new Rhythm(4,4,90, "xooo xooo xooo xoooOo"));

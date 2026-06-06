@@ -1,21 +1,20 @@
 package syrincs.a_domain.hindemith;
 
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
 public class ChordSpecificationRepository {
-    private final  Map<Integer, ChordSpecification> chordGroupSpecifications = new HashMap<>();
-
-    public ChordSpecificationRepository() {
-        fillChordGroupSpecifications();
-    }
+    private static final Map<Integer, ChordSpecification> CHORD_GROUP_SPECIFICATIONS = createChordGroupSpecifications();
 
     public Map<Integer, ChordSpecification> getGroupSpecifications() {
-        return chordGroupSpecifications;
+        return CHORD_GROUP_SPECIFICATIONS;
     }
 
-    private void fillChordGroupSpecifications() {
+    private static Map<Integer, ChordSpecification> createChordGroupSpecifications() {
+        Map<Integer, ChordSpecification> chordGroupSpecifications = new LinkedHashMap<>();
+
         chordGroupSpecifications.put(0, ChordSpecification.builder()
                 .excludeIntervals(Set.of(1, 2, 6, 10, 11))
                 .rootRelation(ChordSpecification.RootRelation.EQUALS_BASS)
@@ -135,5 +134,7 @@ public class ChordSpecificationRepository {
                 .requireIntervals(Set.of(6))
                 .dimOrDim7(true)
                 .build()); // B) VI.
+
+        return Collections.unmodifiableMap(chordGroupSpecifications);
     }
 }

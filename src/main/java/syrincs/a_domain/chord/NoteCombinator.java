@@ -1,13 +1,8 @@
 package syrincs.a_domain.chord;
 
 import java.util.*;
-import java.util.logging.Logger;
-
-
 
 public class NoteCombinator {
-
-    private static final Logger LOGGER = Logger.getLogger(NoteCombinator.class.getName());
 
     public List<List<Integer>> generateChords(int k, int minLowerNote, int maxUpperNote) {
         if (k <= 0) return List.of();
@@ -74,12 +69,5 @@ public class NoteCombinator {
         }
         return true;
     }
-
-    private void print(List<List<Integer>> chords) {
-        for (List<Integer> chord : chords) {
-            System.out.println(chord);
-        }
-    }
-
 
 }

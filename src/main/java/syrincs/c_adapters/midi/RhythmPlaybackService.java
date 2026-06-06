@@ -26,12 +26,24 @@ public class RhythmPlaybackService implements RhythmPlaybackPort {
 
     @Override
     public void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws Exception {
+        play(pattern, spec, voices, null);
+    }
+
+    @Override
+    public void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring) throws Exception {
         Sequence seq = sequenceBuilder.build(pattern, spec, voices);
-        MidiDevice.Info info = DeviceService.autoSelectDefaultOutput();
+        MidiDevice.Info info = DeviceService.resolveOutput(deviceNameSubstring);
         if (info == null) {
-            throw new IllegalStateException("No suitable MIDI output device found.");
+            throw new IllegalStateException(missingDeviceMessage(deviceNameSubstring));
         }
         MidiDevice device = MidiSystem.getMidiDevice(info);
         sequencePlayer.play(seq, device);
+    }
+
+    private String missingDeviceMessage(String deviceNameSubstring) {
+        if (deviceNameSubstring != null && !deviceNameSubstring.isBlank()) {
+            return "No MIDI output device matching '" + deviceNameSubstring + "' found.";
+        }
+        return "No suitable MIDI output device found. Set env SYRINCS_MIDI_DEVICE or pass --device.";
     }
 }

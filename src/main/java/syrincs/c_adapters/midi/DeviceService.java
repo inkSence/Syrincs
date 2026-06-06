@@ -19,6 +19,8 @@ public final class DeviceService {
 
     private DeviceService() {}
 
+    private static final String MIDI_DEVICE_ENV = "SYRINCS_MIDI_DEVICE";
+
     static List<MidiDevice> device = new ArrayList<>();
 
     public static void loadStandardMidiDevice(){
@@ -85,12 +87,15 @@ public final class DeviceService {
     }
 
     static MidiDevice.Info resolveOutput(String deviceNameSubstring) {
-        MidiDevice.Info target;
         if (deviceNameSubstring != null && !deviceNameSubstring.isBlank()) {
-            target = findOutputInfoBySubstring(deviceNameSubstring);
-        } else {
-            target = autoSelectDefaultOutput();
+            return findOutputInfoBySubstring(deviceNameSubstring);
         }
-        return target;
+
+        String envDevice = System.getenv(MIDI_DEVICE_ENV);
+        if (envDevice != null && !envDevice.isBlank()) {
+            return findOutputInfoBySubstring(envDevice);
+        }
+
+        return autoSelectDefaultOutput();
     }
 }

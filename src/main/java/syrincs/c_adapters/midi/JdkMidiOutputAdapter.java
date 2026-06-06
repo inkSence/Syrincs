@@ -17,19 +17,10 @@ public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_applicati
 
     private static final Logger LOG = Logger.getLogger(JdkMidiOutputAdapter.class.getName());
 
-    private MidiDevice.Info findOutputInfoBySubstring(String nameSubstring) {
-        return DeviceService.findOutputInfoBySubstring(nameSubstring);
-    }
-
     @Override
     public void sendToneToDevice(Tone tone, String deviceNameSubstring) {
         try {
-            MidiDevice.Info info = (deviceNameSubstring != null && !deviceNameSubstring.isEmpty())
-                    ? findOutputInfoBySubstring(deviceNameSubstring)
-                    : null;
-            if (info == null) {
-                info = DeviceService.autoSelectDefaultOutput();
-            }
+            MidiDevice.Info info = DeviceService.resolveOutput(deviceNameSubstring);
             if (info == null) {
                 String msg = "No suitable MIDI output device found" +
                         (deviceNameSubstring != null ? " for substring '" + deviceNameSubstring + "'" : "");
@@ -52,7 +43,7 @@ public class JdkMidiOutputAdapter implements MidiOutputPort, syrincs.b_applicati
     public void sendChordToDevice(Chord chord, long duration, int channelZeroBased) throws MidiPortException {
         if (chord == null) return;
         try {
-            MidiDevice.Info info = DeviceService.autoSelectDefaultOutput();
+            MidiDevice.Info info = DeviceService.resolveOutput(null);
             if (info == null) {
                 throw new MidiPortException("No suitable MIDI output device found");
             }

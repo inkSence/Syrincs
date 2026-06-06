@@ -179,10 +179,27 @@ Rhythmusdatei abspielen:
 mvn exec:java -Dexec.args="play rhythm --in data/beat.rdl"
 ```
 
+Explizites MIDI-Gerät für Rhythmus-Playback:
+
+```bash
+mvn exec:java -Dexec.args="play rhythm --in data/beat.rdl --device DP603"
+mvn exec:java -Dexec.args="play rhythm db --device DP603 3 5 7"
+```
+
+Wenn `--device` nicht gesetzt ist, nutzt Syrincs zuerst `SYRINCS_MIDI_DEVICE`,
+dann die bekannten Defaults `Roland Digital Piano`/`DP603` und zuletzt das erste
+verfügbare MIDI-Out.
+
 Rhythmus nach Huffman-Komplexität analysieren:
 
 ```bash
 mvn exec:java -Dexec.args='analyse rhythm "xooo xoxo xooo xoxo"'
+```
+
+Ausgabeformat:
+
+```text
+[ANALYZE] Rhythm=xoooxoxoxoooxoxo | Info=3 | Deviation=0.433013 | Beats=[xooo, xoxo, xooo, xoxo]
 ```
 
 Alle 4/4-Rhythmen im 16tel-Raster generieren und persistieren:

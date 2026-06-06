@@ -171,15 +171,24 @@ public class UseCaseInteractor {
         rhythmPlayback.playRhythm(pattern, spec, voices);
     }
 
+    public void playRhythm(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring) throws Exception {
+        validate.validate(pattern, spec, voices);
+        rhythmPlayback.playRhythm(pattern, spec, voices, deviceNameSubstring);
+    }
+
     public Integer analyzeRhythm(String onsetList) {
         return analyseRhythmUseCase.analyzeInformation(onsetList);
     }
 
-    public void generateAllRhythmsOfFourQuarters() {
+    public HuffmanRhythm analyzeHuffmanRhythm(String onsetList) {
+        return analyseRhythmUseCase.analyze(onsetList);
+    }
+
+    public List<Long> generateAllRhythmsOfFourQuarters() {
         if (generateAndPersistRhythmUseCase == null) {
             throw new IllegalStateException("GenerateAndPersistRhythmUseCase not wired in UseCaseInteractor");
         }
-        generateAndPersistRhythmUseCase.generateAllRhythmsOfFourQuarters();
+        return generateAndPersistRhythmUseCase.generateAllRhythmsOfFourQuarters();
     }
 
     public void playRhythms(List<HuffmanRhythm> rhythms) throws Exception {
@@ -189,12 +198,23 @@ public class UseCaseInteractor {
         playHuffmanRhythmsUseCase.playRhythms(rhythms);
     }
 
+    public void playRhythms(List<HuffmanRhythm> rhythms, String deviceNameSubstring) throws Exception {
+        if (playHuffmanRhythmsUseCase == null) {
+            throw new IllegalStateException("PlayHuffmanRhythmsUseCase not wired in UseCaseInteractor");
+        }
+        playHuffmanRhythmsUseCase.playRhythms(rhythms, deviceNameSubstring);
+    }
+
     /**
      * Loads, for each requested information grade, matching rhythms with enough beat-to-beat
      * variation and picks one at random.
      * The selected rhythms are then played sequentially.
      */
     public void playRhythmsByInformationGrades(List<Integer> informationGrades) throws Exception {
+        playRhythmsByInformationGrades(informationGrades, null);
+    }
+
+    public void playRhythmsByInformationGrades(List<Integer> informationGrades, String deviceNameSubstring) throws Exception {
         if (huffmanRhythmRepository == null) {
             throw new IllegalStateException("RhythmRepository not wired in UseCaseInteractor");
         }
@@ -212,6 +232,6 @@ public class UseCaseInteractor {
             selection.add(candidates.get(idx));
         }
         if (selection.isEmpty()) return;
-        playRhythms(selection);
+        playRhythms(selection, deviceNameSubstring);
     }
 }

@@ -19,47 +19,21 @@ public class GenerateAndPersistRhythmUseCase {
         this.repository = Objects.requireNonNull(repository, "repository");
     }
 
-    // -- Required private helpers (names as specified) --
-    // Generates all numbers from 0 (inclusive) to 2^16-1 (inclusive)
-    private List<Integer> generateAllNumbersForRhythmsOfFourQuarters() {
-        int max = (1 << 16); // 65536
-        List<Integer> out = new ArrayList<>(max);
-        for (int i = 0; i < max; i++) out.add(i);
-        return out;
-    }
-
-    // Converts numbers to 16-character binary strings (left-padded with '0')
-    private List<String> convertToBinaryStringOf16Digits(List<Integer> numbers) {
-        Objects.requireNonNull(numbers, "numbers");
-        List<String> out = new ArrayList<>(numbers.size());
-        for (Integer n : numbers) {
-            if (n == null) continue;
-            String bin = Integer.toBinaryString(n);
-            if (bin.length() < 16) {
-                bin = "0".repeat(16 - bin.length()) + bin;
-            } else if (bin.length() > 16) {
-                bin = bin.substring(bin.length() - 16); // safety clip
-            }
-            out.add(bin);
-        }
-        return out;
-    }
-
-    // Persists rhythms using the repository
     private List<Long> persist(List<HuffmanRhythm> rhythms) {
         return repository.saveAll(rhythms);
     }
 
-    // -- Public API --
-
     /**
-     * Full pipeline: generate numbers, convert to binary strings, map to HuffmanRhythm (4/4, tempo default), persist, return.
+     * Full pipeline: generate all 16-step onset masks for 4/4, map to HuffmanRhythm,
+     * persist, and return generated ids.
      */
-    public void generateAllRhythmsOfFourQuarters() {
-        List<Integer> nums = generateAllNumbersForRhythmsOfFourQuarters();
-        List<String> binaries = convertToBinaryStringOf16Digits(nums);
-        List<HuffmanRhythm> rhythms = toRhythms(binaries);
-        persist(rhythms);
+    public List<Long> generateAllRhythmsOfFourQuarters() {
+        int max = (1 << 16);
+        List<HuffmanRhythm> rhythms = new ArrayList<>(max);
+        for (int mask = 0; mask < max; mask++) {
+            rhythms.add(toRhythm(mask));
+        }
+        return persist(rhythms);
     }
 
     /**
@@ -73,19 +47,27 @@ public class GenerateAndPersistRhythmUseCase {
         return rhythms;
     }
 
-    // -- Internal mapping helper --
+    private static HuffmanRhythm toRhythm(int mask) {
+        StringBuilder onset = new StringBuilder(16);
+        for (int bit = 15; bit >= 0; bit--) {
+            onset.append((mask & (1 << bit)) == 0 ? 'o' : 'x');
+        }
+        return new HuffmanRhythm(4, 4, AppDefaults.DEFAULT_TEMPO_BPM, onset.toString());
+    }
+
     private static List<HuffmanRhythm> toRhythms(List<String> binaries) {
         List<HuffmanRhythm> out = new ArrayList<>(binaries.size());
         for (String b : binaries) {
             if (b == null) continue;
             String s = b.trim();
             if (s.length() != 16) continue;
-            // build onset string of 'x' and 'o' with spaces per beat (4 groups of 4)
-            StringBuilder onset = new StringBuilder(19); // 16 + 3 spaces
+            StringBuilder onset = new StringBuilder(16);
             for (int i = 0; i < 16; i++) {
                 char c = s.charAt(i);
+                if (c != '0' && c != '1') {
+                    throw new IllegalArgumentException("Binary rhythm strings may only contain 0 or 1: " + s);
+                }
                 onset.append(c == '1' ? 'x' : 'o');
-                // if (i % 4 == 3 && i < 15) onset.append(' '); // Todo: Wäre schön als Methode beim Persistieren, um die Lesbarkeit zu steigern.
             }
             out.add(new HuffmanRhythm(4, 4, AppDefaults.DEFAULT_TEMPO_BPM, onset.toString()));
         }

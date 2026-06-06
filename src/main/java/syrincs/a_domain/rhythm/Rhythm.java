@@ -2,6 +2,7 @@ package syrincs.a_domain.rhythm;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Rhythm {
     // "regular recurring motion" https://en.wikipedia.org/wiki/Rhythm
@@ -16,7 +17,7 @@ public class Rhythm {
         this.numerator = numerator;
         this.denominator = denominator;
         this.tempo = tempo;
-        this.onsetList = onsetList.replaceAll(" ", "").toLowerCase();
+        this.onsetList = Objects.requireNonNull(onsetList, "onsetList").replaceAll("\\s+", "").toLowerCase();
         hasValidLength(this.onsetList);
         hasValidCharacters(this.onsetList);
         this.onsetListPerBeat = makeOnsetBeatPerList(this.onsetList);
@@ -80,4 +81,3 @@ public class Rhythm {
         return onsetListPerBeat;
     }
 }
-

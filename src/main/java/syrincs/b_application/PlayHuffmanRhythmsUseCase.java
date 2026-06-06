@@ -6,8 +6,6 @@ import syrincs.a_domain.rhythm.RhythmMapperFromOnsetStringToKickAndSnare;
 import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -20,8 +18,6 @@ import java.util.Objects;
  * - Validate and delegate playback to the existing PlaybackRhythmUseCase
  */
 public class PlayHuffmanRhythmsUseCase {
-    // Todo: Diese Klasse sollte aufgelöst werden. Irgendwie kanns nicht sein, dass hier andere UseCases mit drin sind. Dafür ist der Interactor da. Man sollte zuerst bspw. die Teile wie Spec erstellen, dann validieren und dann abspielen.
-
     private final PlaybackRhythmUseCase playback;
     private final ValidatePatternsUseCase validate;
 
@@ -34,14 +30,20 @@ public class PlayHuffmanRhythmsUseCase {
      * Plays the given rhythms one after another. No-op for null/empty lists.
      */
     public void playRhythms(List<HuffmanRhythm> rhythms) throws Exception {
+        playRhythms(rhythms, null);
+    }
+
+    public void playRhythms(List<HuffmanRhythm> rhythms, String deviceNameSubstring) throws Exception {
+        if (rhythms == null || rhythms.isEmpty()) {
+            return;
+        }
         for (HuffmanRhythm hr : rhythms) {
             Pattern pattern = buildPattern(hr);
             List<VoiceSpec> voices = RhythmMapperFromOnsetStringToKickAndSnare.defaultVoiceSpecs();
             RhythmSpec spec = buildSpec(hr);
 
-            // Validate & play
             validate.validate(pattern, spec, voices);
-            playback.playRhythm(pattern, spec, voices);
+            playback.playRhythm(pattern, spec, voices, deviceNameSubstring);
         }
     }
 

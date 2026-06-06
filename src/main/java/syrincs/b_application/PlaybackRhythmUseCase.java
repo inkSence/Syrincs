@@ -20,5 +20,8 @@ public class PlaybackRhythmUseCase {
         playbackPort.play(pattern, spec, voices);
     }
 
+    public void playRhythm(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring) throws Exception {
+        playbackPort.play(pattern, spec, voices, deviceNameSubstring);
+    }
 
 }

@@ -31,4 +31,12 @@ class ChordAnalysisTest {
         // Intentionally no assertion on group yet: the group mapping for this chord is under discussion
         // and may depend on the ordering/overlap of specifications.
     }
+
+    @Test
+    void chordSpecificationRepository_returnsImmutableSpecifications() {
+        var specs = new ChordSpecificationRepository().getGroupSpecifications();
+
+        assertEquals(18, specs.size());
+        assertThrows(UnsupportedOperationException.class, () -> specs.clear());
+    }
 }
