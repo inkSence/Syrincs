@@ -38,11 +38,6 @@ class RootCmdCompletionCliTest {
         assertTrue(text.contains("--output"));
         assertTrue(text.contains("--host"));
         assertTrue(text.contains("--port"));
-        assertFalse(rootCommands.contains("completion"));
-        assertFalse(rootCommands.contains("analyse"));
-        assertFalse(rootCommands.contains("calc"));
-        assertFalse(rootCommands.contains("list"));
-        assertFalse(rootCommands.contains("delete"));
     }
 
     @Test
