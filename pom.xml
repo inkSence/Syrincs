@@ -15,6 +15,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
         <junit.version>5.11.0</junit.version>
+        <syrincs.skipCompletionInstall>false</syrincs.skipCompletionInstall>
     </properties>
 
     <dependencies>
@@ -62,16 +63,6 @@
                 </configuration>
             </plugin>
 
-            <!-- Bequem starten: mvn exec:java -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.5.0</version>
-                <configuration>
-                    <mainClass>syrincs.Main</mainClass>
-                </configuration>
-            </plugin>
-
             <!-- Optional: Jar mit Main-Class im Manifest (java -jar target/...jar) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -110,6 +101,28 @@
                 </executions>
             </plugin>
 
+            <!-- Bequem starten: mvn exec:java; nach mvn package Bash-Completion aktualisieren -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <mainClass>syrincs.Main</mainClass>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-bash-completion</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${syrincs.skipCompletionInstall}</skip>
+                            <mainClass>syrincs.c_adapters.cli.BashCompletionInstaller</mainClass>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
 
         </plugins>
     </build>

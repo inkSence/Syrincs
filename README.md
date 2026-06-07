@@ -68,6 +68,25 @@ Alternativ kann die CLI über Maven gestartet werden:
 mvn exec:java -Dexec.args="--help"
 ```
 
+## Shell Completion
+
+`mvn package` aktualisiert die installierte Bash-Completion automatisch nach
+dem Paketbau. In einer bereits laufenden Shell wird die neue Completion erst
+nach `exec bash` oder in einem neuen Terminal sichtbar. Für Paketbau ohne
+Completion-Installation:
+
+```bash
+mvn package -Dsyrincs.skipCompletionInstall=true
+```
+
+Danach vervollständigt Bash unter anderem diese Eingaben:
+
+```bash
+syrincs <TAB>
+syrincs play <TAB>
+syrincs play rhythm --<TAB>
+```
+
 ## Lokale Laufzeit
 
 Für den normalen lokalen Betrieb sind zwei externe Dienste relevant:
@@ -143,7 +162,7 @@ MIDI-Kanäle werden intern nullbasiert verwendet: `channel=9` entspricht dem üb
 Geräte anzeigen:
 
 ```bash
-mvn exec:java -Dexec.args="list"
+mvn exec:java -Dexec.args="devices"
 ```
 
 Einzelnote spielen. Standard: SuperCollider:
@@ -155,7 +174,7 @@ mvn exec:java -Dexec.args="play note note 60 vel 0.5 dur 500"
 Akkord nach Hindemith analysieren:
 
 ```bash
-mvn exec:java -Dexec.args="analyse 60 64 67"
+mvn exec:java -Dexec.args="analyze 60 64 67"
 ```
 
 Ausgabeformat:
@@ -201,7 +220,7 @@ verfügbare MIDI-Out.
 Rhythmus nach Huffman-Komplexität analysieren:
 
 ```bash
-mvn exec:java -Dexec.args='analyse rhythm "xooo xoxo xooo xoxo"'
+mvn exec:java -Dexec.args='analyze rhythm "xooo xoxo xooo xoxo"'
 ```
 
 Ausgabeformat:

@@ -24,6 +24,7 @@ import java.util.concurrent.Callable;
         version = "syrincs 1.0",
         description = "MIDI Utilities and Hindemith chords",
         subcommands = {
+                RootCmd.DevicesCmd.class,
                 RootCmd.ListCmd.class,
                 RootCmd.InitCmd.class,
                 RootCmd.StartCmd.class,
@@ -86,21 +87,35 @@ public class RootCmd implements Runnable {
         }
     }
 
-    @Command(name = "list", description = "List MIDI outputs")
+    @Command(name = "devices", description = "List MIDI outputs")
+    public static class DevicesCmd implements Callable<Integer> {
+        @ParentCommand RootCmd parent;
+
+        @Override
+        public Integer call() {
+            return listMidiOutputs(parent);
+        }
+    }
+
+    @Command(name = "list", hidden = true, description = "Legacy alias for devices")
     public static class ListCmd implements Callable<Integer> {
         @ParentCommand RootCmd parent;
 
         @Override
         public Integer call() {
-            if (parent.deviceQuery == null) {
-                System.err.println("[MIDI] Device query is not configured.");
-                return 1;
-            }
-            for (var ep : parent.deviceQuery.listOutputs()) {
-                System.out.printf("[MIDI] %s | %s | %s%n", ep.name(), ep.description(), ep.vendor());
-            }
-            return 0;
+            return listMidiOutputs(parent);
         }
+    }
+
+    private static Integer listMidiOutputs(RootCmd parent) {
+        if (parent.deviceQuery == null) {
+            System.err.println("[MIDI] Device query is not configured.");
+            return 1;
+        }
+        for (var ep : parent.deviceQuery.listOutputs()) {
+            System.out.printf("[MIDI] %s | %s | %s%n", ep.name(), ep.description(), ep.vendor());
+        }
+        return 0;
     }
 
     @Command(name = "init", description = "Initialize the configured PostgreSQL database schema")
@@ -794,7 +809,7 @@ public class RootCmd implements Runnable {
         }
     }
 
-    @Command(name = "analyze", aliases = {"analyse"}, description = "Analyze chord by Hindemith or rhythm by Huffman complexity", subcommands = {
+    @Command(name = "analyze", description = "Analyze chord by Hindemith or rhythm by Huffman complexity", subcommands = {
             AnalyzeCmd.ChordCmd.class,
             AnalyzeCmd.RhythmCmd.class
     })
@@ -856,7 +871,7 @@ public class RootCmd implements Runnable {
         }
     }
 
-    @Command(name = "delete", description = "Truncate Hindemith chords table")
+    @Command(name = "delete", hidden = true, description = "Truncate Hindemith chords table")
     public static class DeleteCmd implements Callable<Integer> {
         @ParentCommand RootCmd parent;
 
