@@ -10,6 +10,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -24,7 +25,7 @@ class RootCmdCompletionCliTest {
     @Test
     void internalInstaller_generatesBashCompletionForSyrincs() {
         String text = BashCompletionInstaller.bashCompletionScript();
-        String rootCommands = rootCommandsLine(text);
+        List<String> rootCommands = rootCommandTokens(text);
 
         assertTrue(text.contains("complete -F"));
         assertTrue(text.contains("syrincs"));
@@ -39,6 +40,7 @@ class RootCmdCompletionCliTest {
         assertTrue(text.contains("--port"));
         assertFalse(rootCommands.contains("completion"));
         assertFalse(rootCommands.contains("analyse"));
+        assertFalse(rootCommands.contains("calc"));
         assertFalse(rootCommands.contains("list"));
         assertFalse(rootCommands.contains("delete"));
     }
@@ -84,10 +86,11 @@ class RootCmdCompletionCliTest {
         assertTrue(script.contains("syrincs"));
     }
 
-    private static String rootCommandsLine(String script) {
-        return script.lines()
+    private static List<String> rootCommandTokens(String script) {
+        String commandsLine = script.lines()
                 .filter(line -> line.startsWith("  local commands=\"devices "))
                 .findFirst()
                 .orElseThrow();
+        return List.of(commandsLine.substring("  local commands=\"".length(), commandsLine.length() - 1).split(" "));
     }
 }

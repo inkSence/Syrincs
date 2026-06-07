@@ -742,7 +742,7 @@ public class RootCmd implements Runnable {
         }
     }
 
-    @Command(name = "calculate", aliases = {"calc", "generate"}, description = "Generate chords or rhythms", subcommands = {
+    @Command(name = "calculate", aliases = {"generate"}, description = "Generate chords or rhythms", subcommands = {
             CalculateCmd.ChordsCmd.class,
             CalculateCmd.RhythmsCmd.class
     })
