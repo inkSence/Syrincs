@@ -220,6 +220,7 @@ public class UseCaseInteractor {
         }
         if (informationGrades == null || informationGrades.isEmpty()) return;
         java.util.List<HuffmanRhythm> selection = new java.util.ArrayList<>();
+        java.util.List<Integer> gradesWithoutCandidates = new java.util.ArrayList<>();
         java.util.concurrent.ThreadLocalRandom rnd = java.util.concurrent.ThreadLocalRandom.current();
         for (Integer info : informationGrades) {
             if (info == null) continue;
@@ -227,11 +228,20 @@ public class UseCaseInteractor {
                     info,
                     AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION
             );
-            if (candidates == null || candidates.isEmpty()) continue;
+            if (candidates == null || candidates.isEmpty()) {
+                gradesWithoutCandidates.add(info);
+                continue;
+            }
             int idx = (candidates.size() == 1) ? 0 : rnd.nextInt(candidates.size());
             selection.add(candidates.get(idx));
         }
-        if (selection.isEmpty()) return;
+        if (selection.isEmpty()) {
+            throw new IllegalStateException(
+                    "No Huffman rhythms found for information grades " + gradesWithoutCandidates
+                            + " with deviation > " + AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION
+                            + ". Run `syrincs init` and `syrincs calculate rhythms`, or choose grades that exist."
+            );
+        }
         playRhythms(selection, deviceNameSubstring);
     }
 }

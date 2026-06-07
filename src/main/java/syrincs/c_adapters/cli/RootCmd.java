@@ -117,11 +117,11 @@ public class RootCmd implements Runnable {
         }
     }
 
-    @Command(name = "start", description = "Start local runtime dependencies. Default: db then SuperCollider in foreground")
+    @Command(name = "start", description = "Check database and start SuperCollider. PostgreSQL is expected as a system service")
     public static class StartCmd implements Callable<Integer> {
         @ParentCommand RootCmd parent;
 
-        @Parameters(index = "0", arity = "0..1", description = "Runtime target: all, db, sc", defaultValue = "all")
+        @Parameters(index = "0", arity = "0..1", description = "Runtime target: all, db (check only), sc", defaultValue = "all")
         String target;
 
         @Override
@@ -768,16 +768,29 @@ public class RootCmd implements Runnable {
 
             @Override
             public Integer call() {
-                var ids = parent.parent.interactor.generateAllRhythmsOfFourQuarters();
-                System.out.printf("[DB] Persisted %d Huffman rhythms for 4/4 sixteenth grid.%n", ids.size());
-                return 0;
+                try {
+                    var ids = parent.parent.interactor.generateAllRhythmsOfFourQuarters();
+                    System.out.printf("[DB] Persisted %d Huffman rhythms for 4/4 sixteenth grid.%n", ids.size());
+                    return 0;
+                } catch (Exception e) {
+                    return reportError(e);
+                }
             }
         }
 
         private static Integer persistChords(UseCaseInteractor interactor, int minLowerNote, int maxUpperNote) {
-            var ids = interactor.calculateAndPersistAllChordsToFiveNotes(minLowerNote, maxUpperNote);
-            System.out.printf("[DB] Persisted %d chords for range [%d, %d].%n", ids.size(), minLowerNote, maxUpperNote);
-            return 0;
+            try {
+                var ids = interactor.calculateAndPersistAllChordsToFiveNotes(minLowerNote, maxUpperNote);
+                System.out.printf("[DB] Persisted %d chords for range [%d, %d].%n", ids.size(), minLowerNote, maxUpperNote);
+                return 0;
+            } catch (Exception e) {
+                return reportError(e);
+            }
+        }
+
+        private static Integer reportError(Exception e) {
+            System.err.println("[ERROR] " + e.getMessage());
+            return 1;
         }
     }
 

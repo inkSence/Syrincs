@@ -85,7 +85,7 @@ public class PostgresRhythmRepository implements RhythmRepository {
 
             con.commit();
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to batch save HuffmanRhythms", e);
+            throw databaseFailure("Failed to batch save HuffmanRhythms", e);
         }
         return ids;
     }
@@ -118,7 +118,7 @@ public class PostgresRhythmRepository implements RhythmRepository {
             HuffmanRhythm r2 = byId.get(id2.longValue());
             if (r2 != null) out.add(r2);
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to load two HuffmanRhythms by id", e);
+            throw databaseFailure("Failed to load two HuffmanRhythms by id", e);
         }
         return out;
     }
@@ -139,7 +139,7 @@ public class PostgresRhythmRepository implements RhythmRepository {
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to load HuffmanRhythms by information", e);
+            throw databaseFailure("Failed to load HuffmanRhythms by information", e);
         }
         return result;
     }
@@ -162,8 +162,36 @@ public class PostgresRhythmRepository implements RhythmRepository {
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to load HuffmanRhythms by information and minimum deviation", e);
+            throw databaseFailure("Failed to load HuffmanRhythms by information and minimum deviation", e);
         }
         return result;
+    }
+
+    private RuntimeException databaseFailure(String action, SQLException e) {
+        return new RuntimeException(action + ". " + sqlDetails(e) + " " + hintFor(e), e);
+    }
+
+    private String sqlDetails(SQLException e) {
+        StringBuilder details = new StringBuilder();
+        if (e.getSQLState() != null) {
+            details.append("SQLState=").append(e.getSQLState()).append(", ");
+        }
+        details.append("database error: ").append(e.getMessage());
+        SQLException next = e.getNextException();
+        if (next != null && next.getMessage() != null && !next.getMessage().equals(e.getMessage())) {
+            details.append(" Next error: ").append(next.getMessage());
+        }
+        return details.toString();
+    }
+
+    private String hintFor(SQLException e) {
+        String message = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+        if (message.contains("does not exist") || message.contains("existiert nicht")) {
+            return "Run `syrincs init` to create or migrate the database schema.";
+        }
+        if (message.contains("connection") || message.contains("verbindungsaufbau") || message.contains("refused")) {
+            return "Check PostgreSQL with `syrincs status` and start it if needed.";
+        }
+        return "Check PostgreSQL config and schema; `syrincs init` creates the application tables.";
     }
 }

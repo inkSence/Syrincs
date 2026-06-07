@@ -79,6 +79,48 @@ class RootCmdRhythmCliTest {
     }
 
     @Test
+    void playRhythmDb_reportsMissingCandidates() {
+        CapturingRhythmPlaybackPort playback = new CapturingRhythmPlaybackPort();
+        RootCmd root = buildRoot(playback, new EmptyRhythmRepository());
+        ByteArrayOutputStream error = new ByteArrayOutputStream();
+        PrintStream originalErr = System.err;
+        try {
+            System.setErr(new PrintStream(error));
+
+            int code = new CommandLine(root).execute("play", "rhythm", "db", "3");
+
+            assertEquals(1, code);
+            assertEquals(0, playback.calls);
+        } finally {
+            System.setErr(originalErr);
+        }
+
+        String text = error.toString(StandardCharsets.UTF_8);
+        assertTrue(text.contains("No Huffman rhythms found for information grades [3]"));
+        assertTrue(text.contains("syrincs calculate rhythms"));
+    }
+
+    @Test
+    void calculateRhythms_reportsErrorsWithoutStackTrace() {
+        RootCmd root = buildRoot(new CapturingRhythmPlaybackPort(), new EmptyRhythmRepository());
+        ByteArrayOutputStream error = new ByteArrayOutputStream();
+        PrintStream originalErr = System.err;
+        try {
+            System.setErr(new PrintStream(error));
+
+            int code = new CommandLine(root).execute("calculate", "rhythms");
+
+            assertEquals(1, code);
+        } finally {
+            System.setErr(originalErr);
+        }
+
+        String text = error.toString(StandardCharsets.UTF_8);
+        assertTrue(text.contains("[ERROR] GenerateAndPersistRhythmUseCase not wired in UseCaseInteractor"));
+        assertTrue(!text.contains("\tat syrincs."));
+    }
+
+    @Test
     void analyzeRhythm_printsNormalizedRhythmInformationAndDeviation() {
         RootCmd root = buildRoot(new CapturingRhythmPlaybackPort(), null);
         ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -155,6 +197,15 @@ class RootCmdRhythmCliTest {
         @Override public List<HuffmanRhythm> getAllByInformation(Integer information) { return List.of(); }
         @Override public List<HuffmanRhythm> getAllByInformationAndMinDeviation(Integer information, Double minDeviation) {
             return List.of(new HuffmanRhythm(4, 4, 120, "xooo xooo xooo xooo"));
+        }
+    }
+
+    private static class EmptyRhythmRepository implements RhythmRepository {
+        @Override public List<Long> saveAll(List<HuffmanRhythm> rhythms) { return List.of(); }
+        @Override public List<HuffmanRhythm> getTwoRhythms(Integer id1, Integer id2) { return List.of(); }
+        @Override public List<HuffmanRhythm> getAllByInformation(Integer information) { return List.of(); }
+        @Override public List<HuffmanRhythm> getAllByInformationAndMinDeviation(Integer information, Double minDeviation) {
+            return List.of();
         }
     }
 

@@ -75,6 +75,14 @@ Für den normalen lokalen Betrieb sind zwei externe Dienste relevant:
 - PostgreSQL für gespeicherte Hindemith-Akkorde und Huffman-Rhythmen.
 - SuperCollider als Standard-Audio-Consumer für Noten und Akkorde.
 
+PostgreSQL sollte als Betriebssystemdienst laufen und einmalig für Autostart
+aktiviert werden:
+
+```bash
+sudo systemctl enable --now postgresql
+pg_isready -h localhost -p 5432
+```
+
 Status prüfen:
 
 ```bash
@@ -95,7 +103,7 @@ syrincs start
 
 `syrincs start` prüft PostgreSQL und startet danach den SuperCollider-Consumer
 im Vordergrund. Stoppen mit `Ctrl+C`. Syrincs führt keine privilegierten
-DB-Startbefehle automatisch aus.
+DB-Startbefehle automatisch aus; PostgreSQL bleibt Aufgabe des Systemdienstes.
 
 Nur SuperCollider starten:
 
@@ -103,7 +111,7 @@ Nur SuperCollider starten:
 syrincs start sc
 ```
 
-Nur die Datenbank prüfen:
+Nur die Datenbank-Erreichbarkeit prüfen:
 
 ```bash
 syrincs start db
@@ -217,6 +225,10 @@ mvn exec:java -Dexec.args="play rhythm db 3 5 7"
 ```
 
 Pro angegebenem Informationsgrad wird ein Rhythmus aus der Datenbank geladen. Der aktuelle Default filtert dabei zusätzlich auf `deviation > 0.7` (`AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION`).
+Wenn die Tabelle oder neue Rhythmus-Spalten fehlen, zuerst `syrincs init`
+ausführen. Wenn keine passenden Rhythmen vorhanden sind, einmalig
+`syrincs calculate rhythms` ausführen, damit die 4/4-Huffman-Rhythmen in der
+Datenbank liegen.
 
 ## Hindemith-Akkordbestimmung
 

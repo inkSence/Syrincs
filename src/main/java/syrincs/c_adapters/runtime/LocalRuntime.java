@@ -135,7 +135,7 @@ public class LocalRuntime {
     private int startAll(PrintStream out, PrintStream err) throws IOException, InterruptedException {
         int dbExit = startDatabase(out, err);
         if (dbExit != 0) {
-            err.println("[DB] Continuing with SuperCollider. Database-backed commands may still fail.");
+            err.println("[DB] Continuing with SuperCollider only. Database-backed commands will fail until PostgreSQL is reachable.");
         }
         return startSuperCollider(out, err);
     }
@@ -195,7 +195,9 @@ public class LocalRuntime {
         if (!dbStatus.message().isBlank()) {
             err.printf("[DB] %s%n", dbStatus.message());
         }
+        err.println("[DB] PostgreSQL is expected to run as an operating-system service.");
         err.println("[DB] Syrincs does not run privileged database start commands automatically.");
+        err.println("[DB] Recommended one-time setup: sudo systemctl enable --now postgresql");
         err.println("[DB] Check clusters: pg_lsclusters");
         err.println("[DB] Try: sudo pg_ctlcluster <version> <cluster> start");
         err.println("[DB] Fallback: sudo systemctl start postgresql");
