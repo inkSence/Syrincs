@@ -67,11 +67,11 @@ class RootCmdRhythmCliTest {
     }
 
     @Test
-    void playRhythmDb_acceptsDeviceAfterDbSubcommand() {
+    void playRhythmInfo_acceptsDeviceAfterInfoSubcommand() {
         CapturingRhythmPlaybackPort playback = new CapturingRhythmPlaybackPort();
         RootCmd root = buildRoot(playback, new StubRhythmRepository());
 
-        int code = new CommandLine(root).execute("play", "rhythm", "db", "--device", "Virtual Out", "1");
+        int code = new CommandLine(root).execute("play", "rhythm", "info", "--device", "Virtual Out", "1");
 
         assertEquals(0, code);
         assertEquals(1, playback.calls);
@@ -79,11 +79,11 @@ class RootCmdRhythmCliTest {
     }
 
     @Test
-    void playRhythmDb_concatenatesMultipleGradesIntoOnePlayback() {
+    void playRhythmInfo_concatenatesMultipleGradesIntoOnePlayback() {
         CapturingRhythmPlaybackPort playback = new CapturingRhythmPlaybackPort();
         RootCmd root = buildRoot(playback, new StubRhythmRepository());
 
-        int code = new CommandLine(root).execute("play", "rhythm", "db", "1", "2");
+        int code = new CommandLine(root).execute("play", "rhythm", "info", "1", "2");
 
         assertEquals(0, code);
         assertEquals(1, playback.calls);
@@ -93,7 +93,7 @@ class RootCmdRhythmCliTest {
     }
 
     @Test
-    void playRhythmDb_reportsMissingCandidates() {
+    void playRhythmInfo_reportsHowToFillEmptyDatabase() {
         CapturingRhythmPlaybackPort playback = new CapturingRhythmPlaybackPort();
         RootCmd root = buildRoot(playback, new EmptyRhythmRepository());
         ByteArrayOutputStream error = new ByteArrayOutputStream();
@@ -101,7 +101,7 @@ class RootCmdRhythmCliTest {
         try {
             System.setErr(new PrintStream(error));
 
-            int code = new CommandLine(root).execute("play", "rhythm", "db", "3");
+            int code = new CommandLine(root).execute("play", "rhythm", "info", "3");
 
             assertEquals(1, code);
             assertEquals(0, playback.calls);
@@ -110,8 +110,25 @@ class RootCmdRhythmCliTest {
         }
 
         String text = error.toString(StandardCharsets.UTF_8);
-        assertTrue(text.contains("No Huffman rhythms found for information grades [3]"));
+        assertTrue(text.contains("No stored Huffman rhythms found for information grades [3]"));
+        assertTrue(text.contains("syrincs init"));
         assertTrue(text.contains("syrincs calculate rhythms"));
+        assertTrue(text.contains("syrincs play rhythm info 3"));
+    }
+
+    @Test
+    void oldDbRhythmSourceSubcommand_isNoLongerAccepted() {
+        RootCmd root = buildRoot(new CapturingRhythmPlaybackPort(), new StubRhythmRepository());
+        PrintStream originalErr = System.err;
+        try {
+            System.setErr(new PrintStream(new ByteArrayOutputStream()));
+
+            int code = new CommandLine(root).execute("play", "rhythm", "db", "1");
+
+            assertTrue(code != 0);
+        } finally {
+            System.setErr(originalErr);
+        }
     }
 
     @Test

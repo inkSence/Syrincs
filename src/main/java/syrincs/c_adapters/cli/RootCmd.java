@@ -243,7 +243,7 @@ public class RootCmd implements Runnable {
             }
         }
 
-        @Command(name = "rhythm", description = "Parse RDL-0, validate, build MIDI sequence, and play it on the configured MIDI device", subcommands = {RhythmCmd.DbCmd.class})
+        @Command(name = "rhythm", description = "Parse RDL-0, validate, build MIDI sequence, and play it on the configured MIDI device", subcommands = {RhythmCmd.InfoCmd.class})
         public static class RhythmCmd implements Callable<Integer> {
             @ParentCommand PlayCmd parentPlay;
 
@@ -265,14 +265,14 @@ public class RootCmd implements Runnable {
                 }
             }
 
-            @Command(name = "db", description = "Play rhythms from database by information grades (one random per grade)")
-            public static class DbCmd implements Callable<Integer> {
+            @Command(name = "info", description = "Play stored rhythms by information grades (one random per grade)")
+            public static class InfoCmd implements Callable<Integer> {
                 @ParentCommand RhythmCmd parent;
 
                 @Parameters(arity = "1..*", description = "Information grades to play (e.g. 1 2 3 4)")
                 int[] infoGrades;
 
-                @Option(names = "--device", description = "MIDI output device name substring. Overrides parent --device when set after db")
+                @Option(names = "--device", description = "MIDI output device name substring. Overrides parent --device when set after info")
                 String device;
 
                 @Override

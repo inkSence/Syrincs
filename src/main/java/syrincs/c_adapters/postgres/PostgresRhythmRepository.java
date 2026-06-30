@@ -187,7 +187,7 @@ public class PostgresRhythmRepository implements RhythmRepository {
     private String hintFor(SQLException e) {
         String message = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
         if (message.contains("does not exist") || message.contains("existiert nicht")) {
-            return "Run `syrincs init` to create or migrate the database schema.";
+            return "Run `syrincs init` to create or migrate the database schema. Then run `syrincs calculate rhythms` to fill the rhythm database.";
         }
         if (message.contains("connection") || message.contains("verbindungsaufbau") || message.contains("refused")) {
             return "Check PostgreSQL with `syrincs status` and start it if needed.";

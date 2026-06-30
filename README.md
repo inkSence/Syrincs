@@ -210,7 +210,7 @@ Explizites MIDI-Gerät für Rhythmus-Playback:
 
 ```bash
 mvn exec:java -Dexec.args="play rhythm --in data/beat.rdl --device DP603"
-mvn exec:java -Dexec.args="play rhythm db --device DP603 3 5 7"
+mvn exec:java -Dexec.args="play rhythm info --device DP603 3 5 7"
 ```
 
 Wenn `--device` nicht gesetzt ist, nutzt Syrincs zuerst `SYRINCS_MIDI_DEVICE`,
@@ -240,7 +240,7 @@ Das erzeugt `2^16` Patterns und speichert sie als Huffman-Rhythmen in PostgreSQL
 Zufällige gespeicherte Rhythmen nach Informationsgraden spielen:
 
 ```bash
-mvn exec:java -Dexec.args="play rhythm db 3 5 7"
+mvn exec:java -Dexec.args="play rhythm info 3 5 7"
 ```
 
 Pro angegebenem Informationsgrad wird ein Rhythmus aus der Datenbank geladen. Der aktuelle Default filtert dabei zusätzlich auf `deviation > 0.7` (`AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION`).

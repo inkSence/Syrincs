@@ -237,9 +237,15 @@ public class UseCaseInteractor {
         }
         if (selection.isEmpty()) {
             throw new IllegalStateException(
-                    "No Huffman rhythms found for information grades " + gradesWithoutCandidates
+                    "No stored Huffman rhythms found for information grades " + gradesWithoutCandidates
                             + " with deviation > " + AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION
-                            + ". Run `syrincs init` and `syrincs calculate rhythms`, or choose grades that exist."
+                            + ". Fill the rhythm database with `syrincs init` and `syrincs calculate rhythms`, "
+                            + "then retry `syrincs play rhythm info "
+                            + informationGrades.stream()
+                                    .filter(Objects::nonNull)
+                                    .map(String::valueOf)
+                                    .collect(java.util.stream.Collectors.joining(" "))
+                            + "`."
             );
         }
         playRhythms(selection, deviceNameSubstring);
