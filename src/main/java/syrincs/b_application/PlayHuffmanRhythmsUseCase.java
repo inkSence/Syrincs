@@ -7,10 +7,11 @@ import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
- * Use case to sequentially play a list of HuffmanRhythm objects.
+ * Use case to play a list of HuffmanRhythm objects as one continuous pattern.
  *
  * Responsibilities:
  * - Map each Huffman rhythm's onset string to kick/snare Pattern using the domain mapper
@@ -27,7 +28,7 @@ public class PlayHuffmanRhythmsUseCase {
     }
 
     /**
-     * Plays the given rhythms one after another. No-op for null/empty lists.
+     * Plays the given rhythms as one concatenated pattern. No-op for null/empty lists.
      */
     public void playRhythms(List<HuffmanRhythm> rhythms) throws Exception {
         playRhythms(rhythms, null);
@@ -37,13 +38,61 @@ public class PlayHuffmanRhythmsUseCase {
         if (rhythms == null || rhythms.isEmpty()) {
             return;
         }
+        List<VoiceSpec> voices = RhythmMapperFromOnsetStringToKickAndSnare.defaultVoiceSpecs();
+        Pattern combinedPattern = combinePatterns(rhythms, voices);
+        RhythmSpec combinedSpec = combinedSpec(rhythms);
+
+        validate.validate(combinedPattern, combinedSpec, voices);
+        playback.playRhythm(combinedPattern, combinedSpec, voices, deviceNameSubstring);
+    }
+
+    private Pattern combinePatterns(List<HuffmanRhythm> rhythms, List<VoiceSpec> voices) throws Exception {
+        RhythmSpec firstSpec = buildSpec(Objects.requireNonNull(rhythms.getFirst(), "rhythm"));
+        int totalSteps = 0;
+        for (HuffmanRhythm hr : rhythms) {
+            RhythmSpec spec = buildSpec(Objects.requireNonNull(hr, "rhythm"));
+            requireCompatible(firstSpec, spec);
+            totalSteps += spec.totalSteps();
+        }
+
+        boolean[] kick = new boolean[totalSteps];
+        boolean[] snare = new boolean[totalSteps];
+        int offset = 0;
         for (HuffmanRhythm hr : rhythms) {
             Pattern pattern = buildPattern(hr);
-            List<VoiceSpec> voices = RhythmMapperFromOnsetStringToKickAndSnare.defaultVoiceSpecs();
             RhythmSpec spec = buildSpec(hr);
-
             validate.validate(pattern, spec, voices);
-            playback.playRhythm(pattern, spec, voices, deviceNameSubstring);
+            Map<String, boolean[]> voicePatterns = pattern.voices();
+            boolean[] kickPart = voicePatterns.get("kick");
+            boolean[] snarePart = voicePatterns.get("snare");
+            System.arraycopy(kickPart, 0, kick, offset, kickPart.length);
+            System.arraycopy(snarePart, 0, snare, offset, snarePart.length);
+            offset += spec.totalSteps();
+        }
+
+        Pattern combined = new Pattern();
+        combined.put("kick", kick);
+        combined.put("snare", snare);
+        return combined;
+    }
+
+    private RhythmSpec combinedSpec(List<HuffmanRhythm> rhythms) throws Exception {
+        RhythmSpec first = buildSpec(Objects.requireNonNull(rhythms.getFirst(), "rhythm"));
+        int bars = 0;
+        for (HuffmanRhythm hr : rhythms) {
+            RhythmSpec spec = buildSpec(Objects.requireNonNull(hr, "rhythm"));
+            requireCompatible(first, spec);
+            bars += spec.bars;
+        }
+        return new RhythmSpec(first.meterNumerator, first.meterDenominator, first.tempoBpm, first.resPerBeat, bars);
+    }
+
+    private void requireCompatible(RhythmSpec first, RhythmSpec next) {
+        if (first.meterNumerator != next.meterNumerator
+                || first.meterDenominator != next.meterDenominator
+                || first.tempoBpm != next.tempoBpm
+                || first.resPerBeat != next.resPerBeat) {
+            throw new IllegalArgumentException("Cannot concatenate Huffman rhythms with different meter, tempo, or grid.");
         }
     }
 

@@ -79,6 +79,20 @@ class RootCmdRhythmCliTest {
     }
 
     @Test
+    void playRhythmDb_concatenatesMultipleGradesIntoOnePlayback() {
+        CapturingRhythmPlaybackPort playback = new CapturingRhythmPlaybackPort();
+        RootCmd root = buildRoot(playback, new StubRhythmRepository());
+
+        int code = new CommandLine(root).execute("play", "rhythm", "db", "1", "2");
+
+        assertEquals(0, code);
+        assertEquals(1, playback.calls);
+        assertEquals(2, playback.spec.bars);
+        assertEquals(32, playback.pattern.voices().get("kick").length);
+        assertEquals(32, playback.pattern.voices().get("snare").length);
+    }
+
+    @Test
     void playRhythmDb_reportsMissingCandidates() {
         CapturingRhythmPlaybackPort playback = new CapturingRhythmPlaybackPort();
         RootCmd root = buildRoot(playback, new EmptyRhythmRepository());
@@ -177,16 +191,22 @@ class RootCmdRhythmCliTest {
 
     private static class CapturingRhythmPlaybackPort implements RhythmPlaybackPort {
         int calls;
+        Pattern pattern;
+        RhythmSpec spec;
         String deviceNameSubstring;
 
         @Override
         public void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) {
             calls++;
+            this.pattern = pattern;
+            this.spec = spec;
         }
 
         @Override
         public void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring) {
             calls++;
+            this.pattern = pattern;
+            this.spec = spec;
             this.deviceNameSubstring = deviceNameSubstring;
         }
     }

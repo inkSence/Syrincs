@@ -13,6 +13,17 @@ import java.util.List;
 import java.util.Map;
 
 public class SequenceBuilder {
+    public static final int DEFAULT_TRAILING_SILENCE_MS = 2_000;
+
+    private final int trailingSilenceMs;
+
+    public SequenceBuilder() {
+        this(DEFAULT_TRAILING_SILENCE_MS);
+    }
+
+    public SequenceBuilder(int trailingSilenceMs) {
+        this.trailingSilenceMs = Math.max(0, trailingSilenceMs);
+    }
 
     public Sequence build(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws InvalidMidiDataException {
         int ppq = MidiConfig.defaults().ppq();
@@ -53,12 +64,21 @@ public class SequenceBuilder {
             }
         }
 
-        // Ensure sequencer runs through trailing rests by adding End-of-Track at bar end
+        // Keep the MIDI output open briefly after the last event so synth/effect tails can decay.
         long totalTicks = (long) spec.totalSteps() * stepTicks;
+        long endTick = totalTicks + trailingSilenceTicks(ppq, tempo);
         MetaMessage eot = new MetaMessage();
         eot.setMessage(0x2F, new byte[0], 0);
-        track.add(new MidiEvent(eot, totalTicks));
+        track.add(new MidiEvent(eot, endTick));
 
         return seq;
+    }
+
+    private long trailingSilenceTicks(int ppq, int tempoBpm) {
+        if (trailingSilenceMs == 0) {
+            return 0;
+        }
+        double quarterNotes = trailingSilenceMs * Math.max(1, tempoBpm) / 60_000.0;
+        return Math.round(quarterNotes * ppq);
     }
 }
