@@ -1,15 +1,25 @@
 # Syrincs
 
-Syrincs ist eine Java-21-Kommandozeilenanwendung für algorithmische Harmonik
-und Rhythmik. Sie analysiert und erzeugt Akkorde nach Paul Hindemith, bewertet
-16tel-Rhythmen mit einem projektinternen Huffman-Informationsmaß und gibt
-musikalisches Material über SuperCollider/OSC oder MIDI aus. PostgreSQL dient
-als Speicher für erzeugte Akkorde und Rhythmen.
+Syrincs ist eine Java-21-CLI für algorithmische Harmonik und Rhythmik. Die
+Anwendung analysiert und erzeugt Akkorde nach Paul Hindemith, bewertet binäre
+16tel-Rhythmen mit einem projektinternen Huffman-Informationsmaß und spielt
+musikalisches Material über SuperCollider/OSC oder `javax.sound.midi` aus.
+PostgreSQL speichert erzeugte Akkorde und Rhythmen.
 
-## In fünf Minuten zum ersten Ergebnis
+Der aktuelle Schwerpunkt liegt auf vier durchgängigen Wegen:
 
-Für die ersten Analysen werden nur ein JDK 21 und Maven benötigt. PostgreSQL,
-SuperCollider und ein MIDI-Gerät sind dafür nicht nötig.
+- Hindemith-Akkorde ohne externe Dienste analysieren;
+- drei- bis fünfstimmige Akkorde erzeugen, speichern und abspielen;
+- RDL-0-Dateien über MIDI wiedergeben;
+- alle 65.536 binären 4/4-Rhythmen bewerten, speichern, auswählen und über
+  MIDI spielen.
+
+Scale- und Counterpoint-Modelle sind im Domänenpaket vorhanden, aber noch
+nicht an die öffentliche CLI angebunden.
+
+## Schnellstart ohne externe Dienste
+
+Für die fachlichen Analysen werden nur JDK 21 und Maven benötigt:
 
 ```bash
 mvn test
@@ -18,287 +28,266 @@ mvn exec:java -Dexec.args="analyze chord 60 64 67"
 mvn exec:java -Dexec.args='analyze rhythm "xooo xoxo xooo xoxo"'
 ```
 
-Die beiden Analysen liefern:
+Die beiden Analysen liefern aktuell:
 
 ```text
 [ANALYZE] Notes=[60, 64, 67] | Column=A_TRITONE_FREE | Root=60 | Group=1 | Frame=7
 [ANALYZE] Rhythm=xoooxoxoxoooxoxo | Info=3 | Deviation=0.433013 | Beats=[xooo, xoxo, xooo, xoxo]
 ```
 
-Damit läuft bereits die fachliche Kernlogik. Externe Komponenten werden erst
-für folgende Wege gebraucht:
+Externe Komponenten werden erst für Persistenz oder Playback gebraucht:
 
-| Ziel | Zusätzlich erforderlich | Einstieg |
-| --- | --- | --- |
-| Akkorde und Rhythmen analysieren | nichts | `analyze …` |
-| Klänge über OSC hören | SuperCollider und `sclang` | `start sc`, dann `play note …` |
-| RDL-Rhythmen hören | MIDI-Ausgang | `devices`, dann `play rhythm …` |
-| Material erzeugen und speichern | PostgreSQL | `init`, dann `calculate …` |
-| Gespeichertes Material spielen | PostgreSQL plus SC oder MIDI | `play chords …` / `play rhythm info …` |
+| Ziel | Zusätzlich erforderlich |
+| --- | --- |
+| Akkord oder Onset-Rhythmus analysieren | nichts |
+| Noten und Akkorde standardmäßig hören | SuperCollider mit `sclang` |
+| RDL- oder Huffman-Rhythmen hören | MIDI-Ausgang |
+| Akkorde oder Rhythmen erzeugen und speichern | PostgreSQL |
+| Gespeicherte Akkorde hören | PostgreSQL plus SuperCollider oder MIDI |
+| Gespeicherte Rhythmen hören | PostgreSQL plus MIDI |
 
-## Funktionsüberblick
-
-Syrincs kann:
-
-- Akkorde nach Hindemith analysieren und dabei Spalte A/B, Grundton, Gruppe
-  und Rahmenintervall bestimmen;
-- drei- bis fünfstimmige Akkorde in einem MIDI-Notenbereich erzeugen und in
-  PostgreSQL speichern;
-- Einzelnoten und gespeicherte Akkorde standardmäßig per OSC an
-  SuperCollider senden, alternativ explizit über MIDI;
-- Rhythmusdateien im kleinen RDL-0-Format lesen und mit dem JDK-MIDI-Sequencer
-  wiedergeben;
-- 4/4-Onset-Strings im 16tel-Raster analysieren, alle `2^16` Kombinationen
-  erzeugen und nach Informationsgrad aus PostgreSQL auswählen und spielen.
-
-## Bauen und ausführen
+## Bauen und starten
 
 ### Voraussetzungen
 
-| Funktion | Voraussetzung |
-| --- | --- |
-| Build, Tests und Analyse | JDK 21, Maven |
-| Persistenz und DB-Playback | PostgreSQL mit JDBC-Zugriff |
-| Standardausgabe von Noten und Akkorden | SuperCollider mit `sclang` |
-| Rhythmus- oder explizites MIDI-Playback | verfügbares MIDI-Out |
+- JDK 21
+- Maven
+- optional PostgreSQL mit JDBC-Zugriff
+- optional SuperCollider mit `sclang`
+- optional ein MIDI-Ausgang
 
-Die Laufzeitabhängigkeiten sind Picocli und der PostgreSQL-JDBC-Treiber; die
-Tests verwenden JUnit 5. Die genauen Versionen stehen in [`pom.xml`](pom.xml).
+Die Laufzeitabhängigkeiten sind Picocli und der PostgreSQL-JDBC-Treiber. Die
+Tests verwenden JUnit 5; konkrete Versionen stehen in [`pom.xml`](pom.xml).
 
-### Entwicklungsstart
-
-Beliebige Befehle lassen sich direkt über Maven ausführen:
+Während der Entwicklung können Befehle direkt über Maven ausgeführt werden:
 
 ```bash
 mvn exec:java -Dexec.args="devices"
 mvn exec:java -Dexec.args="analyze chord 60 64 67"
 ```
 
-### Paket bauen
-
-```bash
-mvn package
-target/app/bin/syrincs --help
-```
-
-`mvn package` erzeugt mit dem Appassembler ein Startskript samt
-Laufzeitabhängigkeiten unter `target/app/`. Das einfache Projekt-JAR allein
-enthält diese Abhängigkeiten nicht.
-
-Die folgenden Beispiele verwenden kurz `syrincs`. Im Repository kann dafür
-immer `target/app/bin/syrincs` oder der entsprechende `mvn exec:java`-Aufruf
-eingesetzt werden.
-
-### Bash-Completion
-
-Der Paketbau installiert bzw. aktualisiert standardmäßig die Completion unter
-`~/.local/share/bash-completion/completions/syrincs`. Eine neue Shell oder
-`exec bash` lädt sie. Ohne diesen Seiteneffekt wird so gebaut:
+Ein Paket ohne Installation der Bash-Completion entsteht mit:
 
 ```bash
 mvn package -Dsyrincs.skipCompletionInstall=true
+target/app/bin/syrincs --help
 ```
 
-## Befehlslandkarte
+Der Appassembler legt das Startskript und alle Laufzeitabhängigkeiten unter
+`target/app/` ab. Das einfache Projekt-JAR enthält seine Abhängigkeiten nicht
+und ist daher nicht das empfohlene Startartefakt.
+
+Die folgenden Beispiele verwenden kurz `syrincs`. Im Repository kann dafür
+`target/app/bin/syrincs` oder der entsprechende `mvn exec:java`-Aufruf stehen.
+
+### Bash-Completion
+
+Ein normaler Paketbau installiert bzw. aktualisiert die Picocli-Completion
+unter `~/.local/share/bash-completion/completions/syrincs`:
+
+```bash
+mvn package
+exec bash
+```
+
+Der Property-Schalter `-Dsyrincs.skipCompletionInstall=true` unterdrückt
+diesen Schreibzugriff in das Home-Verzeichnis.
+
+## CLI-Überblick
 
 ```text
 syrincs
-├── analyze chord …       Hindemith-Analyse ohne Datenbank
-├── analyze rhythm …      Huffman-Analyse ohne Datenbank
-├── devices               MIDI-Ausgänge anzeigen
-├── init                  PostgreSQL-Schema anlegen/aktualisieren
-├── calculate chords …    Akkorde erzeugen und speichern
-├── calculate rhythms     alle 65.536 Onset-Pattern speichern
-├── play note …           einzelne Note, standardmäßig über OSC
-├── play chords …         gespeicherte Akkorde, standardmäßig über OSC
-├── play rhythm …         RDL-0-Datei über MIDI
-├── play rhythm info …    gespeicherte Rhythmen über MIDI
-├── play sc …             erweiterte SuperCollider-/OSC-Befehle
-├── start [all|db|sc]     lokale Abhängigkeiten prüfen/starten
-└── status                PostgreSQL- und SC-Status anzeigen
+├── devices                    MIDI-Ausgänge anzeigen
+├── init                       PostgreSQL-Schema anlegen/migrieren
+├── start [all|db|sc]          DB prüfen und/oder SC starten
+├── status                     DB- und SC-Prozessstatus anzeigen
+├── analyze
+│   ├── chord NOTES...         Hindemith-Analyse
+│   └── rhythm ONSETS          Huffman-Analyse
+├── calculate
+│   ├── chords MIN MAX         Akkorde erzeugen und speichern
+│   └── rhythms                alle 2^16 Onset-Pattern speichern
+└── play
+    ├── note                   einzelne Note; Default: OSC
+    ├── chords                 DB-Akkorde; Default: OSC
+    ├── rhythm [--in FILE]     RDL-0 über MIDI
+    │   └── info GRADES...     DB-Rhythmen über MIDI
+    └── sc                     direkte Preset-/OSC-Steuerung
+        ├── chord
+        ├── drum
+        ├── fx
+        ├── set
+        ├── ramp
+        ├── scene
+        ├── role
+        ├── scene-demo
+        └── demo
 ```
 
-Die jeweils gültigen Argumente zeigt Picocli an, zum Beispiel mit
-`syrincs play chords --help`. Der Root-Aufruf `syrincs --help` ergänzt die
-Hilfe für die wichtigsten `play`-Unterbefehle.
+Die verbindliche Syntax liefert Picocli:
 
-## Typische Arbeitsabläufe
+```bash
+syrincs --help
+syrincs play chords --help
+syrincs play rhythm --help
+syrincs play sc --help
+```
 
-### 1. Einen Akkord analysieren
+`analyze 60 64 67` und `calculate 48 84` sind unterstützte Kurzformen für
+die jeweiligen Akkordbefehle. `play` ohne Unterbefehl sendet die Standardnote
+60 für 500 ms über den Standardausgang.
+
+### Wichtige CLI-Konventionen
+
+Einige Optionen von `play note` und `play chords` sind historisch ohne
+führende Bindestriche definiert. Diese Syntax ist beabsichtigt:
+
+```bash
+syrincs play note note 60 vel 0.5 dur 500
+syrincs play chords numNotes 3 4 groups 1 2 rootNote 60 range 24 duration 200 channel 0
+```
+
+`--output`, DB-Flags, Rhythmusoptionen und `play sc` verwenden dagegen
+führende Bindestriche. Zeitangaben haben zwei verschiedene Einheiten:
+
+| Befehl | Dauer |
+| --- | --- |
+| `play note`, `play chords` | Millisekunden |
+| `play sc`, `play sc chord` | Sekunden |
+
+`--output` akzeptiert `sc`, `supercollider` oder `osc` sowie `midi`,
+`jdk-midi` oder `jdk`. Ohne Angabe wird SuperCollider gewählt.
+
+## Hindemith-Akkorde
+
+### Analysieren
 
 ```bash
 syrincs analyze chord 60 64 67
+syrincs analyze 60 64 67
 ```
 
-`syrincs analyze 60 64 67` ist eine unterstützte Kurzform. Die Ausgabe
-enthält:
+Die Eingaben werden sortiert. Das Ergebnis enthält:
 
-- `Column`: `A_TRITONE_FREE` oder `B_WITH_TRITONE`
-- `Root`: ermittelter Grundton als MIDI-Note
-- `Group`: aktuelle Hindemith-Gruppe `1..18`
-- `Frame`: Abstand zwischen tiefster und höchster Note
+- `Column`: `A_TRITONE_FREE` oder `B_WITH_TRITONE`;
+- `Root`: Grundton als konkrete MIDI-Note;
+- `Group`: Hindemith-Gruppe `1..18`;
+- `Frame`: Abstand zwischen tiefster und höchster Note in Halbtönen.
 
-### 2. Einen Onset-Rhythmus analysieren
+Die Analyse verlangt mindestens drei Noten. Die Gruppenzuordnung basiert auf
+Reihe 2, der Grundtonlogik und 18 geordnet geprüften Spezifikationen in
+`ChordSpecificationRepository`.
+
+Beispiele aus den Tests:
+
+```text
+[60, 64, 67] -> Spalte A, Grundton 60, Gruppe 1
+[60, 63, 68] -> Spalte A, Grundton 68, Gruppe 2
+[60, 64, 70] -> Spalte B, Grundton 60, Gruppe 3
+[60, 66, 69] -> Spalte B, Grundton 66, Gruppe 18
+```
+
+[`doc/Gruppen.md`](doc/Gruppen.md) beschreibt eine ältere Zwischenfassung mit
+14 Gruppen. Für das aktuelle Verhalten sind Produktionscode und Tests mit 18
+Gruppen maßgeblich.
+
+### Erzeugen und speichern
+
+```bash
+syrincs calculate chords 48 84
+syrincs calculate 48 84
+```
+
+Die Grenzen sind inklusive. Erzeugt werden Kombinationen mit drei, vier und
+fünf verschiedenen Pitch Classes. Ihre maximale Spannweite ist auf drei
+Oktaven begrenzt; anschließend werden sie analysiert und gesammelt in
+PostgreSQL geschrieben.
+
+Große Notenbereiche können entsprechend viel Arbeitsspeicher, Rechenzeit und
+Datenbankplatz benötigen. Wiederholte Aufrufe hängen neue Zeilen an und
+entfernen keine Duplikate.
+
+### Gespeicherte Akkorde spielen
+
+```bash
+# Standard: SuperCollider/OSC
+syrincs play chords numNotes 3 4 groups 1 2 rootNote 60 range 24 duration 200
+
+# Explizit über MIDI, Kanal nullbasiert
+syrincs play chords numNotes 3 groups 1 2 rootNote 60 channel 0 --output midi
+```
+
+Ohne Filterangaben gelten diese Defaults:
+
+| Filter | Default | Bedeutung |
+| --- | --- | --- |
+| `numNotes` | `3 4 5` | erlaubte Akkordgrößen |
+| `groups` | `1..9` | standardmäßig geladene Gruppen |
+| `rootNote` | `60` | exakte gespeicherte Grundnote |
+| `range` | `24` | maximale Spannweite in Halbtönen |
+| `duration` | `200` | Dauer in Millisekunden |
+| `channel` | `0` | nur bei MIDI verwendet |
+
+Die Domäne unterstützt Gruppen `1..18`; Gruppen `10..18` müssen beim
+Playback derzeit explizit gewählt werden. Liefert die Datenbank keine Treffer,
+endet der Befehl ohne Playback.
+
+## Huffman-Rhythmik
+
+### Onset-Format und Analyse
 
 ```bash
 syrincs analyze rhythm "xooo xoxo xooo xoxo"
 ```
 
-Hier steht `x` für einen Einsatz und `o` für keinen neuen Einsatz. Whitespace
-wird ignoriert. Der aktuelle Analysepfad erwartet ein 4/4-Metrum mit vier
-Positionen pro Beat; die Länge muss daher ein positives Vielfaches von 16 sein.
+Im einfachen Onset-Format bedeutet `x` Einsatz und `o` kein neuer Einsatz.
+Groß-/Kleinschreibung spielt keine Rolle, Whitespace wird entfernt. Der
+Analysepfad verwendet 4/4, 120 BPM und vier Positionen pro Beat. Die
+normalisierte Länge muss deshalb ein positives Vielfaches von 16 sein.
 
-`Info` ist die Summe der von der internen Zustandsmaschine erzeugten
-Codesymbole. `Deviation` ist die Standardabweichung der einzelnen
-Beat-Informationswerte und beschreibt damit deren Ungleichverteilung.
+`Info` ist die Anzahl der Codesymbole, welche die interne Zustandsmaschine
+erzeugt. Ihr Spielzustand wird über Beatgrenzen fortgeführt. `Deviation` ist
+die Populationsstandardabweichung der Informationswerte der einzelnen Beats.
 
-### 3. SuperCollider-Ausgabe ausprobieren
-
-Terminal 1:
-
-```bash
-syrincs start sc
-```
-
-Terminal 2:
-
-```bash
-syrincs play note note 60 vel 0.5 dur 500
-syrincs play sc chord 60 64 67 --preset organ.full
-syrincs play sc drum drum.kick
-```
-
-Der Consumer läuft im Vordergrund und lauscht standardmäßig auf UDP-Port
-`57120`. Presets, Szenen, Rollen, Effekte, Samples und OSC-Automation sind in
-der [`SuperCollider-Dokumentation`](supercollider/README.md) beschrieben.
-
-Alternativ lässt sich der Consumer ohne Java-CLI starten:
-
-```bash
-bash scripts/start-supercollider-consumer.sh
-```
-
-### 4. MIDI-Ausgabe verwenden
-
-```bash
-syrincs devices
-syrincs play note note 60 --output midi
-syrincs play chords numNotes 3 4 groups 1 2 rootNote 60 range 24 duration 200 channel 0 --output midi
-```
-
-Einige Optionen von `play note` und `play chords` sind historisch ohne
-führende Bindestriche definiert. Die gezeigte Syntax ist beabsichtigt.
-MIDI-Kanäle sind intern nullbasiert; `channel=9` entspricht dem
-General-MIDI-Kanal 10.
-
-Ohne explizites Gerät wird in dieser Reihenfolge gewählt:
-
-1. der Wert von `SYRINCS_MIDI_DEVICE`,
-2. ein MIDI-Out mit `Roland Digital Piano` oder `DP603` im Namen,
-3. der erste verfügbare MIDI-Ausgang.
-
-### 5. Eine RDL-0-Datei abspielen
-
-```bash
-syrincs play rhythm --in data/beat.rdl
-syrincs play rhythm --in data/beat.rdl --device DP603
-```
-
-Rhythmus-Playback läuft unabhängig vom Standardausgang für Noten und Akkorde
-immer über `javax.sound.midi`.
-
-## PostgreSQL einrichten
-
-Die lokalen Defaults sind:
+Kodifizierte Beispiele:
 
 ```text
-URL:      jdbc:postgresql://localhost:5432/hindemith
-User:     syrincs
-Passwort: syrincs
+xooo xooo xooo xooo -> Information 1
+xooo oooo oooo oooo -> Information 2
+xoxo xoxo xoxo xoxo -> Information 5
+xxxx xxxx xxxx xxxx -> Information 9
+xxox xxox xxox xxox -> Information 17
 ```
 
-Unter einem System mit `sudo` und PostgreSQL-Werkzeugen richtet das
-mitgelieferte Skript Rolle, Datenbank und Anwendungsschema ein:
+### Alle Pattern erzeugen
 
 ```bash
-sudo systemctl enable --now postgresql
-bash scripts/init-postgres.sh
-```
-
-Für eine vorhandene Datenbank genügt:
-
-```bash
-export SYRINCS_DB_URL='jdbc:postgresql://localhost:5432/hindemith'
-export SYRINCS_DB_USER='syrincs'
-export SYRINCS_DB_PASSWORD='syrincs'
-syrincs init
-```
-
-Die Konfiguration wird in dieser Reihenfolge aufgelöst:
-
-1. CLI-Argumente `--db-url=…`, `--db-user=…`, `--db-pass=…`
-2. `SYRINCS_DB_URL`, `SYRINCS_DB_USER`, `SYRINCS_DB_PASSWORD`
-3. die Legacy-Variablen `HINDEMITH_DB_URL`, `HINDEMITH_DB_USER`,
-   `HINDEMITH_DB_PASSWORD`
-4. die lokalen Defaults
-
-DB-Argumente dürfen vor oder nach dem eigentlichen Kommando stehen:
-
-```bash
-syrincs --db-url=jdbc:postgresql://localhost:5432/hindemith init
-```
-
-`syrincs init` legt diese Anwendungstabellen idempotent an bzw. ergänzt
-fehlende Rhythmusspalten:
-
-| Tabelle | Inhalt | Wichtige Spalten |
-| --- | --- | --- |
-| `hindemithChords` | analysierte Akkorde | `notes`, `numNotes`, `minNote`, `maxNote`, `rootNote`, `chordGroup` |
-| `huffmanRhythms` | Onset-Strings und Bewertung | `rhythmstring`, `numerator`, `denominator`, `info`, `deviation` |
-
-Syrincs startet PostgreSQL nicht selbst. Es erwartet die Datenbank als
-Systemdienst und prüft lediglich deren Erreichbarkeit.
-
-### Daten erzeugen und abspielen
-
-```bash
-# Drei- bis fünfstimmige Akkorde zwischen den MIDI-Grenzen speichern
-syrincs calculate chords 48 84
-
-# Unterstützte Kurzform
-syrincs calculate 48 84
-
-# Gespeicherte Akkorde filtern und spielen (Default: SuperCollider)
-syrincs play chords numNotes 3 4 groups 1 2 rootNote 60 range 24
-
-# Alle 65.536 binären 16tel-Pattern speichern
 syrincs calculate rhythms
-
-# Je Informationsgrad einen zufälligen Rhythmus per MIDI spielen
-syrincs play rhythm info 3 5 7
 ```
 
-Beim Rhythmus-Playback werden nur Kandidaten mit `deviation > 0.7`
-berücksichtigt. Fehlen Tabelle oder Spalten, hilft `syrincs init`; ist die
-Tabelle leer, muss zuerst `syrincs calculate rhythms` laufen.
+Der Befehl erzeugt alle `2^16 = 65.536` binären Pattern eines 4/4-Takts im
+16tel-Raster, berechnet Information und Deviation und speichert sie mit
+Batch-Inserts. Auch hier hängen Wiederholungen weitere Zeilen an.
 
-Wiederholte `calculate`-Aufrufe hängen weitere Datensätze an; sie ersetzen
-vorhandene Daten nicht.
-
-## Lokale Runtime
+### Nach Informationsgrad spielen
 
 ```bash
-syrincs status    # PostgreSQL und OSC-Consumer prüfen
-syrincs start db  # nur DB-Verbindung prüfen
-syrincs start sc  # nur SuperCollider im Vordergrund starten
-syrincs start     # DB prüfen, dann SuperCollider starten
+syrincs play rhythm info 3 5 7
+syrincs play rhythm info --device "Virtual Out" 3 5 7
 ```
 
-`start` und `start sc` laufen bis `Ctrl+C` im Vordergrund. Wird Syrincs nicht
-aus dem Repository gestartet, kann `SYRINCS_HOME` auf dessen Wurzel zeigen,
-damit das SuperCollider-Startskript gefunden wird.
+Für jeden Informationsgrad lädt Syrincs Kandidaten mit `deviation > 0.7` und
+wählt zufällig einen aus. Grade ohne Kandidaten werden übersprungen; nur wenn
+für keinen angefragten Grad ein Kandidat existiert, endet der Befehl mit
+Fehler und einem Hinweis auf `init` und `calculate rhythms`.
 
-## RDL-0-Format
+Die ausgewählten Takte werden in der angefragten Reihenfolge zu einem
+durchgehenden MIDI-Pattern verbunden. Eine regelbasierte Gewichtung verteilt
+jeden Onset auf Kick oder Snare: Backbeats bevorzugen die Snare, Downbeats und
+Antizipationen eher die Kick. Gespeicherte Rhythmen enthalten kein Tempo;
+DB-Playback verwendet daher aktuell 120 BPM.
+
+## RDL-0
 
 [`data/beat.rdl`](data/beat.rdl) ist ein vollständiges Beispiel:
 
@@ -315,104 +304,225 @@ pattern snare: | - x x x | - x - - | - - x x | x - - - |
 pattern kick:  | x - - - | x - - - | x - - - | x x - - |
 ```
 
+Abspielen:
+
+```bash
+syrincs play rhythm
+syrincs play rhythm --in data/beat.rdl
+syrincs play rhythm --in data/beat.rdl --device DP603
+```
+
+Ohne `--in` wird `data/beat.rdl` verwendet. Für RDL-0 gelten folgende Regeln:
+
 - Kommentare beginnen mit `#`.
-- `time`, `tempo`, `res-per-beat` und `bars` bilden den Header. Fehlende Werte
-  fallen auf `4/4`, 120 BPM, vier Schritte pro Beat und einen Takt zurück.
-- Eine Voice benötigt `note` (`0..127`), `channel` (`0..15`) und `vel`
-  (`0..127`); `gate` ist optional und standardmäßig `50` Prozent.
-- Im Pattern bedeutet `x` Hit und `-` Pause; `|` und Whitespace werden
+- Der Header kennt `time`, `tempo`, `res-per-beat` und `bars`.
+- Fehlende Headerwerte werden zu `4/4`, 120 BPM, vier Schritten pro Beat und
+  einem Takt ergänzt.
+- Eine Voice benötigt `note`, `channel` und `vel`; `gate` ist optional und
+  standardmäßig 50 Prozent.
+- `note` und `vel` liegen in `0..127`, `channel` in `0..15`.
+- Im Pattern steht `x` für Hit und `-` für Pause; `|` und Whitespace werden
   ignoriert.
-- Die aktuelle Validierung verlangt genau die Stimmen `kick` und `snare` und
+- Die aktuelle Validierung verlangt genau `kick` und `snare` sowie für beide
   eine zum Header passende Patternlänge.
 
-Das RDL-Zeichenpaar `x`/`-` unterscheidet sich bewusst vom Huffman-Onset-Format
-`x`/`o`.
+RDL-0 (`x`/`-`) und das Huffman-Onset-Format (`x`/`o`) sind zwei verschiedene
+Formate. RDL- und Huffman-Playback laufen immer über MIDI. Der erzeugten
+MIDI-Sequenz werden standardmäßig zwei Sekunden Nachlauf angefügt, damit
+Synth- und Effektfahnen ausklingen können.
 
-## Architektur und Code-Einstieg
+## MIDI
 
-Das Projekt folgt grob Clean Architecture. Die Domäne kennt weder Picocli,
-JDBC, OSC noch `javax.sound.midi`; äußere Adapter implementieren Ports der
-Anwendungsschicht.
+Verfügbare Ausgänge zeigt:
+
+```bash
+syrincs devices
+```
+
+Die Auswahl eines MIDI-Ausgangs erfolgt in dieser Reihenfolge:
+
+1. `--device` bei `play rhythm` oder `play rhythm info`;
+2. `SYRINCS_MIDI_DEVICE`;
+3. ein Ausgang mit `Roland Digital Piano` oder `DP603` im Namen;
+4. der erste verfügbare MIDI-Ausgang.
+
+Explizite Angaben sind case-insensitive Teilstring-Suchen über Name,
+Beschreibung und Hersteller. `play note --output midi` und
+`play chords --output midi` besitzen derzeit keine eigene `--device`-Option;
+für sie beginnt die Auswahl bei `SYRINCS_MIDI_DEVICE`.
+
+MIDI-Kanäle sind in RDL und `play chords` nullbasiert. `channel=9` entspricht
+dem General-MIDI-Kanal 10.
+
+## SuperCollider und OSC
+
+Terminal 1:
+
+```bash
+syrincs start sc
+```
+
+Terminal 2:
+
+```bash
+syrincs play note note 60 vel 0.5 dur 500
+syrincs play sc chord 60 64 67 --preset organ.full --duration 1.5
+syrincs play sc drum drum.kick
+syrincs play sc scene scene.chorale
+syrincs play sc demo
+```
+
+Der Consumer läuft im Vordergrund und wird mit `Ctrl+C` beendet. Alternativ:
+
+```bash
+bash scripts/start-supercollider-consumer.sh
+```
+
+Das Startskript verwendet `SC_LANG` (Default `sclang`) und optional
+`SC_SCRIPT`. Der Java-Adapter sendet standardmäßig an `127.0.0.1:57120`.
+`play sc` kann Ziel, Preset, Pan, Velocity und Dauer mit `--host`, `--port`,
+`--preset`, `--pan`, `--velocity` und `--duration` überschreiben.
+
+OSC wird verbindungslos per UDP gesendet. Eine erfolgreiche CLI-Ausgabe
+bestätigt daher das Senden des Datagramms, nicht dessen Wiedergabe durch einen
+laufenden Consumer.
+
+Der Consumer unterstützt tonale und Drum-Presets, globale Reverb-/Delay-/
+Chorus-Effekte, Parameterautomation, Szenen, Rollen und optionale lokale
+Samples mit synthetischen Fallbacks. Protokoll, Presetlisten, Samplepfade und
+Hörtests stehen in der
+[`SuperCollider-Dokumentation`](supercollider/README.md).
+
+## PostgreSQL
+
+### Konfiguration
+
+Die lokalen Defaults sind:
 
 ```text
-CLI / Runtime ──> Use Cases ──> Hindemith-, Akkord- und Rhythmusdomäne
-                        |
-                     Ports
-                        ^
-                        |
-             PostgreSQL-, MIDI- und OSC-Adapter
+URL:      jdbc:postgresql://localhost:5432/hindemith
+User:     syrincs
+Passwort: syrincs
+```
+
+Die Auflösung erfolgt in dieser Reihenfolge:
+
+1. `--db-url=…`, `--db-user=…`, `--db-pass=…`
+2. `SYRINCS_DB_URL`, `SYRINCS_DB_USER`, `SYRINCS_DB_PASSWORD`
+3. `HINDEMITH_DB_URL`, `HINDEMITH_DB_USER`, `HINDEMITH_DB_PASSWORD`
+4. lokale Defaults
+
+Die CLI-Flags verwenden zwingend die Form mit `=` und können vor oder nach
+dem Kommando stehen:
+
+```bash
+syrincs --db-url=jdbc:postgresql://localhost:5432/hindemith init
+syrincs status --db-user=syrincs --db-pass=syrincs
+```
+
+### Lokale Einrichtung
+
+Syrincs startet PostgreSQL nicht selbst. Auf einem System mit `sudo` und den
+PostgreSQL-Werkzeugen kann das mitgelieferte Skript Rolle, Datenbank und Schema
+einrichten:
+
+```bash
+sudo systemctl enable --now postgresql
+bash scripts/init-postgres.sh
+```
+
+Das Skript kennt zusätzlich `SYRINCS_DB_NAME` und den destruktiven Opt-in
+`SYRINCS_DB_RESET=1`. Diese beiden Variablen gehören nur zum Setup-Skript;
+die Java-Anwendung verwendet für die Verbindung `SYRINCS_DB_URL`.
+
+Für eine bereits vorhandene Datenbank genügt:
+
+```bash
+export SYRINCS_DB_URL='jdbc:postgresql://localhost:5432/hindemith'
+export SYRINCS_DB_USER='syrincs'
+export SYRINCS_DB_PASSWORD='syrincs'
+syrincs init
+```
+
+### Schema
+
+`syrincs init` arbeitet idempotent und legt zwei Tabellen an:
+
+| Tabelle | Inhalt | Spalten |
+| --- | --- | --- |
+| `hindemithChords` | analysierte Akkorde | `id`, `notes`, `numNotes`, `minNote`, `maxNote`, `rootNote`, `chordGroup` |
+| `huffmanRhythms` | Onsets und Bewertung | `id`, `rhythmstring`, `numerator`, `denominator`, `info`, `deviation` |
+
+Bei älteren Rhythmustabellen ergänzt die Migration `rhythmstring`,
+`deviation` und bei Bedarf eine automatische ID-Erzeugung. Sie löscht keine
+Anwendungsdaten.
+
+## Lokale Runtime
+
+```bash
+syrincs status
+syrincs start db
+syrincs start sc
+syrincs start
+```
+
+- `status` prüft die DB-Verbindung und sucht nach einem laufenden Prozess mit
+  `syrincs_osc_consumer.scd`; Exit-Code 0 gibt es nur, wenn beides aktiv ist.
+- `start db` prüft ausschließlich die bestehende PostgreSQL-Verbindung.
+- `start sc` startet den SuperCollider-Consumer im Vordergrund.
+- `start` prüft zunächst die DB und startet SuperCollider auch dann, wenn die
+  DB-Prüfung fehlschlägt.
+
+Wird Syrincs außerhalb der Repository-Wurzel ausgeführt, kann `SYRINCS_HOME`
+auf das Repository zeigen, damit das Startskript und der Consumer gefunden
+werden.
+
+## Architektur
+
+Das Projekt ist grob nach Clean Architecture gegliedert. Fachliche Abläufe
+liegen in Domäne und Anwendung; Picocli, JDBC, OSC und `javax.sound.midi`
+werden in äußeren Adaptern verdrahtet.
+
+```text
+Picocli / Runtime ──> Use Cases ──> Domänenmodelle
+                            |
+                           Ports
+                            ^
+                            |
+              PostgreSQL / MIDI / OSC
 ```
 
 ```text
 src/main/java/syrincs/
-  a_domain/                Akkorde, Hindemith, Rhythmus, Statistik
+  a_domain/                Akkorde, Hindemith, Rhythmus, Statistik,
+                           noch unverdrahtete Scale-/Counterpoint-Modelle
   b_application/           Use Cases, Ports und Anwendungsdefaults
   c_adapters/              CLI, RDL, MIDI, OSC, PostgreSQL und Runtime
   d_frameworksAndDrivers/  Konfigurationsauflösung
   Main.java                Composition Root
 
-src/test/java/syrincs/     Tests spiegeln die Produktionspakete
-data/                      RDL-Beispieldaten
-doc/                       fachliche Quellen und Projektnotizen
+src/test/java/syrincs/     Tests entlang der Produktionspakete
+data/                      RDL-Beispiel
+doc/                       fachliche Quellen und ältere Notizen
 scripts/                   PostgreSQL- und SuperCollider-Startskripte
-supercollider/              OSC-Consumer und eigene Dokumentation
+supercollider/             OSC-Consumer, Presets, Szenen, FX und Dokumentation
 ```
 
-Gute Einstiegspunkte für einen Code-Rundgang:
+Wichtige Einstiegspunkte:
 
-| Frage | Einstiegspunkt |
+| Frage | Code |
 | --- | --- |
-| Wie wird alles verdrahtet? | `syrincs.Main` |
-| Welche CLI-Befehle gibt es? | `c_adapters.cli.RootCmd` |
+| Wie wird die Anwendung verdrahtet? | `syrincs.Main` |
+| Welche CLI gibt es? | `c_adapters.cli.RootCmd` |
 | Wie wird ein Akkord klassifiziert? | `a_domain.hindemith.ChordAnalysis` |
-| Wo stehen die Gruppenkriterien? | `a_domain.hindemith.ChordSpecificationRepository` |
-| Wie entsteht das Rhythmus-Informationsmaß? | `a_domain.rhythm.HuffmanRhythm` |
+| Wo stehen die 18 Gruppenkriterien? | `a_domain.hindemith.ChordSpecificationRepository` |
+| Wie wird Rhythmusinformation berechnet? | `a_domain.rhythm.HuffmanRhythm` |
 | Wie werden Onsets auf Kick/Snare verteilt? | `a_domain.rhythm.RhythmMapperFromOnsetStringToKickAndSnare` |
-| Wie wird RDL gelesen? | `c_adapters.RhythmFileParser` |
-| Wie werden Daten gespeichert? | `c_adapters.postgres` |
-| Wie werden MIDI-Sequenzen gebaut? | `c_adapters.midi.SequenceBuilder` |
+| Wie wird RDL-0 gelesen? | `c_adapters.RhythmFileParser` |
+| Wie wird MIDI gebaut und gespielt? | `c_adapters.midi.SequenceBuilder`, `RhythmPlaybackService` |
+| Wie wird OSC gesendet? | `c_adapters.osc.SuperColliderOscOutputAdapter` |
+| Wie wird persistiert? | `c_adapters.postgres` |
 | Wie werden lokale Dienste geprüft? | `c_adapters.runtime.LocalRuntime` |
-
-## Fachlicher Implementierungsstand
-
-### Hindemith-Gruppen
-
-`ChordAnalysis` sortiert die Noten, ermittelt Spalte und Grundton über die
-beiden Hindemith-Intervallreihen und ordnet anschließend eine
-Gruppenspezifikation zu. `ChordSpecificationRepository` enthält derzeit 18
-Spezifikationen und liefert die Gruppen `1..18`.
-
-[`doc/Gruppen.md`](doc/Gruppen.md) beschreibt eine ältere konzeptionelle
-Zwischenfassung mit 14 Gruppen. Für das aktuelle Verhalten sind daher Code
-und Tests maßgeblich.
-
-Beispiele aus den Tests:
-
-```text
-[60, 64, 67] -> Spalte A, Grundton 60, Gruppe 1
-[60, 63, 68] -> Spalte A, Grundton 68, Gruppe 2
-[60, 64, 70] -> Spalte B, Grundton 60, Gruppe 3
-[60, 66, 69] -> Spalte B, Grundton 66, Gruppe 18
-```
-
-### Huffman-Rhythmik
-
-`HuffmanRhythm` verarbeitet jeden Beat mit einer endlichen Zustandsmaschine;
-der Spielzustand wird über Beatgrenzen fortgeführt. Das projektinterne
-Informationsmaß ist die Anzahl der dabei erzeugten Codesymbole.
-
-```text
-xooo xooo xooo xooo -> Information 1
-xooo oooo oooo oooo -> Information 2
-xoxo xoxo xoxo xoxo -> Information 5
-xxxx xxxx xxxx xxxx -> Information 9
-xxox xxox xxox xxox -> Information 17
-```
-
-Beim DB-Playback verteilt
-`RhythmMapperFromOnsetStringToKickAndSnare` den ausgewählten Onset-String auf
-Kick und Snare. Mehrere Informationsgrade werden zu einem durchgehenden
-MIDI-Pattern zusammengefügt.
 
 ## Tests
 
@@ -422,31 +532,44 @@ Die vollständige Suite:
 mvn test
 ```
 
-Ein schneller, fachlich repräsentativer Ausschnitt:
+Ein schneller fachlicher Ausschnitt:
 
 ```bash
 mvn -Dtest='HuffmanRhythmTest,RhythmTest,RootCmdChordsCliTest,LocalRuntimeTest' test
 ```
 
-Einige Tests hängen von der lokalen Umgebung ab:
+Umgebungsabhängige Tests verhalten sich bewusst defensiv:
 
-- OSC-Tests benötigen einen lokalen UDP-Port und überspringen sich, wenn UDP
-  nicht erlaubt ist.
-- Echte MIDI-Sendetests werden ohne passendes Gerät (`Roland Digital Piano`
-  oder `DP603`) übersprungen.
-- Laufzeit- und Persistenzbefehle benötigen eine erreichbare PostgreSQL-Instanz.
-- Der umfangreiche SuperCollider-Hörtest ist ein bewusst manueller Test.
+- UDP-basierte OSC-Tests überspringen sich, wenn kein lokaler UDP-Port geöffnet
+  werden darf.
+- Reale MIDI-Sendetests überspringen sich ohne `Roland Digital Piano` oder
+  `DP603`.
+- `SuperColliderManualSoundEngineTest` läuft nur mit
+  `-DrunScAudioTest=true`.
+- Datenbankgestützte CLI-Abläufe erfordern eine erreichbare lokale
+  PostgreSQL-Instanz; die aktuelle Unit-Suite ersetzt diese nicht durch einen
+  eingebetteten PostgreSQL-Server.
 
-## Aktuelle Grenzen
+Fehlendes MIDI, UDP, SuperCollider oder PostgreSQL ist eine Umgebungsgrenze und
+kein Grund, fachliche Defaults oder Validierung zu lockern.
 
-- Huffman-Analyse und -Generierung sind auf 4/4 im 16tel-Raster
-  spezialisiert.
-- Rhythmus-Playback läuft weiterhin über `javax.sound.midi`, auch wenn Noten
-  und Akkorde standardmäßig SuperCollider verwenden.
-- `calculate rhythms` erzeugt immer alle 65.536 binären Pattern; Tempo und
-  Metrum sind dabei noch nicht frei konfigurierbar.
-- Die ältere Gruppendokumentation und die aktuelle 18-Gruppen-Implementierung
-  sind noch nicht vollständig synchronisiert.
-- Die Domänenpakete `Scale` und `counterpoint` enthalten zusätzliche
-  musikalische Modelle, sind aber derzeit nicht in die öffentliche CLI
-  verdrahtet.
+## Bekannte Grenzen und Inkonsistenzen
+
+- Huffman-Generierung und DB-Playback sind auf einen 4/4-Takt im
+  16tel-Raster und 120 BPM spezialisiert.
+- Rhythmus-Playback nutzt immer MIDI; ein OSC-Rhythmuspfad ist nicht
+  implementiert.
+- `calculate rhythms` erzeugt immer alle 65.536 Pattern und dedupliziert die
+  Tabelle nicht.
+- Die öffentliche `play chords`-Voreinstellung lädt Gruppen `1..9`, obwohl die
+  Domäne Gruppen `1..18` klassifiziert.
+- `play note` nennt in der Picocli-Hilfe den MIDI-Bereich `0..127`; das
+  verwendete `Tone`-Domänenobjekt akzeptiert aktuell tatsächlich `21..108`.
+- Maven-Artefaktversion (`0.1`) und Picocli-Versionsausgabe (`syrincs 1.0`)
+  sind noch nicht vereinheitlicht.
+- `doc/Gruppen.md` beschreibt 14 Gruppen und ist älter als die aktuelle
+  18-Gruppen-Implementierung.
+- Scale und Counterpoint sind Domänenentwürfe ohne CLI-Use-Case.
+- SuperCollider bietet eine synthetische Preset-Engine und optionale lokale
+  Samples, aber keine mitgelieferte Sample-Library, Plugin-Bridge, GUI oder
+  DAW-artige Automation.
