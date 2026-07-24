@@ -234,6 +234,10 @@ endet der Befehl ohne Playback.
 
 ## Huffman-Rhythmik
 
+Eine technische Beschreibung von Suchraum, Informationsmaß, Zustandsautomat
+und Persistenz steht in der
+[`Dokumentation des Rhythmus-Generators`](doc/rhythm-generator/README.md).
+
 ### Onset-Format und Analyse
 
 ```bash
