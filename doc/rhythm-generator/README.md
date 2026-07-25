@@ -145,6 +145,62 @@ Populationsstandardabweichung:      0,4330127018922193
 - `getInformation()`: Summe der Informationswerte aller Beats;
 - `getStandardDeviation()`: Populationsstandardabweichung der Beat-Werte.
 
+### Berechnung und Bedeutung der Standardabweichung
+
+Die Standardabweichung wird aus den **Informationswerten der einzelnen
+Beats** gebildet. Für einen 4/4-Takt sind das vier Werte, für zwei 4/4-Takte
+acht Werte. Sie wird nicht unmittelbar aus den 16 Onset-Zeichen, aus der
+Anzahl der `x` oder aus der aufsummierten Gesamtinformation berechnet.
+
+Seien `b₁, b₂, …, bₙ` die vom Zustandsautomaten berechneten
+Beat-Informationswerte. Zuerst wird ihr arithmetischer Mittelwert bestimmt:
+
+```text
+Mittelwert = (b₁ + b₂ + ... + bₙ) / N
+```
+
+Danach berechnet `StandardDeviation.calc(...)` die quadratischen Abstände
+jedes Beat-Werts von diesem Mittelwert. Die Varianz ist deren Mittelwert; die
+Standardabweichung ist die Quadratwurzel daraus:
+
+```text
+Varianz             = ((b₁ - Mittelwert)² + ... + (bₙ - Mittelwert)²) / N
+Standardabweichung  = √Varianz
+```
+
+Es handelt sich ausdrücklich um die **Populationsstandardabweichung**: Der
+Divisor ist `N`, nicht `N - 1`. Alle Beats des vorliegenden Rhythmus gelten
+als die vollständig zu beschreibende Population und nicht als Stichprobe
+einer größeren Menge.
+
+Für das obige Beispiel lautet die vollständige Rechnung:
+
+```text
+Beat-Werte:                  [1, 1, 0, 1]
+N:                           4
+Mittelwert:                  (1 + 1 + 0 + 1) / 4 = 0,75
+Quadratische Abstände:       0,0625 + 0,0625 + 0,5625 + 0,0625
+Varianz:                     0,75 / 4 = 0,1875
+Standardabweichung:          √0,1875 = 0,4330127018922193
+```
+
+Der Wert beschreibt damit, wie stark die Informationsmenge zwischen den
+Beats schwankt:
+
+- `0` bedeutet, dass jeder Beat denselben Informationswert besitzt;
+- ein größerer Wert bedeutet eine stärkere Streuung um den mittleren
+  Beat-Informationswert;
+- der Wert sagt nicht, an welcher Stelle ein niedriger oder hoher Beat-Wert
+  liegt.
+
+Beispielsweise haben die Profile `[0, 1, 1, 2]` und `[1, 2, 1, 0]` dieselbe
+Summe, denselben Mittelwert und dieselbe Standardabweichung, obwohl ihre
+zeitliche Entwicklung verschieden ist. Auch die Standardabweichung erhält
+also keine Information über Reihenfolge, Steigung oder Peak-Position. Das
+Tempo geht ebenfalls nicht in die Berechnung ein; maßgeblich sind nur die
+Beat-Informationswerte, die der Automat aus dem Onset-String und seinem über
+Beatgrenzen fortgeführten Spielzustand erzeugt.
+
 Die geordnete Liste der Beat-Werte wird nur während der Konstruktion
 berechnet und anschließend verworfen. Zwei Rhythmen können deshalb dieselben
 gespeicherten Aggregate besitzen, obwohl sich ihre Information zeitlich
