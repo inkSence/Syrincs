@@ -2,6 +2,17 @@
 
 Diese Hinweise gelten für das gesamte Repository.
 
+## Vikunja-Tickets
+
+- Angaben wie `PV-1` oder `RV-2` sind Vikunja-Ticket-IDs. Lade bei einem
+  Arbeitsauftrag mit einer solchen Kurz-ID zuerst den aktuellen Task über das
+  MCP-Tool `vikunja.get_task`. Projektkürzel werden dynamisch aufgelöst und
+  nicht im Repository konfiguriert.
+- Behandle Titel, Beschreibung und Akzeptanzkriterien des Tasks als
+  Anforderungen. Ändere Vikunja-Daten nur auf ausdrückliche Anweisung.
+- Falls das Tool oder Vikunja nicht erreichbar ist, melde diese
+  Umgebungsgrenze und erfinde keine Ticketinhalte.
+
 ## Einstieg und Quellen der Wahrheit
 
 - Lies zuerst `README.md` und prüfe danach `git status --short`. Der

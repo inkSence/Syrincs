@@ -524,6 +524,32 @@ Wichtige Einstiegspunkte:
 | Wie wird persistiert? | `c_adapters.postgres` |
 | Wie werden lokale Dienste geprüft? | `c_adapters.runtime.LocalRuntime` |
 
+## Vikunja-Tickets in Codex
+
+Der lokale [MCP-Server](tools/vikunja-mcp) liest, erstellt und aktualisiert
+Tasks und verwaltet ihre Beziehungen. Kurz-IDs wie `PV-1` werden dynamisch
+aufgelöst; Schreibzugriffe erfolgen nur auf ausdrücklichen Auftrag.
+
+```bash
+npm ci --prefix tools/vikunja-mcp
+npm test --prefix tools/vikunja-mcp
+export VIKUNJA_API_TOKEN='dein-api-token'
+```
+
+Übernimm die [Konfigurationsvorlage](tools/vikunja-mcp/codex-config.toml) in
+`~/.codex/config.toml`, passe `ABSOLUTER_REPOSITORY_PFAD` an und starte Codex
+neu. Der Token benötigt passende Task-Lese-/Schreibrechte sowie
+`TasksRelations: Create, Delete` für Beziehungen. Zugangsdaten nicht einchecken.
+
+Verfügbare Tools: `get_task`, `create_task`, `update_task`,
+`create_task_relation` und `delete_task_relation`. Sie müssen in
+`enabled_tools` freigegeben sein. Änderungen an Token oder Konfiguration
+erfordern einen Neustart des MCP-Servers.
+
+Beschreibungen werden als HTML oder Klartext geschrieben. Bei unklaren
+Schreibantworten zuerst den aktuellen Stand prüfen, um Duplikate zu vermeiden.
+Die MCP-Tests benötigen keine echte Vikunja-Instanz.
+
 ## Tests
 
 Die vollständige Suite:

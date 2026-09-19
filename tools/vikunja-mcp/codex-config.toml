@@ -1,0 +1,15 @@
+# In die persönliche ~/.codex/config.toml übernehmen.
+# Ein projektlokales .codex/config.toml kann dieselben Werte enthalten.
+[mcp_servers.vikunja]
+command = "node"
+args = ["src/server.mjs"]
+cwd = "ABSOLUTER_REPOSITORY_PFAD/tools/vikunja-mcp"
+env_vars = ["VIKUNJA_API_TOKEN"]
+enabled_tools = ["get_task", "create_task", "update_task", "create_task_relation", "delete_task_relation"]
+default_tools_approval_mode = "auto"
+startup_timeout_sec = 10
+tool_timeout_sec = 30
+
+[mcp_servers.vikunja.env]
+VIKUNJA_BASE_URL = "http://localhost:3456"
+VIKUNJA_API_VERSION = "v1"
