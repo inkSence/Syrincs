@@ -1,0 +1,21 @@
+{
+  "name": "syrincs-vikunja-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server for reading, creating and updating Vikunja tasks.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "4.4.3"
+  },
+  "overrides": {
+    "@hono/node-server": "2.0.12"
+  }
+}

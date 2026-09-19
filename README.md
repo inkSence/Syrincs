@@ -524,6 +524,59 @@ Wichtige Einstiegspunkte:
 | Wie wird persistiert? | `c_adapters.postgres` |
 | Wie werden lokale Dienste geprüft? | `c_adapters.runtime.LocalRuntime` |
 
+## Vikunja-Tickets in Codex
+
+Unter [`tools/vikunja-mcp`](tools/vikunja-mcp) liegt ein lokaler MCP-Server zum Lesen, Anlegen
+und Aktualisieren von Tasks. Sein Tool `get_task` löst Kurz-IDs wie `PV-1` über die
+Vikunja-API auf und liefert den vollständigen Task als strukturiertes JSON.
+Das Projektkürzel wird aus der Ticket-ID gelesen; `PV`, `RV` und weitere für
+den Token zugängliche Projekte benötigen keine eigene Konfiguration.
+
+Einrichten:
+
+```bash
+cd tools/vikunja-mcp
+npm ci
+npm test
+
+export VIKUNJA_API_TOKEN='dein-api-token'
+```
+
+Übernimm anschließend
+[`tools/vikunja-mcp/codex-config.toml`](tools/vikunja-mcp/codex-config.toml)
+in `~/.codex/config.toml`, ersetze `ABSOLUTER_REPOSITORY_PFAD` und starte
+Codex neu. Der Token bleibt ausschließlich in der Umgebungsvariable und darf
+nicht in die Konfigurationsdatei oder das Repository geschrieben werden.
+
+Die Tools `create_task` und `update_task` ändern Vikunja nur auf ausdrücklichen
+Benutzerauftrag. Der Token benötigt die passenden Routenrechte für Task-Anlage
+bzw. Aktualisierung sowie für die Lesezugriffe bei Updates. `enabled_tools`
+in der MCP-Konfiguration muss die gewünschten Tools enthalten; nach Änderungen
+Server/Client neu laden bzw. neu starten.
+
+- `create_task`: positive numerische `project_id`, nichtleerer `title`, optional
+  `description`. Beispiel: `{"project_id":5,"title":"Taktinformation bestimmen"}`.
+- `update_task`: Kurz-ID `ticket_id` und mindestens eines der Felder `title`,
+  `description`, `done`. Leere Beschreibungen und `done: false` sind erlaubt.
+- Beschreibungen beim Schreiben sind HTML oder Klartext, kein Markdown.
+- Updates lesen den aktuellen Task im HTML-Format und übernehmen nicht
+  angegebene Felder. Gleichzeitige Änderungen können dabei überschrieben werden.
+- Schreibrequests werden nicht automatisch wiederholt. Bei Timeout oder unklarer
+  Antwort zuerst in Vikunja prüfen, ob der Task angelegt bzw. geändert wurde.
+- API v1 verwendet PUT zum Anlegen und POST zum Aktualisieren; API v2 verwendet
+  POST bzw. PUT. `VIKUNJA_API_VERSION` steuert diese Auswahl.
+
+Die isolierten MCP-Tests laufen mit `npm test --prefix tools/vikunja-mcp` und
+benötigen keine echte Vikunja-Instanz.
+
+Das Tool verwendet bevorzugt den Vikunja-Endpunkt
+`/api/v1/projects/{kennung}/tasks/by-index/{index}`. Für ältere
+Vikunja-Versionen fällt es auf die globale, paginierte Liste aller für den
+Token zugänglichen Tasks zurück. Das geschieht auch, wenn ein gültiger Token
+nur das
+`tasks.read_all`-Recht, aber nicht das gesonderte Routenrecht des neueren
+by-index-Endpunkts besitzt.
+
 ## Tests
 
 Die vollständige Suite:

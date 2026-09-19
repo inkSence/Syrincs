@@ -45,3 +45,6 @@ supercollider/samples/**/*.aiff
 supercollider/samples/**/*.flac
 supercollider/samples/**/*.mp3
 !supercollider/samples/**/.gitkeep
+
+### Local Node.js tooling ###
+tools/vikunja-mcp/node_modules/
