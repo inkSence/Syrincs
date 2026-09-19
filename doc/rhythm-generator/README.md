@@ -1,4 +1,4 @@
-# Rhythmus-Generator
+# Rhythmusmodul und Rhythmus-Generator
 
 Der Rhythmus-Generator erzeugt und bewertet alle binären Rhythmen eines
 4/4-Takts im 16tel-Raster und speichert sie in PostgreSQL. „Huffman“ bezeichnet
@@ -6,10 +6,46 @@ hier das projektinterne Informationsmaß; der Generator baut keinen klassischen
 Huffman-Baum und komprimiert keine Audiodaten.
 
 Diese Dokumentation beschreibt den aktuellen Stand. Insbesondere sind
-Informationsprofile pro Beat, eine Suche nach Profilformen und eine
+öffentlich abrufbare Informationsprofile pro Beat, eine Suche nach Profilformen und eine
 reproduzierbare Zufallsauswahl noch nicht implementiert.
 
-## Ablauf
+## Funktionsübersicht des Rhythmusmoduls
+
+Das Modul umfasst neben dem Generator auch Analyse, Dateieingabe, Auswahl,
+Mapping und Wiedergabe. Huffman bewertet `x`/`o`-Onsets. RDL-0 beschreibt
+bereits auf Stimmen verteilte `x`/`-`-Pattern und durchläuft keine
+Huffman-Analyse.
+
+| Funktion | Einstieg | Aktuelles Verhalten |
+| --- | --- | --- |
+| Onsets analysieren | `analyze rhythm "xooo xoxo xooo xoxo"` | Normalisierung, Gesamtinformation, Standardabweichung und Beat-Onset-Strings ausgeben; ohne DB oder Playback. |
+| Schema vorbereiten | `init` | Rhythmustabelle anlegen oder älteres Schema ergänzen. |
+| Rhythmen erzeugen | `calculate rhythms` | Alle 65.536 eintaktigen 4/4-Pattern bewerten und speichern. |
+| DB-Rhythmen auswählen | `play rhythm info 3 5 7` | Je Grad zufällig einen Kandidaten mit `deviation > 0.7` auswählen und abspielen. |
+| Kick/Snare zuordnen | Intern beim DB-Playback | Jeden Onset eines 16-Schritt-Takts anhand gewichteter Positionsregeln einer Stimme zuweisen. |
+| Takte verbinden | Intern beim DB-Playback | Einzeln gemappte Takte in Anfragereihenfolge zu einem Pattern verbinden. |
+| RDL lesen und validieren | `play rhythm --in data/beat.rdl` | Header, Voices und Pattern lesen; Kick/Snare, Längen und Werte prüfen. |
+| MIDI abspielen | Beide `play rhythm`-Wege | Note-On/Off-Ereignisse mit Tempo, Raster, Gate und Nachlauf erzeugen und senden. |
+| Ausgang wählen | `--device` bei beiden Playback-Wegen | MIDI-Ausgang auswählen; `devices` zeigt verfügbare Geräte. |
+
+Bedienbeispiele und Formatdetails stehen im Haupt-README unter
+[Huffman-Rhythmik](../../README.md#huffman-rhythmik),
+[RDL-0](../../README.md#rdl-0) und [MIDI](../../README.md#midi).
+
+## Eigenständige Analyse
+
+[`AnalyseRhythmUseCase`](../../src/main/java/syrincs/b_application/AnalyseRhythmUseCase.java)
+erstellt einen `HuffmanRhythm` mit 4/4 und 120 BPM. Die CLI zeigt dessen
+normalisierte Onsets, Gesamtinformation, Standardabweichung und die nach
+Beats gruppierten Onset-Strings. `Beats=[...]` enthält `x`/`o`-Strings,
+keine numerischen Beat-Informationswerte.
+
+Mehrere vollständige 4/4-Takte können gemeinsam analysiert werden. Dabei
+läuft der Playing-Zustand über Beat- und Taktgrenzen weiter; Information und
+Standardabweichung beziehen sich auf die gesamte Eingabe. Die Analyse
+speichert nichts und spielt nichts ab.
+
+## Ablauf der Erzeugung
 
 Der öffentliche Einstieg ist:
 
@@ -95,7 +131,8 @@ den Onset-String:
 - Whitespace wird entfernt.
 - Großbuchstaben werden in Kleinbuchstaben umgewandelt.
 - Erlaubt sind ausschließlich `x` und `o`.
-- Die Länge muss positiv und ein Vielfaches von 16 sein.
+- Die Länge muss positiv und ein Vielfaches von `4 × Taktzähler` sein;
+  im 4/4-Pfad von Analyse und Generator also ein Vielfaches von 16.
 - Der String wird in Gruppen zu je vier Positionen, also Beats, zerlegt.
 
 Das Onset-Format ist nicht mit RDL-0 zu verwechseln. RDL verwendet `x` für
@@ -244,10 +281,15 @@ syrincs play rhythm info 3 5 7
 ```
 
 Für jeden angefragten Informationsgrad lädt
-`PlayHuffmanRhythmsUseCase` Kandidaten mit
+der `UseCaseInteractor` Kandidaten mit
 `deviation > AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION`, derzeit `0.7`, und
 wählt zufällig einen Kandidaten. Danach werden die Onsets auf Kick und Snare
 verteilt und über MIDI abgespielt.
+
+Grade ohne Kandidaten werden übersprungen. Gibt es für keinen angefragten
+Grad Kandidaten, meldet die CLI einen Fehler mit Hinweisen auf `init` und
+`calculate rhythms`. Der nachgelagerte `PlayHuffmanRhythmsUseCase` übernimmt
+Mapping, Verkettung, Validierung und Übergabe an das Playback.
 
 Aktuell gibt es dabei:
 
@@ -263,6 +305,51 @@ Suchverhalten ergänzen. Ein Informationsprofil würde allerdings zunächst
 eine öffentliche, unveränderliche Darstellung der geordneten Beat-Werte in
 der Domäne benötigen; anschließend müsste entschieden werden, ob es beim
 Laden stets neu berechnet oder zusätzlich persistiert wird.
+
+## Kick-/Snare-Mapping und Verkettung
+
+Der
+[`RhythmMapperFromOnsetStringToKickAndSnare`](../../src/main/java/syrincs/a_domain/rhythm/RhythmMapperFromOnsetStringToKickAndSnare.java)
+akzeptiert genau einen 16-Schritt-Takt. Gewichtete Regeln bevorzugen Kick
+auf Downbeats und Antizipationen sowie Snare auf Backbeats. Für jeden Onset
+gewinnt der höhere Score; bei Gleichstand gewinnt an den nullbasierten
+Positionen 4 und 12 die Snare, sonst die Kick.
+
+Die Domänen-API liefert Masken, Positionslisten und Scores und kennt die
+Styles `DEFAULT` und `FOUR_ON_FLOOR`. Das DB-Playback verwendet `DEFAULT`;
+Stilwahl und Scores sind nicht über die CLI zugänglich. Standardstimmen sind
+Kick 36 und Snare 38, jeweils Kanal 9, Velocity 90 und Gate 50 Prozent.
+
+`PlayHuffmanRhythmsUseCase` mappt ausgewählte Takte einzeln und verbindet sie
+zu einem gemeinsamen Playback. Er verlangt übereinstimmende Taktart, Tempo
+und Raster. Die Mehrtaktfähigkeit der Analyse bedeutet nicht, dass der
+Mapper einen mehrtaktigen Onset-String direkt verarbeiten kann.
+
+## RDL-Eingabe, Validierung und MIDI-Wiedergabe
+
+[`RhythmFileParser`](../../src/main/java/syrincs/c_adapters/RhythmFileParser.java)
+liest `time`, `tempo`, `res-per-beat`, `bars`, `voice` und `pattern`.
+Fehlende Headerwerte werden mit 4/4, 120 BPM, vier Schritten pro Beat und
+einem Takt ergänzt. Ohne `--in` verwendet die CLI `data/beat.rdl`.
+Syntax und Voice-Parameter erläutert das [RDL-Beispiel](../../README.md#rdl-0).
+
+[`ValidatePatternsUseCase`](../../src/main/java/syrincs/b_application/ValidatePatternsUseCase.java)
+verlangt Voice-Deklarationen für Kick und Snare und genau diese beiden
+Pattern. Er prüft passende Patternlängen, positive Taktzähler, Raster- und
+Taktanzahlen sowie Noten/Velocity `0..127` und Kanäle `0..15`.
+Die Validierung wird auch auf gemappte Huffman-Pattern angewandt.
+
+Beide Wege verwenden den `RhythmPlaybackPort` und den MIDI-Adapter.
+[`SequenceBuilder`](../../src/main/java/syrincs/c_adapters/midi/SequenceBuilder.java)
+erstellt eine Sequenz mit PPQ 480, setzt das Tempo und berechnet Note-Off aus
+dem Gate-Anteil der Schrittlänge. Standardmäßig folgen zwei Sekunden
+Nachlauf. Rhythmus-Playback besitzt keinen OSC-Pfad.
+
+Die Geräteauflösung verwendet zuerst `--device`, danach
+`SYRINCS_MIDI_DEVICE`, Roland Digital Piano/DP603 und schließlich den ersten
+verfügbaren Ausgang; Details stehen unter [MIDI](../../README.md#midi).
+Tempo und Voice-Parameter kommen bei RDL aus der Datei, beim DB-Playback aus
+den genannten Defaults. Die Datenbank speichert kein Tempo.
 
 ## Wichtige Tests
 
@@ -281,3 +368,7 @@ mvn -Dtest='HuffmanRhythmTest,RhythmTest,GenerateAndPersistRhythmUseCaseTest' te
 Die Unit-Tests benötigen keine PostgreSQL-Instanz. Für den vollständigen
 CLI-Ablauf mit Persistenz müssen PostgreSQL erreichbar und das Schema mit
 `syrincs init` vorbereitet sein.
+
+Weitere relevante Tests sind `RootCmdRhythmCliTest` (Analyseausgabe,
+RDL-Aufruf, Geräteübergabe und Verkettung), `RhythmE2ETest` sowie
+`SequenceBuilderTest` (MIDI-Ereignisse und Zeitpunkte).
