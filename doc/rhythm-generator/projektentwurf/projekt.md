@@ -1,14 +1,14 @@
-# Projektentwurf: Rhythmisches Informationsmaß musikalisch nutzbar machen
+# Projektübersicht: Rhythmisches Informationsmaß musikalisch nutzbar machen
 
-Status: lokaler Arbeitsentwurf, noch nicht in Vikunja angelegt.
+Status: Arbeitsplanung zum bestehenden Vikunja-Projekt VR.
 Herkunft: [PV-1](http://localhost:3456/tasks/1).
 Fachliche Grundlage: [Schwächen und Zielbild](../schwaechen-und-zielbild.md).
-Stand der Entwürfe: 19. September 2026.
+Theoretische Grundlage: [Informationsbegriff](../informationsbegriff.md).
+Stand der Planung: 29. September 2026.
 
-Die acht Entwürfe sind fortlaufend von 1 bis 8 nummeriert. Dies sind lokale
-Referenzen. Projektkennung, reale Ticket-IDs, Zuständigkeiten und Termine
-werden erst bei einer späteren Übernahme festgelegt. Die Titel und Inhalte
-der einzelnen Dateien sind als Grundlage für Vikunja-Tasks formuliert.
+Die Aufgaben sind als VR-1 bis VR-8 in Vikunja angelegt. Titel,
+Anforderungen und Akzeptanzkriterien werden dort gepflegt; die lokalen
+Taskentwürfe wurden entfernt. Diese Übersicht hält Ziel und Abhängigkeiten fest.
 
 ## Projektziel
 
@@ -34,16 +34,16 @@ zeitlicher Informationsverteilung nutzbar.
 
 ## Taskübersicht
 
-| Lokaler Entwurf | Titel | Quelle | Abhängigkeiten |
+| Ticket | Titel | Quelle | Abhängigkeiten |
 | --- | --- | --- | --- |
-| [1](tasks/entwurf-1.md) | Den Taktinformationsbegriff fachlich bestimmen | S2 | keine |
-| [2](tasks/entwurf-2.md) | Taktweise Analyse gemäß fachlicher Definition umsetzen | S2 | 1,3 |
-| [3](tasks/entwurf-3.md) | Beat-Informationswerte öffentlich zugänglich machen | S1 | keine |
-| [4](tasks/entwurf-4.md) | Deviation als Parameter der Informationssuche anbieten | S3 | keine |
-| [5](tasks/entwurf-5.md) | Informationssuche ohne Wiedergabe bereitstellen | S4, S3 | 3,4 |
-| [6](tasks/entwurf-6.md) | Zufallsauswahl reproduzierbar und sichtbar machen | S4 | 5 |
-| [7](tasks/entwurf-7.md) | Nach Beat-Profilen und Informationsmaxima suchen | S5 | 5 |
-| [8](tasks/entwurf-8.md) | Nach mehrtaktigen Informationsverläufen suchen | S5, S2 | 2,5 |
+| [VR-1](http://localhost:3456/tasks/9) | Den Informationsbegriff aus Ereigniswahrnehmung und zeitlicher Organisation präzisieren | S2, Bezug zu S8 | keine |
+| [VR-2](http://localhost:3456/tasks/10) | Taktweise Analyse gemäß fachlicher Definition umsetzen | S2 | 1,3 |
+| [VR-3](http://localhost:3456/tasks/11) | Beat-Informationswerte öffentlich zugänglich machen | S1 | keine |
+| [VR-4](http://localhost:3456/tasks/12) | Deviation als Parameter der Informationssuche anbieten | S3 | keine |
+| [VR-5](http://localhost:3456/tasks/13) | Informationssuche ohne Wiedergabe bereitstellen | S4, S3 | 3,4 |
+| [VR-6](http://localhost:3456/tasks/14) | Zufallsauswahl reproduzierbar und sichtbar machen | S4 | 5 |
+| [VR-7](http://localhost:3456/tasks/15) | Nach Beat-Profilen und Informationsmaxima suchen | S5 | 5 |
+| [VR-8](http://localhost:3456/tasks/16) | Nach mehrtaktigen Informationsverläufen suchen | S5, S2 | 2,5 |
 
 Die Nummerierung ist keine Rangfolge. Aufgeführt sind nur unmittelbare
 Abhängigkeiten: Die Umsetzung benötigt ein konkretes Ergebnis des Vorgängers.
@@ -59,7 +59,7 @@ Task 8 sowohl 2 als auch 5.
 
 ```mermaid
 flowchart TD
-    A["1 · Taktinformation definieren"] --> B["2 · Taktweise Analyse"]
+    A["1 · Informationsbegriff präzisieren"] --> B["2 · Taktweise Analyse"]
     C["3 · Beat-Werte zugänglich machen"] --> B
     C --> E["5 · Suche ohne Playback"]
     D["4 · Deviation parametrieren"] --> E
@@ -71,12 +71,14 @@ flowchart TD
 
 ## Empfohlene Bearbeitung
 
-1. Entwürfe 3 und 4 sind unabhängig umsetzbar. Entwurf 1 beginnt daneben
+1. Tasks 3 und 4 sind unabhängig umsetzbar. Task 1 beginnt daneben
    als fachliche Klärung.
-2. Entwurf 5 folgt auf 3 und 4. Danach folgen 6 für reproduzierbare
+2. Task 5 folgt auf 3 und 4. Danach folgen 6 für reproduzierbare
    Auswahl und 7 für die zeitliche Suchdimension innerhalb eines Takts.
 3. Erst nach abgestimmtem Ergebnis von 1 folgt 2; darauf baut 8 auf.
    Eine Entscheidung für zwei Taktkontexte wird nicht vorausgesetzt.
+   Der Abschluss von 1 allein genügt nicht: Ergibt die Untersuchung noch
+   keinen akzeptierten Taktvertrag, bleiben 2 und damit 8 nicht startbereit.
 
 Die allgemeinen Qualitätsregeln stehen nicht in einem zusätzlichen
 „Tests verbessern“-Task. Jede Umsetzung trägt ihre eigenen fachlichen
@@ -84,7 +86,7 @@ Beispiele und geeigneten Prüfungen.
 
 ## Abdeckung der Schwächen
 
-| Schwäche | Zuständiger Entwurf |
+| Schwäche | Zuständiger Task |
 | --- | --- |
 | S1 – Beat-Werte nicht zugänglich | 3 |
 | S2 – Taktinformation und taktweise Analyse | 1 (Begriff), 2 (Umsetzung) |
@@ -120,19 +122,23 @@ Information. Weder Onset-Dichte noch metrische Gewichtung ersetzt das Maß.
 
 ## Festlegungen, offene Entscheidungen und zurückgestellte Ideen
 
-- **Taktinformation:** Entwurf 1 entscheidet die Bedeutung und benötigte
-  Modi. Entwürfe 2 und 8 sind bis dahin konditionale Umsetzungsvorschläge.
-- **Deviation-Defaults:** Entwurf 4 legt als Kompatibilitätsvertrag fest,
+- **Informationsbegriff:** Task 1 untersucht die kürzeste verbleibende
+  Beschreibung einschließlich der Kosten des zeitlichen Modells. Globale
+  Länge und lokale Kostenzurechnung sind getrennt zu prüfen; die Bedeutung
+  von Taktinformation wird daraus abgeleitet. Tasks 2 und 8 benötigen
+  anschließend einen ausdrücklich akzeptierten Taktvertrag.
+- **Deviation-Defaults:** Task 4 legt als Kompatibilitätsvertrag fest,
   dass alte Playback-Aufrufe weiterhin strikt `> 0.7` verwenden und
   explizite inklusive Grenzen diesen Default vollständig ersetzen.
 - **Profilformen:** konstant, steigend, fallend, alternierend und gipfelförmig
-  bleiben spätere Erweiterungen. Entwurf 7 beschränkt sich auf exakte
+  bleiben spätere Erweiterungen. Task 7 beschränkt sich auf exakte
   Beat-Profile und die Position eines Informationsmaximums.
 - **Weitere Onset-Filter und Zielprofil-Distanzen:** mögliche spätere
   Ergänzungen, noch kein konkreter Implementierungsauftrag.
 - **Dateiablage und Presets:** kein Bestandteil dieser Tasks.
-- **Direkte Wiedergabe, Katalogpflege und Taktbildungsforschung:** S6, S7 und S8
-  bleiben dokumentiert, werden mit diesem Projekt aber nicht bearbeitet.
+- **Direkte Wiedergabe und Katalogpflege:** S6 und S7 bleiben außerhalb des
+  Umfangs. S8 berührt die theoretische Frage von VR-1; die Implementierung
+  beliebiger Positionszahlen oder einer Primfaktor-Verteilung bleibt vertagt.
 
 Die zuvor gestrichenen Themen werden nicht als eigenständige Tasks
 wiedereingeführt: keine Mapping-Neuentwicklung, allgemeine
@@ -140,14 +146,14 @@ Validierungsbereinigung, Architektur-Neufassung, Variationswerkzeuge oder
 Exportfunktionen. Notwendige Eingabeprüfung und Tests bleiben Bestandteil
 der jeweils angefassten Funktion.
 
-## Hinweise für die spätere Übernahme
+## Verhältnis von Tasksn und Tickets
 
 Jede Datei enthält Titel, Ziel, Umfang, Akzeptanzkriterien, Abgrenzung und
-Verifikation. Bei der Übernahme werden lokale Abhängigkeiten auf die neu
-vergebenen Vikunja-IDs abgebildet. Die fachliche Begriffsaufgabe bleibt
+Verifikation. Die Tickets VR-1 bis VR-8 sind angelegt; ihre Beschreibungen
+enthalten Ticketverweise für Abhängigkeiten. Die fachliche Begriffsaufgabe bleibt
 von den darauf aufbauenden Implementierungsaufgaben unterscheidbar.
-Die genaue Befehlsnotation ist ein Entwurf und wird nicht allein durch
+Die genaue Befehlsnotation ist ein Task und wird nicht allein durch
 Übernahme eines Tasks zur implementierten CLI.
 
-Diese Planung legt keine Vikunja-Daten an und verändert keine Checkboxen
-von PV-1. Die README-Verweise auf laufende Entwürfe bleiben unverändert.
+Die Neuausrichtung von VR-1 verändert keine Checkboxen von PV-1.
+Die theoretische Skizze bleibt ein eigenständiges Arbeitsdokument.
