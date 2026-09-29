@@ -3,6 +3,12 @@
 Analyse zu [PV-1](http://localhost:3456/tasks/1), zweites To-do.
 Stand: 19. September 2026, Codebasis `572fb4d`.
 
+Ergänzung vom 29. September 2026: Die [theoretische Skizze zum Informationsbegriff](informationsbegriff.md)
+untersucht Ereigniswahrnehmung, konstruierte zeitliche Ordnung und die kürzeste
+verbleibende Beschreibung. VR-1 wurde darauf ausgerichtet. Die folgende
+Codeanalyse beschreibt weiterhin das bestehende Maß; seine Übereinstimmung
+mit dieser theoretischen These ist noch zu prüfen.
+
 ## Ergebnis und Umfang
 
 Syrincs besitzt bereits ein musikalisches Suchkriterium: das projektinterne
