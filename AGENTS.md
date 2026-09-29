@@ -375,6 +375,12 @@ Lokale Runtime:
 
 ## Änderungs- und Dokumentationspraxis
 
+- Jeder Task wird auf einem eigenen Branch bearbeitet. Vor Änderungen den
+  aktuellen Branch prüfen und bei Bedarf einen taskbezogenen Branch mit
+  Ticket-ID anlegen. Benötigt ein Task noch nicht integrierte Vorarbeiten,
+  darf sein Branch auf deren Branch aufbauen; die Basis ausdrücklich benennen.
+- Jede Commit-Message muss die zugehörige Task-ID in der Betreffzeile
+  enthalten, beispielsweise `feat: Hier wird was gemacht. ED-2`.
 - Bevorzuge kleine, fokussierte Änderungen und bewahre öffentliche APIs und
   historische CLI-Aliasse, sofern die Aufgabe keinen Bruch verlangt.
 - Lies vor fachlichen Änderungen die relevanten Tests. Ergänze Tests in der
