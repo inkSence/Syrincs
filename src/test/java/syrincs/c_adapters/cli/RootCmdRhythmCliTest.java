@@ -2,6 +2,9 @@ package syrincs.c_adapters.cli;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import picocli.CommandLine;
 import syrincs.a_domain.hindemith.HindemithChord;
 import syrincs.a_domain.rhythm.FakeMidiOutputPort;
@@ -12,6 +15,8 @@ import syrincs.a_domain.rhythm.VoiceSpec;
 import syrincs.b_application.AnalyseChordByHindemithUseCase;
 import syrincs.b_application.AnalyseRhythmUseCase;
 import syrincs.b_application.GenerateChordsUseCase;
+import syrincs.b_application.FilteringRhythmRepository;
+import syrincs.b_application.AppDefaults;
 import syrincs.b_application.GetHindemithChordsFromDbUseCase;
 import syrincs.b_application.PersistHindemithChordUseCase;
 import syrincs.b_application.PlayHuffmanRhythmsUseCase;
@@ -23,6 +28,7 @@ import syrincs.b_application.ports.HindemithChordRepositoryPort;
 import syrincs.b_application.ports.MidiDeviceQueryPort;
 import syrincs.b_application.ports.RhythmPlaybackPort;
 import syrincs.b_application.ports.RhythmRepository;
+import syrincs.b_application.ports.dto.DeviationRange;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -35,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -75,7 +82,7 @@ class RootCmdRhythmCliTest {
         CapturingRhythmPlaybackPort playback = new CapturingRhythmPlaybackPort();
         RootCmd root = buildRoot(playback, new StubRhythmRepository());
 
-        int code = new CommandLine(root).execute("play", "rhythm", "info", "--device", "Virtual Out", "1");
+        int code = new CommandLine(root).execute("play", "rhythm", "info", "--device", "Virtual Out", "3");
 
         assertEquals(0, code);
         assertEquals(1, playback.calls);
@@ -87,7 +94,7 @@ class RootCmdRhythmCliTest {
         CapturingRhythmPlaybackPort playback = new CapturingRhythmPlaybackPort();
         RootCmd root = buildRoot(playback, new StubRhythmRepository());
 
-        int code = new CommandLine(root).execute("play", "rhythm", "info", "1", "2");
+        int code = new CommandLine(root).execute("play", "rhythm", "info", "3", "2");
 
         assertEquals(0, code);
         assertEquals(1, playback.calls);
@@ -251,6 +258,130 @@ class RootCmdRhythmCliTest {
         return output.toString(StandardCharsets.UTF_8);
     }
 
+    @ParameterizedTest
+    @MethodSource("inclusivePlaybackRequests")
+    void playRhythmInfo_filtersByActualGradeAndInclusiveBounds(String[] arguments, DeviationRange expectedRange,
+                                                              String expectedOnsets) {
+        var playback = new CapturingRhythmPlaybackPort();
+        var repo = freshCatalog();
+        var args = new ArrayList<>(List.of("play", "rhythm", "info"));
+        args.addAll(List.of(arguments));
+        args.addAll(List.of("--device", "Virtual Out"));
+
+        assertEquals(0, new CommandLine(buildRoot(playback, repo)).execute(args.toArray(String[]::new)));
+        assertEquals(1, playback.calls);
+        assertEquals("Virtual Out", playback.deviceNameSubstring);
+        assertEquals(expectedRange, repo.lastRange);
+        assertEquals(1, repo.rangeQueries);
+        assertEquals(0, repo.strictQueries);
+        assertPlayedOnsets(playback, expectedOnsets);
+    }
+
+    static Stream<Arguments> inclusivePlaybackRequests() {
+        var low = new HuffmanRhythm(4, 4, 120, "xooo xoxo xooo xoxo");
+        var high = new HuffmanRhythm(4, 4, 120, "xoxo xooo xoxo xooo");
+        String l = Double.toString(low.getStandardDeviation()), h = Double.toString(high.getStandardDeviation());
+        return Stream.of(
+                Arguments.of(new String[]{"3", "--deviation-min", h}, new DeviationRange(high.getStandardDeviation(), null), high.getOnsetList()),
+                Arguments.of(new String[]{"--deviation-max", l, "3"}, new DeviationRange(null, low.getStandardDeviation()), low.getOnsetList()),
+                Arguments.of(new String[]{"3", "--deviation-min", l, "--deviation-max", l}, new DeviationRange(low.getStandardDeviation(), low.getStandardDeviation()), low.getOnsetList()),
+                Arguments.of(new String[]{"0", "--deviation-min", "0"}, new DeviationRange(0.0, null), "o".repeat(16)),
+                Arguments.of(new String[]{"0", "--deviation-max", "0"}, new DeviationRange(null, 0.0), "o".repeat(16)));
+    }
+
+    @Test
+    void playRhythmInfo_withoutOptionsKeepsStrictDefaultAndExcludesEquality() {
+        var low = new HuffmanRhythm(4, 4, 120, "xooo xoxo xooo xoxo");
+        var high = new HuffmanRhythm(4, 4, 120, "xoxo xooo xoxo xooo");
+        var repo = new FilteringRhythmRepository(new FilteringRhythmRepository.Entry(low, 3, 0.7),
+                FilteringRhythmRepository.Entry.fresh(high));
+        var playback = new CapturingRhythmPlaybackPort();
+
+        assertEquals(0, new CommandLine(buildRoot(playback, repo)).execute("play", "rhythm", "info", "3"));
+        assertEquals(1, repo.strictQueries);
+        assertEquals(AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION, repo.lastStrictMinimum);
+        assertEquals(0, repo.rangeQueries);
+        assertPlayedOnsets(playback, high.getOnsetList());
+
+        assertEquals(0, new CommandLine(buildRoot(playback, repo)).execute("play", "rhythm", "info", "3",
+                "--deviation-min", "0.7", "--deviation-max", "0.7"));
+        assertEquals(1, repo.rangeQueries);
+        assertPlayedOnsets(playback, low.getOnsetList());
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidPlaybackBounds")
+    void playRhythmInfo_invalidBoundsFailBeforeQueryOrPlayback(String[] options, String errorText) {
+        var repo = freshCatalog();
+        var playback = new CapturingRhythmPlaybackPort();
+        var args = new ArrayList<>(List.of("play", "rhythm", "info", "3"));
+        args.addAll(List.of(options));
+        var error = new ByteArrayOutputStream();
+        var previous = System.err;
+        try {
+            System.setErr(new PrintStream(error));
+            assertEquals(1, new CommandLine(buildRoot(playback, repo)).execute(args.toArray(String[]::new)));
+        } finally {
+            System.setErr(previous);
+        }
+        assertTrue(error.toString(StandardCharsets.UTF_8).contains(errorText));
+        assertTrue(!error.toString(StandardCharsets.UTF_8).contains("\tat syrincs."));
+        assertEquals(0, repo.queries);
+        assertEquals(0, playback.calls);
+    }
+
+    static Stream<Arguments> invalidPlaybackBounds() {
+        return Stream.of(
+                Arguments.of(new String[]{"--deviation-min=-0.1"}, "--deviation-min"),
+                Arguments.of(new String[]{"--deviation-max=-0.1"}, "--deviation-max"),
+                Arguments.of(new String[]{"--deviation-min=NaN"}, "finite and non-negative"),
+                Arguments.of(new String[]{"--deviation-max=NaN"}, "finite and non-negative"),
+                Arguments.of(new String[]{"--deviation-min=Infinity"}, "--deviation-min"),
+                Arguments.of(new String[]{"--deviation-max=Infinity"}, "--deviation-max"),
+                Arguments.of(new String[]{"--deviation-min=-Infinity"}, "--deviation-min"),
+                Arguments.of(new String[]{"--deviation-max=-Infinity"}, "--deviation-max"),
+                Arguments.of(new String[]{"--deviation-min=0.8", "--deviation-max=0.2"}, "must not exceed"));
+    }
+
+    @Test
+    void playRhythmInfo_helpAndRootHelpExplainBounds() {
+        var command = new CommandLine(new RootCmd(null, (MidiDeviceQueryPort) null));
+        var help = new StringWriter();
+        command.setOut(new PrintWriter(help));
+        assertEquals(0, command.execute("play", "rhythm", "info", "--help"));
+        assertTrue(help.toString().contains("--deviation-min"));
+        assertTrue(help.toString().contains("--deviation-max"));
+        assertTrue(help.toString().contains("Inclusive"));
+        assertTrue(help.toString().contains("no implicit minimum"));
+
+        var output = new ByteArrayOutputStream();
+        var previous = System.out;
+        try {
+            System.setOut(new PrintStream(output));
+            RootCmd.printExtendedHelp(command);
+        } finally {
+            System.setOut(previous);
+        }
+        assertTrue(output.toString(StandardCharsets.UTF_8).contains("Subcommand 'play rhythm info' usage:"));
+        assertTrue(output.toString(StandardCharsets.UTF_8).contains("--deviation-max"));
+    }
+
+    private static FilteringRhythmRepository freshCatalog() {
+        return new FilteringRhythmRepository(List.of(
+                new HuffmanRhythm(4, 4, 120, "xooo xoxo xooo xoxo"),
+                new HuffmanRhythm(4, 4, 120, "xoxo xooo xoxo xooo"),
+                new HuffmanRhythm(4, 4, 120, "xoxo xooo xooo xooo"),
+                new HuffmanRhythm(4, 4, 120, "o".repeat(16))));
+    }
+
+    private static void assertPlayedOnsets(CapturingRhythmPlaybackPort playback, String expected) {
+        assertEquals(expected.length(), playback.pattern.voices().get("kick").length);
+        for (int i = 0; i < expected.length(); i++) {
+            assertEquals(expected.charAt(i) == 'x', playback.pattern.voices().get("kick")[i]
+                    || playback.pattern.voices().get("snare")[i], "Onset " + i);
+        }
+    }
+
     private Path writeRhythmFile() throws Exception {
         Path file = tempDir.resolve("beat.rdl");
         Files.writeString(file, RDL, StandardCharsets.UTF_8);
@@ -306,21 +437,16 @@ class RootCmdRhythmCliTest {
         }
     }
 
-    private static class StubRhythmRepository implements RhythmRepository {
-        @Override public List<Long> saveAll(List<HuffmanRhythm> rhythms) { return List.of(); }
-        @Override public List<HuffmanRhythm> getTwoRhythms(Integer id1, Integer id2) { return List.of(); }
-        @Override public List<HuffmanRhythm> getAllByInformation(Integer information) { return List.of(); }
-        @Override public List<HuffmanRhythm> getAllByInformationAndMinDeviation(Integer information, Double minDeviation) {
-            return List.of(new HuffmanRhythm(4, 4, 120, "xooo xooo xooo xooo"));
+    private static class StubRhythmRepository extends FilteringRhythmRepository {
+        StubRhythmRepository() {
+            super(List.of(new HuffmanRhythm(4, 4, 120, "xoxo xooo xoxo xooo"),
+                    new HuffmanRhythm(4, 4, 120, "xoxo xooo xooo xooo")));
         }
     }
 
-    private static class EmptyRhythmRepository implements RhythmRepository {
-        @Override public List<Long> saveAll(List<HuffmanRhythm> rhythms) { return List.of(); }
-        @Override public List<HuffmanRhythm> getTwoRhythms(Integer id1, Integer id2) { return List.of(); }
-        @Override public List<HuffmanRhythm> getAllByInformation(Integer information) { return List.of(); }
-        @Override public List<HuffmanRhythm> getAllByInformationAndMinDeviation(Integer information, Double minDeviation) {
-            return List.of();
+    private static class EmptyRhythmRepository extends FilteringRhythmRepository {
+        EmptyRhythmRepository() {
+            super(List.of());
         }
     }
 

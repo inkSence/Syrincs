@@ -1,6 +1,7 @@
 package syrincs.b_application.ports;
 
 import syrincs.a_domain.rhythm.HuffmanRhythm;
+import syrincs.b_application.ports.dto.DeviationRange;
 
 import java.util.List;
 
@@ -33,4 +34,12 @@ public interface RhythmRepository {
      * Returns rhythms with the given information grade and a deviation strictly above minDeviation.
      */
     List<HuffmanRhythm> getAllByInformationAndMinDeviation(Integer information, Double minDeviation);
+
+    /**
+     * Matches stored information and optional inclusive stored deviation bounds.
+     * With no bounds, no deviation condition applies; otherwise unknown (null)
+     * stored deviations are not matches. Returned rhythms are reconstructed from
+     * their onsets and may have different aggregates in an older catalog.
+     */
+    List<HuffmanRhythm> getAllByInformationAndDeviationRange(Integer information, DeviationRange range);
 }

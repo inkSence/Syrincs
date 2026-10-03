@@ -8,6 +8,8 @@ import picocli.CommandLine.Parameters;
 import picocli.CommandLine.ParentCommand;
 import syrincs.a_domain.Tone;
 import syrincs.b_application.UseCaseInteractor;
+import syrincs.b_application.AppDefaults;
+import syrincs.b_application.ports.dto.DeviationRange;
 import syrincs.b_application.ports.MidiDeviceQueryPort;
 import syrincs.c_adapters.RhythmFileParser;
 import syrincs.c_adapters.osc.SuperColliderOscOutputAdapter;
@@ -74,6 +76,10 @@ public class RootCmd implements Runnable {
             printSubcommandUsage(play, "note");
             printSubcommandUsage(play, "chords");
             printSubcommandUsage(play, "rhythm");
+            CommandLine rhythm = play.getSubcommands().get("rhythm");
+            if (rhythm != null) {
+                printSubcommandUsage(rhythm, "info", "play rhythm info");
+            }
             printSubcommandUsage(play, "sc");
         }
         CommandLine analyze = root.getSubcommands().get("analyze");
@@ -83,10 +89,14 @@ public class RootCmd implements Runnable {
     }
 
     private static void printSubcommandUsage(CommandLine parent, String name) {
+        printSubcommandUsage(parent, name, parent.getCommandName() + " " + name);
+    }
+
+    private static void printSubcommandUsage(CommandLine parent, String name, String displayName) {
         CommandLine subcommand = parent.getSubcommands().get(name);
         if (subcommand != null) {
             System.out.println();
-            System.out.println("Subcommand '" + parent.getCommandName() + " " + name + "' usage:");
+            System.out.println("Subcommand '" + displayName + "' usage:");
             subcommand.usage(System.out);
         }
     }
@@ -269,7 +279,8 @@ public class RootCmd implements Runnable {
                 }
             }
 
-            @Command(name = "info", description = "Play stored rhythms by information grades (one random per grade)")
+            @Command(name = "info", mixinStandardHelpOptions = true,
+                    description = "Play stored rhythms by information grades (one random per grade)")
             public static class InfoCmd implements Callable<Integer> {
                 @ParentCommand RhythmCmd parent;
 
@@ -279,11 +290,23 @@ public class RootCmd implements Runnable {
                 @Option(names = "--device", description = "MIDI output device name substring. Overrides parent --device when set after info")
                 String device;
 
+                @Option(names = "--deviation-min", description = "Inclusive minimum deviation; either explicit bound replaces the default strict > "
+                        + AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION + " filter")
+                Double deviationMin;
+
+                @Option(names = "--deviation-max", description = "Inclusive maximum deviation; no implicit minimum when used alone")
+                Double deviationMax;
+
                 @Override
                 public Integer call() {
                     try {
                         List<Integer> infos = Arrays.stream(infoGrades).boxed().toList();
-                        parent.parentPlay.parent.midiInteractor.playRhythmsByInformationGrades(infos, effectiveDevice());
+                        if (deviationMin == null && deviationMax == null) {
+                            parent.parentPlay.parent.midiInteractor.playRhythmsByInformationGrades(infos, effectiveDevice());
+                        } else {
+                            var range = new DeviationRange(deviationMin, deviationMax);
+                            parent.parentPlay.parent.midiInteractor.playRhythmsByInformationGrades(infos, effectiveDevice(), range);
+                        }
                         return 0;
                     } catch (Exception e) {
                         System.err.println("[ERROR] " + e.getMessage());

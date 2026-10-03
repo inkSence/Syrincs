@@ -304,10 +304,29 @@ Batch-Inserts. Auch hier hängen Wiederholungen weitere Zeilen an.
 ```bash
 syrincs play rhythm info 3 5 7
 syrincs play rhythm info --device "Virtual Out" 3 5 7
+syrincs play rhythm info 3 5 --deviation-min 0.2 --deviation-max 0.8
+syrincs play rhythm info 0 --deviation-min 0
 ```
 
-Für jeden Informationsgrad lädt Syrincs Kandidaten mit `deviation > 0.7` und
-wählt zufällig einen aus. Grade ohne Kandidaten werden übersprungen; nur wenn
+Für jeden Informationsgrad lädt Syrincs passende Kandidaten und wählt
+zufällig einen aus. Ohne Deviation-Optionen bleibt der bisherige strikte
+Filter `deviation > 0.7` erhalten. Explizite Grenzen ersetzen ihn vollständig:
+
+| Optionen | Deviation-Filter |
+| --- | --- |
+| keine | `> 0.7` |
+| nur `--deviation-min MIN` | `>= MIN`, ohne Maximum |
+| nur `--deviation-max MAX` | `<= MAX`, ohne implizites Minimum |
+| beide | `>= MIN` und `<= MAX` |
+
+Explizite Grenzen sind inklusiv; auch 0 ist zulässig. Negative, nichtendliche
+Werte (`NaN`, Unendlichkeit) und `MIN > MAX` werden vor der DB-Abfrage
+abgelehnt. Die DB filtert gespeicherte Informations- und Deviation-Werte;
+beim Laden werden die Aggregate aus den Onsets neu berechnet. Bei älteren
+Katalogdaten können beide Bewertungen abweichen. Gespeichertes `NULL` in
+Deviation erfüllt keine gesetzte Grenze; es wird hier nicht migriert.
+
+Grade ohne Kandidaten werden weiterhin übersprungen; nur wenn
 für keinen angefragten Grad ein Kandidat existiert, endet der Befehl mit
 Fehler und einem Hinweis auf `init` und `calculate rhythms`.
 

@@ -3,6 +3,7 @@ package syrincs.c_adapters.postgres;
 import syrincs.a_domain.rhythm.HuffmanRhythm;
 import syrincs.b_application.AppDefaults;
 import syrincs.b_application.ports.RhythmRepository;
+import syrincs.b_application.ports.dto.DeviationRange;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -163,6 +164,32 @@ public class PostgresRhythmRepository implements RhythmRepository {
             }
         } catch (SQLException e) {
             throw databaseFailure("Failed to load HuffmanRhythms by information and minimum deviation", e);
+        }
+        return result;
+    }
+
+    @Override
+    public List<HuffmanRhythm> getAllByInformationAndDeviationRange(Integer information, DeviationRange range) {
+        Objects.requireNonNull(information, "information must not be null");
+        Objects.requireNonNull(range, "range must not be null");
+        String sql = "SELECT rhythmstring, numerator, denominator FROM public.huffmanRhythms WHERE info = ?"
+                + (range.min() == null ? "" : " AND deviation >= ?")
+                + (range.max() == null ? "" : " AND deviation <= ?")
+                + " ORDER BY id";
+        List<HuffmanRhythm> result = new ArrayList<>();
+        try (Connection con = getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, information);
+            int parameter = 2;
+            if (range.min() != null) ps.setDouble(parameter++, range.min());
+            if (range.max() != null) ps.setDouble(parameter, range.max());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new HuffmanRhythm(rs.getInt("numerator"), rs.getInt("denominator"),
+                            AppDefaults.DEFAULT_TEMPO_BPM, rs.getString("rhythmstring")));
+                }
+            }
+        } catch (SQLException e) {
+            throw databaseFailure("Failed to load HuffmanRhythms by information and deviation range", e);
         }
         return result;
     }
