@@ -285,9 +285,10 @@ public class RootCmd implements Runnable {
             }
 
             @Command(name = "info", mixinStandardHelpOptions = true,
-                    description = "Play stored rhythms by information grades (one random per grade)")
+                    description = "Show one random stored rhythm per requested position, then play the complete selection")
             public static class InfoCmd implements Callable<Integer> {
                 @ParentCommand RhythmCmd parent;
+                @CommandLine.Spec CommandLine.Model.CommandSpec spec;
 
                 @Parameters(arity = "1..*", description = "Information grades to play (e.g. 1 2 3 4)")
                 int[] infoGrades;
@@ -302,19 +303,37 @@ public class RootCmd implements Runnable {
                 @Option(names = "--deviation-max", description = "Inclusive maximum deviation; no implicit minimum when used alone")
                 Double deviationMax;
 
+                @Option(names = "--seed", description = "Seed for java.util.Random; same catalog, criteria and version reproduce the selection")
+                Long seed;
+
+                @Option(names = "--dry-run", description = "Show the same selection without opening MIDI or starting playback")
+                boolean dryRun;
+
                 @Override
                 public Integer call() {
                     try {
                         List<Integer> infos = Arrays.stream(infoGrades).boxed().toList();
-                        if (deviationMin == null && deviationMax == null) {
-                            parent.parentPlay.parent.midiInteractor.playRhythmsByInformationGrades(infos, effectiveDevice());
-                        } else {
-                            var range = new DeviationRange(deviationMin, deviationMax);
-                            parent.parentPlay.parent.midiInteractor.playRhythmsByInformationGrades(infos, effectiveDevice(), range);
+                        var range = deviationMin == null && deviationMax == null ? null : new DeviationRange(deviationMin, deviationMax);
+                        var interactor = parent.parentPlay.parent.midiInteractor;
+                        var selection = interactor.selectRhythmsByInformationGrades(infos, range, seed);
+                        var out = spec.commandLine().getOut();
+                        out.printf(Locale.ROOT, "[SELECTION] Seed=%d | Algorithm=java.util.Random | DeviationFilter=%s | Count=%d%n",
+                                selection.seed(), range == null ? "> " + AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION : range,
+                                selection.positions().size());
+                        for (var position : selection.positions()) {
+                            var rhythm = position.rhythm();
+                            out.printf(Locale.ROOT,
+                                    "[SELECTED] Position=%d | RequestedInfo=%d | Time=%d/%d | Rhythm=%s | BeatInformation=%s | Info=%d | Deviation=%.6f%n",
+                                    position.position(), position.requestedInformation(), rhythm.getNumerator(), rhythm.getDenominator(),
+                                    rhythm.getOnsetList(), rhythm.getBeatInformation(), rhythm.getInformation(), rhythm.getStandardDeviation());
+                        }
+                        out.flush();
+                        if (!dryRun) {
+                            interactor.playRhythms(selection.rhythms(), effectiveDevice());
                         }
                         return 0;
                     } catch (Exception e) {
-                        System.err.println("[ERROR] " + e.getMessage());
+                        spec.commandLine().getErr().println("[ERROR] " + e.getMessage());
                         return 1;
                     }
                 }

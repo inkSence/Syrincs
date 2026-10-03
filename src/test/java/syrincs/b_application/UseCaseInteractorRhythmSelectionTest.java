@@ -84,12 +84,15 @@ class UseCaseInteractorRhythmSelectionTest {
     }
 
     @Test
-    void missingGradesStillSkipAndPreserveOrderOfSuccessfulSelections() throws Exception {
+    void missingGradesFailBeforePlayingAnySuccessfulPosition() {
         var repo = new FilteringRhythmRepository(List.of(LOW, SILENCE));
         var interactor = new CapturingInteractor(repo);
-        interactor.playRhythmsByInformationGrades(List.of(99, 3, 0, 3), null, new DeviationRange(0.0, null));
-        assertEquals(List.of(LOW, SILENCE, LOW), interactor.selected);
-        assertEquals(1, interactor.plays);
+        var error = assertThrows(IllegalStateException.class, () ->
+                interactor.playRhythmsByInformationGrades(List.of(99, 3, 0, 98), null, new DeviationRange(0.0, null)));
+        assertTrue(error.getMessage().contains("position 1 (info=99)"));
+        assertTrue(error.getMessage().contains("position 4 (info=98)"));
+        assertNull(interactor.selected);
+        assertEquals(0, interactor.plays);
         assertEquals(4, repo.rangeQueries);
     }
 

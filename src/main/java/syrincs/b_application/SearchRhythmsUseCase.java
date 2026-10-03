@@ -27,16 +27,41 @@ public final class SearchRhythmsUseCase {
         if (limit <= 0) throw new IllegalArgumentException("--limit must be positive");
         Objects.requireNonNull(range, "deviation range");
 
-        List<HuffmanRhythm> matches = repository.getAllByInformationAndDeviationRange(information, range);
+        List<HuffmanRhythm> matches = findCandidates(information, range);
+        return new Result(information, range, limit, matches.size(), matches.stream().limit(limit)
+                .map(r -> new Candidate(r.getOnsetList(), r.getNumerator(), r.getDenominator(),
+                        r.getBeatInformation(), r.getInformation(), r.getStandardDeviation())).toList());
+    }
+
+    /** Complete unique candidate set, without the CLI display limit. */
+    public List<HuffmanRhythm> findCandidates(int information, DeviationRange range) {
+        validateInformation(information);
+        Objects.requireNonNull(range, "deviation range");
+        return canonicalCandidates(repository.getAllByInformationAndDeviationRange(information, range));
+    }
+
+    /** Null range preserves the historical strict minimum only for playback selection. */
+    public List<HuffmanRhythm> findPlaybackCandidates(int information, DeviationRange range) {
+        validateInformation(information);
+        return range == null
+                ? canonicalCandidates(repository.getAllByInformationAndMinDeviation(information,
+                        AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION))
+                : findCandidates(information, range);
+    }
+
+    private static void validateInformation(int information) {
+        if (information < 0) throw new IllegalArgumentException("Information grade must be non-negative");
+    }
+
+    private static List<HuffmanRhythm> canonicalCandidates(List<HuffmanRhythm> matches) {
         if (matches == null) throw new IllegalStateException("RhythmRepository returned no result list");
-        var unique = new TreeMap<Identity, Candidate>(Comparator.comparingInt(Identity::numerator)
+        var unique = new TreeMap<Identity, HuffmanRhythm>(Comparator.comparingInt(Identity::numerator)
                 .thenComparingInt(Identity::denominator).thenComparing(Identity::onsets));
         for (HuffmanRhythm rhythm : matches) {
             var identity = new Identity(rhythm.getNumerator(), rhythm.getDenominator(), rhythm.getOnsetList());
-            unique.putIfAbsent(identity, new Candidate(identity.onsets(), identity.numerator(), identity.denominator(),
-                    rhythm.getBeatInformation(), rhythm.getInformation(), rhythm.getStandardDeviation()));
+            unique.putIfAbsent(identity, rhythm);
         }
-        return new Result(information, range, limit, unique.size(), unique.values().stream().limit(limit).toList());
+        return List.copyOf(unique.values());
     }
 
     private record Identity(int numerator, int denominator, String onsets) {}

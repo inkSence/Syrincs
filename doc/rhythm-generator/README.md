@@ -7,8 +7,8 @@ Huffman-Baum und komprimiert keine Audiodaten.
 
 Diese Dokumentation beschreibt den aktuellen Stand. Informationsprofile
 pro Beat sind öffentlich abrufbar und mit `analyze rhythm --details` sichtbar.
-Eine Suche nach Profilformen und eine reproduzierbare Zufallsauswahl sind
-noch nicht implementiert.
+Die Zufallsauswahl ist mit `--seed` reproduzierbar und mit `--dry-run` ohne
+Playback sichtbar. Eine Suche nach Profilformen ist noch nicht implementiert.
 
 ## Funktionsübersicht des Rhythmusmoduls
 
@@ -23,7 +23,7 @@ Huffman-Analyse.
 | Schema vorbereiten | `init` | Rhythmustabelle anlegen oder älteres Schema ergänzen. |
 | Rhythmen erzeugen | `calculate rhythms` | Alle 65.536 eintaktigen 4/4-Pattern bewerten und speichern. |
 | DB-Rhythmen suchen | `search rhythms --info 3` | Eindeutige, kanonisch sortierte Kandidaten mit Beat-Profilen anzeigen; optionale inklusive Deviation-Grenzen, keine Zufallsauswahl und kein Playback. |
-| DB-Rhythmen auswählen | `play rhythm info 3 5 7` | Je Grad zufällig einen Kandidaten auswählen und abspielen; Default `deviation > 0.7`, optional inklusive Min-/Max-Grenzen. |
+| DB-Rhythmen auswählen | `play rhythm info 3 5 7 [--seed 42] [--dry-run]` | Je Position einen eindeutigen Kandidaten auswählen und vorher anzeigen; optional reproduzierbar oder ohne Playback. Default `deviation > 0.7`, optional inklusive Min-/Max-Grenzen. |
 | Kick/Snare zuordnen | Intern beim DB-Playback | Jeden Onset eines 16-Schritt-Takts anhand gewichteter Positionsregeln einer Stimme zuweisen. |
 | Takte verbinden | Intern beim DB-Playback | Einzeln gemappte Takte in Anfragereihenfolge zu einem Pattern verbinden. |
 | RDL lesen und validieren | `play rhythm --in data/beat.rdl` | Header, Voices und Pattern lesen; Kick/Snare, Längen und Werte prüfen. |
@@ -336,13 +336,16 @@ ist ein nachgelagerter Ablauf:
 ```bash
 syrincs play rhythm info 3 5 7
 syrincs play rhythm info 3 5 --deviation-min 0.2 --deviation-max 0.8
+syrincs play rhythm info 3 5 3 --seed 42 --dry-run
 ```
 
-Für jeden angefragten Informationsgrad lädt
-der `UseCaseInteractor` ohne Deviation-Optionen Kandidaten mit
-`deviation > AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION`, derzeit `0.7`, und
-wählt zufällig einen Kandidaten. Sobald mindestens eine Grenze gesetzt ist,
-verwendet er stattdessen den frameworkfreien `DeviationRange`-Vertrag und
+Der `UseCaseInteractor` trennt Kandidatensuche, Auswahl und Playback.
+Für jeden angefragten Informationsgrad lädt der Such-Use-Case im
+Playback-Pfad ohne Deviation-Optionen Kandidaten mit
+`deviation > AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION`, derzeit `0.7`.
+Der Auswahl-Use-Case wählt einen Kandidaten je Position. Sobald mindestens
+eine Grenze gesetzt ist, verwendet die Suche stattdessen den
+frameworkfreien `DeviationRange`-Vertrag und
 `RhythmRepository.getAllByInformationAndDeviationRange(...)`:
 
 - Min allein: `deviation >= min`, kein Maximum;
@@ -352,22 +355,53 @@ verwendet er stattdessen den frameworkfreien `DeviationRange`-Vertrag und
 Die bestehende Strict-Min-Methode bleibt unverändert. Beide Grenzen sind
 optional, endlich und nichtnegativ; `min > max` ist ungültig. Die Validierung
 erfolgt vor Repository-Aufrufen. Min 0 schließt auch Rhythmen mit Deviation 0
-ein. Die SQL-Grenzen werden als Parameter gebunden. Nach der Auswahl werden
-die Onsets wie bisher auf Kick und Snare verteilt und über MIDI abgespielt.
+ein. Die SQL-Grenzen werden als Parameter gebunden. Beim tatsächlichen
+Playback werden die Onsets wie bisher auf Kick und Snare verteilt und über
+MIDI abgespielt.
 
-Grade ohne Kandidaten werden übersprungen. Gibt es für keinen angefragten
-Grad Kandidaten, meldet die CLI einen Fehler mit Hinweisen auf `init` und
-`calculate rhythms`. Der nachgelagerte `PlayHuffmanRhythmsUseCase` übernimmt
-Mapping, Verkettung, Validierung und Übergabe an das Playback.
+[`SelectRhythmsUseCase`](../../src/main/java/syrincs/b_application/SelectRhythmsUseCase.java)
+ist ein eigenständig testbarer, read-only Auswahlschritt ohne Ausgabe- oder
+Playback-Port. Er bezieht vollständige Kandidatenlisten aus dem Such-Use-Case,
+der dieselbe Identität und kanonische Sortierung wie `search rhythms` verwendet.
+Das Such-Ausgabe-Limit gilt hier nicht. Jeder verschiedene Grad wird pro
+Aufruf einmal geladen; wiederholte Grade verwenden dieselbe vollständige Liste.
+
+Der Auswahlvertrag lautet: ein `java.util.Random` pro erfolgreichem Aufruf,
+initialisiert mit `--seed LONG`, und genau ein `nextInt(Kandidatenzahl)` je
+Position in Anfragereihenfolge, auch bei einer einelementigen Liste. Es wird
+mit Zurücklegen gezogen; dasselbe Pattern darf an mehreren Positionen stehen.
+Doppelte Katalogzeilen verändern seine Wahrscheinlichkeit nicht. Ohne
+expliziten Seed wird einmal ein Seed mit `ThreadLocalRandom.nextLong()`
+erzeugt und dann derselbe Algorithmus verwendet. Die Ergebnisliste ist
+unveränderlich und enthält Position, angefragten Grad und Rhythmus.
+
+Alle Positionen werden vor der Auswahl auf Kandidaten geprüft. Fehlen
+Treffer, benennt ein Fehler jede betroffene Position samt Grad, einschließlich
+wiederholter fehlender Grade; es gibt weder eine Teilauswahl noch Playback.
+Der frühere Vertrag, fehlende Grade zu überspringen, ist bewusst aufgehoben.
+Repository-Fehler bleiben Fehler und werden nicht als fehlende Treffer behandelt.
+
+Die CLI zeigt zuerst den tatsächlichen Seed, den Algorithmus, den
+Deviation-Filter und sämtliche Positionen mit Onsets, Beat-Profil, Information
+und Deviation. Angefragter Grad und rekonstruierte Information sind getrennt
+ausgewiesen, da gespeicherte Aggregate in älteren Katalogen abweichen können.
+`--dry-run` liefert dieselbe Auswahl und Ausgabe, ohne einen Playback-Port
+aufzurufen oder MIDI-Geräte zu öffnen. Sonst wird exakt diese Auswahl einmal
+gemeinsam an `PlayHuffmanRhythmsUseCase` übergeben; dieser übernimmt Mapping,
+Verkettung, Validierung und Übergabe an das Playback. Die Anwendung druckt nichts.
+
+Reproduzierbarkeit gilt bei unverändertem normalisiertem Kandidateninhalt,
+gleicher Kriterienfolge, gleichem Seed und gleicher Programmversion,
+unabhängig von DB-Reihenfolge und Duplikaten. Ein Seed ist keine dauerhafte
+Pattern-Adresse über Katalog- oder Algorithmusänderungen hinweg. Es werden
+weder Seed noch Auswahl persistiert.
 
 Aktuell gibt es dabei:
 
-- keine Ausgabe der Kandidaten vor der Auswahl;
 - keine Suche nach einem geordneten Beat-Informationsprofil;
 - keine Filter nach Peak-Position, Onset-Dichte oder metrischer Gewichtung;
-- keinen Seed für reproduzierbare Auswahl;
-- keine Vorschau der Zufallsauswahl im Playback-Befehl; die separate
-  Kandidatensuche erfolgt über `search rhythms`.
+- keine Persistenz der Zufallsauswahl; ihre Vorschau erfolgt mit `--dry-run`,
+  die separate Kandidatensuche über `search rhythms`.
 
 Diese Punkte gehören nicht in die Erzeugung der 65.536 Grundrhythmen. Sie
 lassen sich auf der erzeugten Datenbasis als eigenes Analyse- und

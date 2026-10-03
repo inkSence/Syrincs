@@ -262,8 +262,15 @@ Huffman-Regeln:
   1024. Wiederholte Aufrufe deduplizieren nicht.
 - `play rhythm info ...` fragt je Grad Kandidaten mit strikt
   `deviation > AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION` (`0.7`) ab und wählt
-  zufällig einen. Fehlende einzelne Grade werden übersprungen; nur wenn für
-  keinen Grad ein Kandidat existiert, schlägt der Aufruf fehl.
+  zufällig einen je angefragter Position. Explizite Deviation-Grenzen ersetzen
+  diesen Default inklusive. Die Auswahl dedupliziert und sortiert wie die
+  Suche, verwendet aber alle Kandidaten ohne Ausgabe-Limit. `--seed LONG`
+  initialisiert einmal `java.util.Random`; je Position wird genau einmal
+  `nextInt(Kandidatenzahl)` gezogen, auch bei nur einem Kandidaten.
+  Wiederholte Grade bleiben getrennte Positionen. Die CLI zeigt Seed und
+  Auswahl vor dem gemeinsamen Playback; `--dry-run` zeigt dieselbe Auswahl
+  ohne Playback-Port oder MIDI-Zugriff. Fehlende Grade werden mit allen
+  betroffenen Positionen gemeldet und führen vor dem Playback zum Fehler.
 - Die DB speichert kein Tempo. Geladene Rhythmen erhalten deshalb
   `AppDefaults.DEFAULT_TEMPO_BPM` (`120`).
 - `search rhythms --info N` liest ohne Zufallsauswahl oder Playback. Ohne
