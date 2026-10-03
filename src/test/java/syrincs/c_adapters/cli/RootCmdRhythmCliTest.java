@@ -374,6 +374,165 @@ class RootCmdRhythmCliTest {
                 new HuffmanRhythm(4, 4, 120, "o".repeat(16))));
     }
 
+    @Test
+    void searchRhythmsShowsUniqueSortedProfilesAndFiltersWithoutMidiAccess() {
+        var low = new HuffmanRhythm(4, 4, 120, "xooo xoxo xooo xoxo");
+        var high = new HuffmanRhythm(4, 4, 120, "xoxo xooo xoxo xooo");
+        var repo = new FilteringRhythmRepository(List.of(high, low, high,
+                new HuffmanRhythm(4, 4, 120, "XOOO XOXO XOOO XOXO")));
+        var playback = new CapturingRhythmPlaybackPort();
+        var root = buildRoot(playback, repo);
+        var noDevices = new RootCmd(root.interactor, root.midiInteractor, new MidiDeviceQueryPort() {
+            @Override public List<syrincs.b_application.ports.dto.MidiEndpoint> listOutputs() { throw new AssertionError("MIDI query"); }
+            @Override public syrincs.b_application.ports.dto.MidiEndpoint findOutput(String name) { throw new AssertionError("MIDI query"); }
+        }, null);
+        var output = new StringWriter();
+        var command = new CommandLine(noDevices).setOut(new PrintWriter(output));
+
+        assertEquals(0, command.execute("search", "rhythms", "--info", "3"));
+        assertEquals("[SEARCH] Info=3 | DeviationMin=none | DeviationMax=none | Limit=20 | Total=2 | Shown=2" + System.lineSeparator()
+                + "[CANDIDATE] Time=4/4 | Rhythm=xoooxoxoxoooxoxo | BeatInformation=[1, 1, 0, 1] | Info=3 | Deviation=0.433013" + System.lineSeparator()
+                + "[CANDIDATE] Time=4/4 | Rhythm=xoxoxoooxoxoxooo | BeatInformation=[2, 0, 1, 0] | Info=3 | Deviation=0.829156" + System.lineSeparator(), output.toString());
+        assertEquals(new DeviationRange(null, null), repo.lastRange);
+        assertEquals(0, repo.strictQueries);
+        assertEquals(0, playback.calls);
+    }
+
+    @Test
+    void searchRhythmsLimitRestrictsOutputNotTotalMatches() {
+        var repo = freshCatalog();
+        var playback = new CapturingRhythmPlaybackPort();
+        var output = new StringWriter();
+        int code = new CommandLine(buildRoot(playback, repo)).setOut(new PrintWriter(output))
+                .execute("search", "rhythms", "--info", "3", "--limit", "1");
+        assertEquals(0, code);
+        assertTrue(output.toString().contains("Limit=1 | Total=2 | Shown=1"));
+        assertEquals(1, output.toString().lines().filter(line -> line.startsWith("[CANDIDATE]")).count());
+        assertTrue(output.toString().contains("Rhythm=xoooxoxoxoooxoxo"));
+        assertEquals(0, playback.calls);
+    }
+
+    @Test
+    void searchRhythmsDefaultLimitIsTwentyEvenForLargerCatalog() {
+        var fixtures = new ArrayList<HuffmanRhythm>();
+        for (int mask = 0; fixtures.size() < 25; mask++) {
+            String bits = String.format("%16s", Integer.toBinaryString(mask)).replace(' ', '0');
+            var rhythm = new HuffmanRhythm(4, 4, 120, bits.replace('0', 'o').replace('1', 'x'));
+            if (rhythm.getInformation() == 3) fixtures.add(rhythm);
+        }
+        java.util.Collections.reverse(fixtures);
+        fixtures.add(fixtures.getFirst());
+        var playback = new CapturingRhythmPlaybackPort();
+        var output = new StringWriter();
+        int code = new CommandLine(buildRoot(playback, new FilteringRhythmRepository(fixtures))).setOut(new PrintWriter(output))
+                .execute("search", "rhythms", "--info", "3");
+        assertEquals(0, code);
+        assertTrue(output.toString().contains("Limit=20 | Total=25 | Shown=20"));
+        assertEquals(20, output.toString().lines().filter(line -> line.startsWith("[CANDIDATE]")).count());
+        assertEquals(0, playback.calls);
+    }
+
+    @ParameterizedTest
+    @MethodSource("inclusivePlaybackRequests")
+    void searchRhythmsUsesSameInclusiveBounds(String[] arguments, DeviationRange expectedRange, String expectedOnsets) {
+        // Reuse the actual-bound fixtures, but --info is an option rather than a positional grade.
+        var args = new ArrayList<>(List.of("search", "rhythms"));
+        for (int i = 0; i < arguments.length; i++) {
+            if (arguments[i].startsWith("--")) {
+                args.add(arguments[i]);
+                args.add(arguments[++i]);
+            } else {
+                args.add("--info");
+                args.add(arguments[i]);
+            }
+        }
+        var repo = freshCatalog();
+        var playback = new CapturingRhythmPlaybackPort();
+        var output = new StringWriter();
+        assertEquals(0, new CommandLine(buildRoot(playback, repo)).setOut(new PrintWriter(output)).execute(args.toArray(String[]::new)));
+        assertEquals(expectedRange, repo.lastRange);
+        assertTrue(output.toString().contains("Rhythm=" + expectedOnsets));
+        assertEquals(0, repo.strictQueries);
+        assertEquals(0, playback.calls);
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidSearchRequests")
+    void searchRhythmsRejectsInvalidRequestsBeforeQuery(String[] arguments) {
+        var repo = freshCatalog();
+        var playback = new CapturingRhythmPlaybackPort();
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var args = new ArrayList<>(List.of("search", "rhythms"));
+        args.addAll(List.of(arguments));
+        int code = new CommandLine(buildRoot(playback, repo)).setOut(new PrintWriter(output)).setErr(new PrintWriter(error))
+                .execute(args.toArray(String[]::new));
+        assertTrue(code != 0);
+        assertTrue(!error.toString().isBlank());
+        assertEquals("", output.toString());
+        assertEquals(0, repo.queries);
+        assertEquals(0, playback.calls);
+    }
+
+    static Stream<Arguments> invalidSearchRequests() {
+        return Stream.of(new String[]{}, new String[]{"--info", "-1"}, new String[]{"--info", "3", "4"},
+                new String[]{"--info", "3.5"}, new String[]{"--info", "3", "--limit", "0"},
+                new String[]{"--info", "3", "--limit", "-2"},
+                new String[]{"--info", "3", "--deviation-min", "-0.1"},
+                new String[]{"--info", "3", "--deviation-max", "-0.1"},
+                new String[]{"--info", "3", "--deviation-min", "NaN"},
+                new String[]{"--info", "3", "--deviation-max", "Infinity"},
+                new String[]{"--info", "3", "--deviation-min", "Infinity"},
+                new String[]{"--info", "3", "--deviation-max", "NaN"},
+                new String[]{"--info", "3", "--deviation-min", "0.9", "--deviation-max", "0.1"})
+                .map(args -> Arguments.of((Object) args));
+    }
+
+    @Test
+    void searchRhythmsDistinguishesEmptySearchFromRepositoryError() {
+        var playback = new CapturingRhythmPlaybackPort();
+        var output = new StringWriter();
+        assertEquals(0, new CommandLine(buildRoot(playback, new EmptyRhythmRepository())).setOut(new PrintWriter(output))
+                .execute("search", "rhythms", "--info", "3"));
+        assertTrue(output.toString().contains("Total=0 | Shown=0"));
+        assertEquals(1, output.toString().lines().count());
+
+        var failingRepo = new FilteringRhythmRepository(List.of()) {
+            @Override public List<HuffmanRhythm> getAllByInformationAndDeviationRange(Integer info, DeviationRange range) {
+                throw new RuntimeException("Database unavailable");
+            }
+        };
+        output = new StringWriter();
+        var error = new StringWriter();
+        assertEquals(1, new CommandLine(buildRoot(playback, failingRepo)).setOut(new PrintWriter(output)).setErr(new PrintWriter(error))
+                .execute("search", "rhythms", "--info", "3"));
+        assertEquals("", output.toString());
+        assertTrue(error.toString().contains("[ERROR] Database unavailable"));
+        assertTrue(!error.toString().contains("\tat syrincs."));
+        assertEquals(0, playback.calls);
+    }
+
+    @Test
+    void searchRhythmsHelpAndRootHelpDocumentCommandAndOptions() {
+        var output = new StringWriter();
+        var command = new CommandLine(new RootCmd(null, (MidiDeviceQueryPort) null)).setOut(new PrintWriter(output));
+        assertEquals(0, command.execute("search", "rhythms", "--help"));
+        for (String option : List.of("--info", "--limit", "--deviation-min", "--deviation-max")) {
+            assertTrue(output.toString().contains(option));
+        }
+        assertTrue(output.toString().contains("default: 20"));
+        var extended = new ByteArrayOutputStream();
+        var previous = System.out;
+        try {
+            System.setOut(new PrintStream(extended));
+            RootCmd.printExtendedHelp(command);
+        } finally {
+            System.setOut(previous);
+        }
+        assertTrue(extended.toString(StandardCharsets.UTF_8).contains("Subcommand 'search rhythms' usage:"));
+        assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--limit"));
+    }
+
     private static void assertPlayedOnsets(CapturingRhythmPlaybackPort playback, String expected) {
         assertEquals(expected.length(), playback.pattern.voices().get("kick").length);
         for (int i = 0; i < expected.length(); i++) {

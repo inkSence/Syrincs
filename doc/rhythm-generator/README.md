@@ -22,6 +22,7 @@ Huffman-Analyse.
 | Onsets analysieren | `analyze rhythm "xooo xoxo xooo xoxo" [--details]` | Normalisierung, Gesamtinformation, Standardabweichung und Beat-Onset-Strings ausgeben; optional Beat-Informationswerte und Mittelwert, ohne DB oder Playback. |
 | Schema vorbereiten | `init` | Rhythmustabelle anlegen oder älteres Schema ergänzen. |
 | Rhythmen erzeugen | `calculate rhythms` | Alle 65.536 eintaktigen 4/4-Pattern bewerten und speichern. |
+| DB-Rhythmen suchen | `search rhythms --info 3` | Eindeutige, kanonisch sortierte Kandidaten mit Beat-Profilen anzeigen; optionale inklusive Deviation-Grenzen, keine Zufallsauswahl und kein Playback. |
 | DB-Rhythmen auswählen | `play rhythm info 3 5 7` | Je Grad zufällig einen Kandidaten auswählen und abspielen; Default `deviation > 0.7`, optional inklusive Min-/Max-Grenzen. |
 | Kick/Snare zuordnen | Intern beim DB-Playback | Jeden Onset eines 16-Schritt-Takts anhand gewichteter Positionsregeln einer Stimme zuweisen. |
 | Takte verbinden | Intern beim DB-Playback | Einzeln gemappte Takte in Anfragereihenfolge zu einem Pattern verbinden. |
@@ -296,7 +297,38 @@ in Batches von 1024 Datensätzen. Es gibt weder einen Unique Constraint für
 den Onset-String noch eine Deduplizierung im Use Case. Jeder erneute Aufruf von
 `calculate rhythms` hängt deshalb weitere 65.536 Zeilen an.
 
-## Abgrenzung zu Suche und Playback
+## Eigenständige Katalogsuche
+
+```bash
+syrincs search rhythms --info 3
+syrincs search rhythms --info 3 --deviation-max 0.5 --limit 5
+```
+
+[`SearchRhythmsUseCase`](../../src/main/java/syrincs/b_application/SearchRhythmsUseCase.java)
+liest über `RhythmRepository.getAllByInformationAndDeviationRange(...)`.
+Er benötigt keinen Playback- oder MIDI-Port und wählt keine Zufallskandidaten.
+`--info` ist ein einzelner exakter, nichtnegativer Ganzzahlwert. Beide
+Deviation-Grenzen sind optional und inklusiv; ohne Optionen gilt kein
+Deviation-Filter, insbesondere nicht der historische Playback-Default.
+Der `DeviationRange`-Vertrag aus dem Playback gilt auch hier.
+
+Die Kandidatenidentität besteht aus normalisierten Onsets, Zähler und
+Nenner, nicht aus DB-ID oder Tempo. Nach der Repository-Filterung werden
+Duplikate zusammengefasst und alle eindeutigen Kandidaten kanonisch nach
+Zähler, Nenner und Onsets sortiert. Erst danach wird `--limit` angewandt:
+positiv, standardmäßig 20. Die Gesamtzahl bezieht sich auf alle eindeutigen
+Treffer, nicht auf die begrenzte Ausgabe. Der Katalog wird nicht bereinigt.
+
+Die Kopfzeile zeigt die angewandten Filter, `Limit`, `Total` und `Shown`.
+Kandidaten zeigen Taktart, Onsets, Beat-Informationswerte, Gesamtinformation
+und Deviation. Diese Analysewerte werden beim Laden aus den Onsets neu
+berechnet; die oben beschriebene mögliche Abweichung zu gespeicherten
+Suchwerten bleibt bestehen. Die Ergebnislisten sind unveränderlich.
+Keine Treffer sind ein gültiges Ergebnis mit Zählwerten 0 und Exit-Code 0.
+Ungültige Optionen oder Repository-Fehler werden nicht als leere Suche
+ausgegeben, sondern führen zu einem Fehler. Die Suche schreibt nichts.
+
+## Abgrenzung zum Playback
 
 Der Generator endet mit der Persistenz. Die heutige Auswahl und Wiedergabe
 ist ein nachgelagerter Ablauf:
@@ -334,7 +366,8 @@ Aktuell gibt es dabei:
 - keine Suche nach einem geordneten Beat-Informationsprofil;
 - keine Filter nach Peak-Position, Onset-Dichte oder metrischer Gewichtung;
 - keinen Seed für reproduzierbare Auswahl;
-- keinen eigenständigen Suchbefehl ohne Playback.
+- keine Vorschau der Zufallsauswahl im Playback-Befehl; die separate
+  Kandidatensuche erfolgt über `search rhythms`.
 
 Diese Punkte gehören nicht in die Erzeugung der 65.536 Grundrhythmen. Sie
 lassen sich auf der erzeugten Datenbasis als eigenes Analyse- und

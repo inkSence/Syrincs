@@ -128,7 +128,7 @@ lokal grüne Tests zu erhalten.
 ## CLI-Konventionen
 
 Die sichtbaren Hauptbefehle sind `devices`, `init`, `start`, `status`, `play`,
-`calculate` und `analyze`. Zusätzlich existieren die versteckten
+`calculate`, `analyze` und `search`. Zusätzlich existieren die versteckten
 Kompatibilitäts-/Wartungsbefehle `list` (Alias für `devices`) und `delete`
 (TRUNCATE der Akkordtabelle). Veröffentliche, entferne oder ändere sie nicht
 beiläufig.
@@ -141,6 +141,7 @@ mvn exec:java -Dexec.args='analyze rhythm "xooo xoxo xooo xoxo"'
 mvn exec:java -Dexec.args="calculate chords 48 84"
 mvn exec:java -Dexec.args="play rhythm --in data/beat.rdl"
 mvn exec:java -Dexec.args="play rhythm info 3 5 7"
+mvn exec:java -Dexec.args="search rhythms --info 3 --limit 5"
 ```
 
 `analyze 60 64 67` und `calculate 48 84` sind unterstützte Kurzformen.
@@ -265,6 +266,13 @@ Huffman-Regeln:
   keinen Grad ein Kandidat existiert, schlägt der Aufruf fehl.
 - Die DB speichert kein Tempo. Geladene Rhythmen erhalten deshalb
   `AppDefaults.DEFAULT_TEMPO_BPM` (`120`).
+- `search rhythms --info N` liest ohne Zufallsauswahl oder Playback. Ohne
+  Deviation-Optionen gilt kein Deviation-Filter; gesetzte Grenzen sind
+  inklusiv. Die Kandidatenidentität besteht aus normalisierten Onsets,
+  Zähler und Nenner. Nach Deduplizierung wird nach Zähler, Nenner und Onsets
+  sortiert; das positive Ausgabe-Limit (Default 20) ändert die Gesamtzahl
+  nicht. Suchprädikate betreffen gespeicherte Aggregate, die Ausgabe zeigt
+  aus den Onsets neu berechnete Analysewerte.
 - Der Kick-/Snare-Mapper akzeptiert exakt einen 16-Schritt-Takt. Mehrere
   ausgewählte DB-Rhythmen werden erst einzeln gemappt und danach in
   Anfragereihenfolge zu einem MIDI-Pattern verbunden.

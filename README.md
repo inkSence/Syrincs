@@ -43,6 +43,7 @@ Externe Komponenten werden erst für Persistenz oder Playback gebraucht:
 | Noten und Akkorde standardmäßig hören | SuperCollider mit `sclang` |
 | RDL- oder Huffman-Rhythmen hören | MIDI-Ausgang |
 | Akkorde oder Rhythmen erzeugen und speichern | PostgreSQL |
+| Gespeicherte Rhythmen ohne Playback suchen | PostgreSQL, kein MIDI-Ausgang |
 | Gespeicherte Akkorde hören | PostgreSQL plus SuperCollider oder MIDI |
 | Gespeicherte Rhythmen hören | PostgreSQL plus MIDI |
 
@@ -107,6 +108,8 @@ syrincs
 ├── calculate
 │   ├── chords MIN MAX         Akkorde erzeugen und speichern
 │   └── rhythms                alle 2^16 Onset-Pattern speichern
+├── search
+│   └── rhythms --info N       eindeutige DB-Kandidaten ohne Playback suchen
 └── play
     ├── note                   einzelne Note; Default: OSC
     ├── chords                 DB-Akkorde; Default: OSC
@@ -130,6 +133,7 @@ Die verbindliche Syntax liefert Picocli:
 syrincs --help
 syrincs play chords --help
 syrincs play rhythm --help
+syrincs search rhythms --help
 syrincs play sc --help
 ```
 
@@ -299,6 +303,31 @@ Der Befehl erzeugt alle `2^16 = 65.536` binären Pattern eines 4/4-Takts im
 16tel-Raster, berechnet Information und Deviation und speichert sie mit
 Batch-Inserts. Auch hier hängen Wiederholungen weitere Zeilen an.
 
+### Nach Informationsgrad suchen
+
+```bash
+syrincs search rhythms --info 3
+syrincs search rhythms --info 3 --deviation-min 0.2 --deviation-max 0.8 --limit 5
+```
+
+Die reine Suche liest den Katalog, ohne Zufallsauswahl oder MIDI-Zugriff.
+`--info` ist ein einzelner exakter, nichtnegativer Ganzzahlwert. Ohne
+Deviation-Option gelten keine Deviation-Grenzen; explizite Grenzen sind
+inklusiv, endlich und nichtnegativ, mit `MIN <= MAX`.
+
+Identische normalisierte Onsets mit gleichem Zähler und Nenner erscheinen
+nur einmal. Die eindeutigen Treffer werden nach Zähler, Nenner und Onsets
+sortiert. `--limit` ist positiv und begrenzt erst danach die Ausgabe
+(Default 20), nicht die gesamte Trefferzahl.
+
+Eine Kopfzeile nennt Filter, Limit, `Total` (eindeutige Treffer) und `Shown`
+(ausgegebene Treffer). Jede Kandidatenzeile enthält Taktart, normalisierte
+Onsets, `BeatInformation`, Gesamtinformation und Deviation. Die DB filtert
+gespeicherte Werte; die Ausgabe berechnet Analysewerte aus den Onsets neu.
+Bei alten Katalogdaten können diese Werte von den Suchfiltern abweichen.
+Die Suche verändert keine Katalogdaten. Keine Treffer ergeben `Total=0`,
+`Shown=0` und Exit-Code 0; ungültige Eingaben oder DB-Fehler schlagen fehl.
+
 ### Nach Informationsgrad spielen
 
 ```bash
@@ -339,8 +368,8 @@ Kick-Note 36 und Snare-Note 38 auf Kanal 9, Velocity 90 und Gate 50 Prozent.
 Gespeicherte Rhythmen enthalten kein Tempo;
 DB-Playback verwendet daher aktuell 120 BPM.
 
-Die Auswahl startet direkt das Playback. Eine Kandidatenvorschau, ein
-eigenständiger Suchbefehl, Profilfilter und eine Seed-Option sind derzeit
+Die Auswahl startet direkt das Playback. `search rhythms` ermöglicht die
+separate Kandidatenansicht; Profilfilter und eine Seed-Option sind derzeit
 nicht verfügbar.
 
 ## RDL-0
