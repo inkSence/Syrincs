@@ -31,6 +31,7 @@ public class UseCaseInteractor {
     private final GenerateAndPersistRhythmUseCase generateAndPersistRhythmUseCase;
     private final PlayHuffmanRhythmsUseCase playHuffmanRhythmsUseCase; // optional
     private final RhythmRepository huffmanRhythmRepository; // optional
+    private final SearchRhythmsUseCase searchRhythmsUseCase; // optional
 
 
     public UseCaseInteractor(SendToMidiUseCase send,
@@ -85,6 +86,7 @@ public class UseCaseInteractor {
         this.generateAndPersistRhythmUseCase = generateAndPersistRhythmUseCase; // optional
         this.playHuffmanRhythmsUseCase = playHuffmanRhythmsUseCase; // optional
         this.huffmanRhythmRepository = huffmanRhythmRepository; // optional
+        this.searchRhythmsUseCase = huffmanRhythmRepository == null ? null : new SearchRhythmsUseCase(huffmanRhythmRepository);
     }
 
     public List<HindemithChord> findChordsFor(List<Integer> numNotes, List<Integer> groups, Integer rootNote) {
@@ -190,6 +192,13 @@ public class UseCaseInteractor {
             throw new IllegalStateException("GenerateAndPersistRhythmUseCase not wired in UseCaseInteractor");
         }
         return generateAndPersistRhythmUseCase.generateAllRhythmsOfFourQuarters();
+    }
+
+    public SearchRhythmsUseCase.Result searchRhythms(int information, DeviationRange range, int limit) {
+        if (searchRhythmsUseCase == null) {
+            throw new IllegalStateException("RhythmRepository not wired in UseCaseInteractor");
+        }
+        return searchRhythmsUseCase.search(information, range, limit);
     }
 
     public void playRhythms(List<HuffmanRhythm> rhythms) throws Exception {

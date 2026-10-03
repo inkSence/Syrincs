@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import syrincs.b_application.AppDefaults;
+import syrincs.b_application.SearchRhythmsUseCase;
 import syrincs.b_application.ports.dto.DeviationRange;
 
 import java.lang.reflect.InvocationHandler;
@@ -93,6 +94,23 @@ class PostgresRhythmRepositoryTest {
             assertTrue(error.getMessage().contains("syrincs init"));
             assertTrue(jdbc.connectionClosed);
             assertTrue(jdbc.statementClosed);
+        }
+    }
+
+    @Test
+    void searchUsesUnboundedSqlThenDeduplicatesCountsAndLimitsReconstructedRows() throws Exception {
+        try (var jdbc = new CapturingJdbc()) {
+            jdbc.rows = List.of(new Row("xoxo xooo xoxo xooo", 4, 4),
+                    new Row("XOOO XOXO XOOO XOXO", 4, 4),
+                    new Row("xooo xoxo xooo xoxo", 4, 4));
+            var result = new SearchRhythmsUseCase(jdbc.repository()).search(3, new DeviationRange(null, null), 1);
+            assertEquals(SELECT + " ORDER BY id", jdbc.sql);
+            assertEquals(Map.of(1, 3), jdbc.parameters);
+            assertEquals(2, result.totalMatches());
+            assertEquals(1, result.candidates().size());
+            assertEquals("xoooxoxoxoooxoxo", result.candidates().getFirst().onsets());
+            assertEquals(List.of(1, 1, 0, 1), result.candidates().getFirst().beatInformation());
+            assertTrue(jdbc.connectionClosed && jdbc.statementClosed && jdbc.resultClosed);
         }
     }
 

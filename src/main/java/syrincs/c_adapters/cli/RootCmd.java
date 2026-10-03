@@ -34,6 +34,7 @@ import java.util.concurrent.Callable;
                 RootCmd.PlayCmd.class,
                 RootCmd.CalculateCmd.class,
                 RootCmd.AnalyzeCmd.class,
+                RootCmd.SearchCmd.class,
                 RootCmd.DeleteCmd.class
         }
 )
@@ -85,6 +86,10 @@ public class RootCmd implements Runnable {
         CommandLine analyze = root.getSubcommands().get("analyze");
         if (analyze != null) {
             printSubcommandUsage(analyze, "rhythm");
+        }
+        CommandLine search = root.getSubcommands().get("search");
+        if (search != null) {
+            printSubcommandUsage(search, "rhythms");
         }
     }
 
@@ -764,6 +769,63 @@ public class RootCmd implements Runnable {
 
                     System.out.printf("[OSC] Sent SuperCollider preset, FX and automation demo to %s:%d%n", osc.host, osc.port);
                     return 0;
+                }
+            }
+        }
+    }
+
+    @Command(name = "search", mixinStandardHelpOptions = true,
+            description = "Search the catalog without random selection or playback",
+            subcommands = {SearchCmd.RhythmsCmd.class})
+    public static class SearchCmd implements Callable<Integer> {
+        @ParentCommand RootCmd parent;
+        @CommandLine.Spec CommandLine.Model.CommandSpec spec;
+
+        @Override
+        public Integer call() {
+            spec.commandLine().usage(spec.commandLine().getOut());
+            return 0;
+        }
+
+        @Command(name = "rhythms", mixinStandardHelpOptions = true,
+                description = "List unique stored rhythms by exact information and optional inclusive deviation bounds")
+        public static class RhythmsCmd implements Callable<Integer> {
+            @ParentCommand SearchCmd parent;
+            @CommandLine.Spec CommandLine.Model.CommandSpec spec;
+
+            @Option(names = "--info", required = true, description = "Exact non-negative stored information grade")
+            int information;
+
+            @Option(names = "--deviation-min", description = "Inclusive minimum stored deviation; absent by default")
+            Double deviationMin;
+
+            @Option(names = "--deviation-max", description = "Inclusive maximum stored deviation; absent by default")
+            Double deviationMax;
+
+            @Option(names = "--limit", description = "Positive output limit (default: ${DEFAULT-VALUE}); total count is not limited")
+            int limit = AppDefaults.DEFAULT_RHYTHM_SEARCH_LIMIT;
+
+            @Override
+            public Integer call() {
+                try {
+                    var range = new DeviationRange(deviationMin, deviationMax);
+                    var result = parent.parent.interactor.searchRhythms(information, range, limit);
+                    var out = spec.commandLine().getOut();
+                    out.printf(Locale.ROOT,
+                            "[SEARCH] Info=%d | DeviationMin=%s | DeviationMax=%s | Limit=%d | Total=%d | Shown=%d%n",
+                            result.information(), range.min() == null ? "none" : range.min(),
+                            range.max() == null ? "none" : range.max(), result.limit(),
+                            result.totalMatches(), result.candidates().size());
+                    for (var candidate : result.candidates()) {
+                        out.printf(Locale.ROOT,
+                                "[CANDIDATE] Time=%d/%d | Rhythm=%s | BeatInformation=%s | Info=%d | Deviation=%.6f%n",
+                                candidate.numerator(), candidate.denominator(), candidate.onsets(),
+                                candidate.beatInformation(), candidate.information(), candidate.deviation());
+                    }
+                    return 0;
+                } catch (Exception e) {
+                    spec.commandLine().getErr().println("[ERROR] " + e.getMessage());
+                    return 1;
                 }
             }
         }

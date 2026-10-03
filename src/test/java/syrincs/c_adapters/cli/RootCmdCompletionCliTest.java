@@ -34,6 +34,10 @@ class RootCmdCompletionCliTest {
         assertTrue(rootCommands.contains("calculate"));
         assertTrue(rootCommands.contains("status"));
         assertTrue(rootCommands.contains("analyze"));
+        assertTrue(rootCommands.contains("search"));
+        assertTrue(text.contains("--info"));
+        assertTrue(text.contains("--limit"));
+        assertTrue(text.contains("syrincs_search_rhythms"));
         assertTrue(text.contains("--device"));
         assertTrue(text.contains("--details"));
         assertTrue(text.contains("--deviation-min"));
