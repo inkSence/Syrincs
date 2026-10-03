@@ -22,7 +22,7 @@ Huffman-Analyse.
 | Onsets analysieren | `analyze rhythm "xooo xoxo xooo xoxo" [--details]` | Normalisierung, Gesamtinformation, Standardabweichung und Beat-Onset-Strings ausgeben; optional Beat-Informationswerte und Mittelwert, ohne DB oder Playback. |
 | Schema vorbereiten | `init` | Rhythmustabelle anlegen oder älteres Schema ergänzen. |
 | Rhythmen erzeugen | `calculate rhythms` | Alle 65.536 eintaktigen 4/4-Pattern bewerten und speichern. |
-| DB-Rhythmen auswählen | `play rhythm info 3 5 7` | Je Grad zufällig einen Kandidaten mit `deviation > 0.7` auswählen und abspielen. |
+| DB-Rhythmen auswählen | `play rhythm info 3 5 7` | Je Grad zufällig einen Kandidaten auswählen und abspielen; Default `deviation > 0.7`, optional inklusive Min-/Max-Grenzen. |
 | Kick/Snare zuordnen | Intern beim DB-Playback | Jeden Onset eines 16-Schritt-Takts anhand gewichteter Positionsregeln einer Stimme zuweisen. |
 | Takte verbinden | Intern beim DB-Playback | Einzeln gemappte Takte in Anfragereihenfolge zu einem Pattern verbinden. |
 | RDL lesen und validieren | `play rhythm --in data/beat.rdl` | Header, Voices und Pattern lesen; Kick/Snare, Längen und Werte prüfen. |
@@ -284,6 +284,13 @@ Laden rekonstruiert der Adapter den `HuffmanRhythm` mit dem aktuellen
 Standardtempo von 120 BPM und berechnet Information und Abweichung erneut aus
 dem Onset-String.
 
+Suchprädikate beziehen sich wie bisher auf die gespeicherten Spalten `info`
+und `deviation`, nicht auf die anschließend neu berechneten Aggregate.
+Das Schema erlaubt eine unbekannte Deviation (`NULL`); mit einer gesetzten
+Grenze ist eine solche Zeile kein Treffer. Ohne Deviation-Grenzen enthält
+der neue Bereichs-Port keine Deviation-Bedingung. Bestehende Katalogdaten
+werden weder bereinigt noch versioniert oder nachträglich abgeglichen.
+
 `PostgresRhythmRepository.saveAll(...)` schreibt innerhalb einer Transaktion
 in Batches von 1024 Datensätzen. Es gibt weder einen Unique Constraint für
 den Onset-String noch eine Deduplizierung im Use Case. Jeder erneute Aufruf von
@@ -296,13 +303,25 @@ ist ein nachgelagerter Ablauf:
 
 ```bash
 syrincs play rhythm info 3 5 7
+syrincs play rhythm info 3 5 --deviation-min 0.2 --deviation-max 0.8
 ```
 
 Für jeden angefragten Informationsgrad lädt
-der `UseCaseInteractor` Kandidaten mit
+der `UseCaseInteractor` ohne Deviation-Optionen Kandidaten mit
 `deviation > AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION`, derzeit `0.7`, und
-wählt zufällig einen Kandidaten. Danach werden die Onsets auf Kick und Snare
-verteilt und über MIDI abgespielt.
+wählt zufällig einen Kandidaten. Sobald mindestens eine Grenze gesetzt ist,
+verwendet er stattdessen den frameworkfreien `DeviationRange`-Vertrag und
+`RhythmRepository.getAllByInformationAndDeviationRange(...)`:
+
+- Min allein: `deviation >= min`, kein Maximum;
+- Max allein: `deviation <= max`, kein implizites Minimum;
+- beide: beide Bedingungen inklusive.
+
+Die bestehende Strict-Min-Methode bleibt unverändert. Beide Grenzen sind
+optional, endlich und nichtnegativ; `min > max` ist ungültig. Die Validierung
+erfolgt vor Repository-Aufrufen. Min 0 schließt auch Rhythmen mit Deviation 0
+ein. Die SQL-Grenzen werden als Parameter gebunden. Nach der Auswahl werden
+die Onsets wie bisher auf Kick und Snare verteilt und über MIDI abgespielt.
 
 Grade ohne Kandidaten werden übersprungen. Gibt es für keinen angefragten
 Grad Kandidaten, meldet die CLI einen Fehler mit Hinweisen auf `init` und
@@ -389,3 +408,10 @@ CLI-Ablauf mit Persistenz müssen PostgreSQL erreichbar und das Schema mit
 Weitere relevante Tests sind `RootCmdRhythmCliTest` (Analyseausgabe,
 RDL-Aufruf, Geräteübergabe und Verkettung), `RhythmE2ETest` sowie
 `SequenceBuilderTest` (MIDI-Ereignisse und Zeitpunkte).
+
+`DeviationRangeTest`, `UseCaseInteractorRhythmSelectionTest` und die CLI-Tests
+prüfen tatsächliche Grad-/Grenzfilterung, Grenzgleichheit, Deviation 0,
+Fehlereingaben und den unveränderten strikten Playback-Default.
+`PostgresRhythmRepositoryTest` verifiziert die tatsächlich erzeugten
+SQL-Prädikate, Bindungen, Rekonstruktion und Fehlerpfade mit einem JDBC-
+Testdouble ohne Netzwerk; er ersetzt keinen realen PostgreSQL-Integrationstest.

@@ -8,6 +8,7 @@ import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
 import syrincs.a_domain.rhythm.HuffmanRhythm;
 import syrincs.b_application.ports.RhythmRepository;
+import syrincs.b_application.ports.dto.DeviationRange;
 
 import java.util.List;
 import java.util.Objects;
@@ -215,6 +216,15 @@ public class UseCaseInteractor {
     }
 
     public void playRhythmsByInformationGrades(List<Integer> informationGrades, String deviceNameSubstring) throws Exception {
+        playRhythmsByInformationGrades(informationGrades, deviceNameSubstring, null);
+    }
+
+    /**
+     * An explicit range replaces the legacy strict minimum completely.
+     * Null keeps that default; a range with both bounds absent is unfiltered.
+     */
+    public void playRhythmsByInformationGrades(List<Integer> informationGrades, String deviceNameSubstring,
+                                              DeviationRange range) throws Exception {
         if (huffmanRhythmRepository == null) {
             throw new IllegalStateException("RhythmRepository not wired in UseCaseInteractor");
         }
@@ -224,10 +234,10 @@ public class UseCaseInteractor {
         java.util.concurrent.ThreadLocalRandom rnd = java.util.concurrent.ThreadLocalRandom.current();
         for (Integer info : informationGrades) {
             if (info == null) continue;
-            List<HuffmanRhythm> candidates = huffmanRhythmRepository.getAllByInformationAndMinDeviation(
+            List<HuffmanRhythm> candidates = range == null ? huffmanRhythmRepository.getAllByInformationAndMinDeviation(
                     info,
                     AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION
-            );
+            ) : huffmanRhythmRepository.getAllByInformationAndDeviationRange(info, range);
             if (candidates == null || candidates.isEmpty()) {
                 gradesWithoutCandidates.add(info);
                 continue;
@@ -238,13 +248,16 @@ public class UseCaseInteractor {
         if (selection.isEmpty()) {
             throw new IllegalStateException(
                     "No stored Huffman rhythms found for information grades " + gradesWithoutCandidates
-                            + " with deviation > " + AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION
+                            + (range == null ? " with deviation > " + AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION
+                                            : " with inclusive deviation range " + range)
                             + ". Fill the rhythm database with `syrincs init` and `syrincs calculate rhythms`, "
                             + "then retry `syrincs play rhythm info "
                             + informationGrades.stream()
                                     .filter(Objects::nonNull)
                                     .map(String::valueOf)
                                     .collect(java.util.stream.Collectors.joining(" "))
+                            + (range != null && range.min() != null ? " --deviation-min " + range.min() : "")
+                            + (range != null && range.max() != null ? " --deviation-max " + range.max() : "")
                             + "`."
             );
         }

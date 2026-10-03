@@ -3,6 +3,7 @@ package syrincs.b_application;
 import org.junit.jupiter.api.Test;
 import syrincs.a_domain.rhythm.HuffmanRhythm;
 import syrincs.b_application.ports.RhythmRepository;
+import syrincs.b_application.ports.dto.DeviationRange;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,5 +54,6 @@ class GenerateAndPersistRhythmUseCaseTest {
         @Override public List<HuffmanRhythm> getTwoRhythms(Integer id1, Integer id2) { return List.of(); }
         @Override public List<HuffmanRhythm> getAllByInformation(Integer information) { return List.of(); }
         @Override public List<HuffmanRhythm> getAllByInformationAndMinDeviation(Integer information, Double minDeviation) { return List.of(); }
+        @Override public List<HuffmanRhythm> getAllByInformationAndDeviationRange(Integer information, DeviationRange range) { return List.of(); }
     }
 }
