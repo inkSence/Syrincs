@@ -5,9 +5,10 @@ Der Rhythmus-Generator erzeugt und bewertet alle binären Rhythmen eines
 hier das projektinterne Informationsmaß; der Generator baut keinen klassischen
 Huffman-Baum und komprimiert keine Audiodaten.
 
-Diese Dokumentation beschreibt den aktuellen Stand. Insbesondere sind
-öffentlich abrufbare Informationsprofile pro Beat, eine Suche nach Profilformen und eine
-reproduzierbare Zufallsauswahl noch nicht implementiert.
+Diese Dokumentation beschreibt den aktuellen Stand. Informationsprofile
+pro Beat sind öffentlich abrufbar und mit `analyze rhythm --details` sichtbar.
+Eine Suche nach Profilformen und eine reproduzierbare Zufallsauswahl sind
+noch nicht implementiert.
 
 ## Funktionsübersicht des Rhythmusmoduls
 
@@ -18,7 +19,7 @@ Huffman-Analyse.
 
 | Funktion | Einstieg | Aktuelles Verhalten |
 | --- | --- | --- |
-| Onsets analysieren | `analyze rhythm "xooo xoxo xooo xoxo"` | Normalisierung, Gesamtinformation, Standardabweichung und Beat-Onset-Strings ausgeben; ohne DB oder Playback. |
+| Onsets analysieren | `analyze rhythm "xooo xoxo xooo xoxo" [--details]` | Normalisierung, Gesamtinformation, Standardabweichung und Beat-Onset-Strings ausgeben; optional Beat-Informationswerte und Mittelwert, ohne DB oder Playback. |
 | Schema vorbereiten | `init` | Rhythmustabelle anlegen oder älteres Schema ergänzen. |
 | Rhythmen erzeugen | `calculate rhythms` | Alle 65.536 eintaktigen 4/4-Pattern bewerten und speichern. |
 | DB-Rhythmen auswählen | `play rhythm info 3 5 7` | Je Grad zufällig einen Kandidaten mit `deviation > 0.7` auswählen und abspielen. |
@@ -40,10 +41,23 @@ normalisierte Onsets, Gesamtinformation, Standardabweichung und die nach
 Beats gruppierten Onset-Strings. `Beats=[...]` enthält `x`/`o`-Strings,
 keine numerischen Beat-Informationswerte.
 
+`--details` ergänzt eine zweite Ausgabezeile, ohne die normale Analysezeile
+oder die Bedeutung von `Beats` zu ändern:
+
+```bash
+syrincs analyze rhythm "xooo xoxo xooo xoxo" --details
+```
+
+```text
+[ANALYZE] Rhythm=xoooxoxoxoooxoxo | Info=3 | Deviation=0.433013 | Beats=[xooo, xoxo, xooo, xoxo]
+[DETAILS] BeatInformation=[1, 1, 0, 1] | Mean=0.750000
+```
+
 Mehrere vollständige 4/4-Takte können gemeinsam analysiert werden. Dabei
 läuft der Playing-Zustand über Beat- und Taktgrenzen weiter; Information und
-Standardabweichung beziehen sich auf die gesamte Eingabe. Die Analyse
-speichert nichts und spielt nichts ab.
+Standardabweichung beziehen sich auf die gesamte Eingabe. `BeatInformation`
+enthält sämtliche Beats flach in Eingabereihenfolge, keine Taktgruppen oder
+eigenständigen Taktwerte. Die Analyse speichert nichts und spielt nichts ab.
 
 ## Ablauf der Erzeugung
 
@@ -177,9 +191,12 @@ Summe:                              3
 Populationsstandardabweichung:      0,4330127018922193
 ```
 
-`HuffmanRhythm` veröffentlicht aktuell nur:
+`HuffmanRhythm` berechnet und speichert die geordneten Beat-Werte einmal
+bei der Konstruktion. Alle folgenden Aggregate stammen aus derselben Liste:
 
+- `getBeatInformation()`: unveränderliche Liste der Informationswerte aller Beats;
 - `getInformation()`: Summe der Informationswerte aller Beats;
+- `getMeanBeatInformation()`: arithmetischer Mittelwert dieser Werte;
 - `getStandardDeviation()`: Populationsstandardabweichung der Beat-Werte.
 
 ### Berechnung und Bedeutung der Standardabweichung
@@ -238,11 +255,12 @@ Tempo geht ebenfalls nicht in die Berechnung ein; maßgeblich sind nur die
 Beat-Informationswerte, die der Automat aus dem Onset-String und seinem über
 Beatgrenzen fortgeführten Spielzustand erzeugt.
 
-Die geordnete Liste der Beat-Werte wird nur während der Konstruktion
-berechnet und anschließend verworfen. Zwei Rhythmen können deshalb dieselben
-gespeicherten Aggregate besitzen, obwohl sich ihre Information zeitlich
-unterschiedlich entwickelt. Das ist der zentrale Ansatzpunkt für ein
-späteres rhythmisches Informationsprofil.
+Zwei Rhythmen können dieselben Aggregate besitzen, obwohl sich ihre
+Information zeitlich unterschiedlich entwickelt. Die unveränderliche
+Beat-Liste erhält diese Reihenfolge und macht den Unterschied zugänglich.
+Sie wird nicht zusätzlich in PostgreSQL gespeichert, sondern beim Laden
+wie die bisherigen Aggregate aus den Onsets neu berechnet. Codesymbolfolgen
+bleiben intern; Zustandsmaschine und Informationsmaß sind unverändert.
 
 Die kodifizierten Erwartungen für das Maß stehen in
 [`HuffmanRhythmTest`](../../src/test/java/syrincs/a_domain/rhythm/HuffmanRhythmTest.java).
@@ -301,10 +319,9 @@ Aktuell gibt es dabei:
 
 Diese Punkte gehören nicht in die Erzeugung der 65.536 Grundrhythmen. Sie
 lassen sich auf der erzeugten Datenbasis als eigenes Analyse- und
-Suchverhalten ergänzen. Ein Informationsprofil würde allerdings zunächst
-eine öffentliche, unveränderliche Darstellung der geordneten Beat-Werte in
-der Domäne benötigen; anschließend müsste entschieden werden, ob es beim
-Laden stets neu berechnet oder zusätzlich persistiert wird.
+Suchverhalten ergänzen. Die öffentliche, unveränderliche Beat-Liste steht
+dafür bereits bereit; beim Laden wird sie aus den Onsets neu berechnet.
+Eine Suche nach diesen Werten ist noch nicht implementiert.
 
 ## Kick-/Snare-Mapping und Verkettung
 
@@ -360,7 +377,7 @@ mvn -Dtest='HuffmanRhythmTest,RhythmTest,GenerateAndPersistRhythmUseCaseTest' te
 ```
 
 - `HuffmanRhythmTest` schützt Informationsmaß, Zustandsfortführung und
-  Standardabweichung.
+  Standardabweichung sowie Beat-Profile, Mittelwert und Unveränderlichkeit.
 - `RhythmTest` schützt Normalisierung, Validierung und Mehrtaktverhalten.
 - `GenerateAndPersistRhythmUseCaseTest` schützt die Abbildung von
   Binärstrings auf Onsets und den Repository-Aufruf.

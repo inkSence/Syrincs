@@ -76,13 +76,17 @@ public class RootCmd implements Runnable {
             printSubcommandUsage(play, "rhythm");
             printSubcommandUsage(play, "sc");
         }
+        CommandLine analyze = root.getSubcommands().get("analyze");
+        if (analyze != null) {
+            printSubcommandUsage(analyze, "rhythm");
+        }
     }
 
     private static void printSubcommandUsage(CommandLine parent, String name) {
         CommandLine subcommand = parent.getSubcommands().get(name);
         if (subcommand != null) {
             System.out.println();
-            System.out.println("Subcommand 'play " + name + "' usage:");
+            System.out.println("Subcommand '" + parent.getCommandName() + " " + name + "' usage:");
             subcommand.usage(System.out);
         }
     }
@@ -843,12 +847,16 @@ public class RootCmd implements Runnable {
             }
         }
 
-        @Command(name = "rhythm", description = "Analyze simple onset rhythm by Huffman complexity")
+        @Command(name = "rhythm", mixinStandardHelpOptions = true,
+                description = "Analyze simple onset rhythm by Huffman complexity")
         public static class RhythmCmd implements Callable<Integer> {
             @ParentCommand AnalyzeCmd parent;
 
             @Parameters(index = "0", description = "Rhythm in simple onset format")
             String rhythm;
+
+            @Option(names = "--details", description = "Also show BeatInformation and its arithmetic mean")
+            boolean details;
 
             @Override
             public Integer call() {
@@ -860,6 +868,12 @@ public class RootCmd implements Runnable {
                         result.getStandardDeviation(),
                         result.getOnsetListPerBeat()
                 );
+                if (details) {
+                    System.out.printf(Locale.ROOT,
+                            "[DETAILS] BeatInformation=%s | Mean=%.6f%n",
+                            result.getBeatInformation(),
+                            result.getMeanBeatInformation());
+                }
                 return 0;
             }
         }

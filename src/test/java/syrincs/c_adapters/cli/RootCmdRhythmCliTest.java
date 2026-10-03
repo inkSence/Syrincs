@@ -20,14 +20,18 @@ import syrincs.b_application.SendToMidiUseCase;
 import syrincs.b_application.UseCaseInteractor;
 import syrincs.b_application.ValidatePatternsUseCase;
 import syrincs.b_application.ports.HindemithChordRepositoryPort;
+import syrincs.b_application.ports.MidiDeviceQueryPort;
 import syrincs.b_application.ports.RhythmPlaybackPort;
 import syrincs.b_application.ports.RhythmRepository;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -167,10 +171,84 @@ class RootCmdRhythmCliTest {
         }
 
         String text = output.toString(StandardCharsets.UTF_8);
-        assertTrue(text.contains("[ANALYZE] Rhythm=xoooxoxoxoooxoxo"));
-        assertTrue(text.contains("Info=3"));
-        assertTrue(text.contains("Deviation="));
-        assertTrue(text.contains("Beats=[xooo, xoxo, xooo, xoxo]"));
+        assertEquals(String.format(
+                "[ANALYZE] Rhythm=xoooxoxoxoooxoxo | Info=3 | Deviation=%.6f | Beats=[xooo, xoxo, xooo, xoxo]%n",
+                0.4330127018922193), text);
+    }
+
+    @Test
+    void analyzeRhythm_detailsAfterOnsetsShowsFirstProfileWithoutPlayback() {
+        var playback = new CapturingRhythmPlaybackPort();
+        String text = analyzeOutput(playback, "Xooo\txoxo\nxooo Xoxo", "--details");
+
+        assertEquals(String.format(
+                "[ANALYZE] Rhythm=xoooxoxoxoooxoxo | Info=3 | Deviation=%.6f | Beats=[xooo, xoxo, xooo, xoxo]%n",
+                0.4330127018922193)
+                + "[DETAILS] BeatInformation=[1, 1, 0, 1] | Mean=0.750000" + System.lineSeparator(), text);
+        assertEquals(0, playback.calls);
+    }
+
+    @Test
+    void analyzeRhythm_detailsBeforeOnsetsShowsDifferentDistribution() {
+        var playback = new CapturingRhythmPlaybackPort();
+        String text = analyzeOutput(playback, "--details", "xoxo xooo xoxo xooo");
+
+        assertEquals(String.format(
+                "[ANALYZE] Rhythm=xoxoxoooxoxoxooo | Info=3 | Deviation=%.6f | Beats=[xoxo, xooo, xoxo, xooo]%n",
+                0.82915619758885)
+                + "[DETAILS] BeatInformation=[2, 0, 1, 0] | Mean=0.750000" + System.lineSeparator(), text);
+        assertEquals(0, playback.calls);
+    }
+
+    @Test
+    void analyzeRhythm_detailsIncludesAllBeatsWithoutResetAtBarBoundary() {
+        var playback = new CapturingRhythmPlaybackPort();
+        String text = analyzeOutput(playback, "xoxo ".repeat(8), "--details");
+
+        assertTrue(text.contains(String.format("Info=9 | Deviation=%.6f", 0.33071891388307384)));
+        assertTrue(text.contains("BeatInformation=[2, 1, 1, 1, 1, 1, 1, 1] | Mean=1.125000"));
+        assertEquals(0, playback.calls);
+    }
+
+    @Test
+    void analyzeRhythm_helpDescribesDetailsWithoutRunningAnalysis() {
+        var output = new StringWriter();
+        var command = new CommandLine(new RootCmd(null, (MidiDeviceQueryPort) null));
+        command.setOut(new PrintWriter(output));
+
+        assertEquals(0, command.execute("analyze", "rhythm", "--help"));
+        assertTrue(output.toString().contains("--details"));
+        assertTrue(output.toString().contains("BeatInformation"));
+    }
+
+    @Test
+    void rootHelpIncludesRhythmAnalysisDetails() {
+        var output = new ByteArrayOutputStream();
+        PrintStream previous = System.out;
+        try {
+            System.setOut(new PrintStream(output));
+            RootCmd.printExtendedHelp(new CommandLine(buildRoot(new CapturingRhythmPlaybackPort(), null)));
+        } finally {
+            System.setOut(previous);
+        }
+
+        String text = output.toString(StandardCharsets.UTF_8);
+        assertTrue(text.contains("Subcommand 'analyze rhythm' usage:"));
+        assertTrue(text.contains("--details"));
+    }
+
+    private String analyzeOutput(CapturingRhythmPlaybackPort playback, String... arguments) {
+        var args = new ArrayList<>(List.of("analyze", "rhythm"));
+        args.addAll(List.of(arguments));
+        var output = new ByteArrayOutputStream();
+        PrintStream previous = System.out;
+        try {
+            System.setOut(new PrintStream(output));
+            assertEquals(0, new CommandLine(buildRoot(playback, null)).execute(args.toArray(String[]::new)));
+        } finally {
+            System.setOut(previous);
+        }
+        return output.toString(StandardCharsets.UTF_8);
     }
 
     private Path writeRhythmFile() throws Exception {
