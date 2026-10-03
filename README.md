@@ -103,7 +103,7 @@ syrincs
 ├── status                     DB- und SC-Prozessstatus anzeigen
 ├── analyze
 │   ├── chord NOTES...         Hindemith-Analyse
-│   └── rhythm ONSETS          Huffman-Analyse
+│   └── rhythm ONSETS [--details] Huffman-Analyse, optional mit Beat-Werten
 ├── calculate
 │   ├── chords MIN MAX         Akkorde erzeugen und speichern
 │   └── rhythms                alle 2^16 Onset-Pattern speichern
@@ -259,8 +259,25 @@ erzeugt. Ihr Spielzustand wird über Beatgrenzen fortgeführt. `Deviation` ist
 die Populationsstandardabweichung der Informationswerte der einzelnen Beats.
 Beide Werte beziehen sich auf die gesamte Eingabe; der Spielzustand läuft
 auch über Taktgrenzen weiter. `Beats=[...]` zeigt die Onset-Strings der Beats,
-keine numerischen Beat-Informationswerte. Diese sind noch nicht öffentlich
-abrufbar.
+keine numerischen Beat-Informationswerte.
+
+Mit `--details` ergänzt die CLI die unveränderte Analysezeile um die
+Beat-Informationswerte und deren arithmetischen Mittelwert:
+
+```bash
+syrincs analyze rhythm "xooo xoxo xooo xoxo" --details
+```
+
+```text
+[ANALYZE] Rhythm=xoooxoxoxoooxoxo | Info=3 | Deviation=0.433013 | Beats=[xooo, xoxo, xooo, xoxo]
+[DETAILS] BeatInformation=[1, 1, 0, 1] | Mean=0.750000
+```
+
+Die Domäne stellt die geordneten Werte über `getBeatInformation()` als
+unveränderliche Liste und den Mittelwert über `getMeanBeatInformation()`
+bereit. Gesamtinformation, Mittelwert und Deviation stammen aus derselben
+einmal berechneten Liste. Bei mehreren Takten enthält sie alle Beats flach
+in Eingabereihenfolge; eine eigene Taktinformation wird nicht ausgewiesen.
 
 Kodifizierte Beispiele:
 

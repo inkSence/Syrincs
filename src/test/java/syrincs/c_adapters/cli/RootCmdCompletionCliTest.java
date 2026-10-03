@@ -35,6 +35,7 @@ class RootCmdCompletionCliTest {
         assertTrue(rootCommands.contains("status"));
         assertTrue(rootCommands.contains("analyze"));
         assertTrue(text.contains("--device"));
+        assertTrue(text.contains("--details"));
         assertTrue(text.contains("--output"));
         assertTrue(text.contains("--host"));
         assertTrue(text.contains("--port"));
