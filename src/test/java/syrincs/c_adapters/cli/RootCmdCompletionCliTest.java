@@ -38,6 +38,8 @@ class RootCmdCompletionCliTest {
         assertTrue(text.contains("--info"));
         assertTrue(text.contains("--limit"));
         assertTrue(text.contains("syrincs_search_rhythms"));
+        assertTrue(text.contains("--beat-profile"));
+        assertTrue(text.contains("--peak-beat"));
         assertTrue(text.contains("--device"));
         assertTrue(text.contains("--details"));
         assertTrue(text.contains("--deviation-min"));

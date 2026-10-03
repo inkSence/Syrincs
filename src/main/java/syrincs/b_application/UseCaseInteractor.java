@@ -8,6 +8,7 @@ import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
 import syrincs.a_domain.rhythm.HuffmanRhythm;
 import syrincs.b_application.ports.RhythmRepository;
+import syrincs.b_application.ports.dto.BeatProfileCriteria;
 import syrincs.b_application.ports.dto.DeviationRange;
 
 import java.util.List;
@@ -195,10 +196,15 @@ public class UseCaseInteractor {
     }
 
     public SearchRhythmsUseCase.Result searchRhythms(int information, DeviationRange range, int limit) {
+        return searchRhythms(information, range, limit, new BeatProfileCriteria(null, null));
+    }
+
+    public SearchRhythmsUseCase.Result searchRhythms(int information, DeviationRange range, int limit,
+                                                  BeatProfileCriteria criteria) {
         if (searchRhythmsUseCase == null) {
             throw new IllegalStateException("RhythmRepository not wired in UseCaseInteractor");
         }
-        return searchRhythmsUseCase.search(information, range, limit);
+        return searchRhythmsUseCase.search(information, range, limit, criteria);
     }
 
     public void playRhythms(List<HuffmanRhythm> rhythms) throws Exception {

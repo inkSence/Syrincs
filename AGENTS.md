@@ -278,8 +278,14 @@ Huffman-Regeln:
   inklusiv. Die Kandidatenidentität besteht aus normalisierten Onsets,
   Zähler und Nenner. Nach Deduplizierung wird nach Zähler, Nenner und Onsets
   sortiert; das positive Ausgabe-Limit (Default 20) ändert die Gesamtzahl
-  nicht. Suchprädikate betreffen gespeicherte Aggregate, die Ausgabe zeigt
-  aus den Onsets neu berechnete Analysewerte.
+  nicht. Information und Deviation filtern gespeicherte Aggregate; die
+  Ausgabe zeigt aus den Onsets neu berechnete Analysewerte. Die optionalen
+  Suchfilter `--beat-profile A,B,C,D` und `--peak-beat N` prüfen diese
+  rekonstruierten Beat-Werte nach der DB-Abfrage, aber vor Deduplizierung,
+  Sortierung, Zählung und Limit. Sie gelten nur für einen einzelnen 4/4-Takt.
+  Alle Kriterien werden mit UND verknüpft; die Profilsumme muss `--info`
+  entsprechen. Peaks sind einbasiert (1..4), Gleichstände zählen mit.
+  Ungültige oder widersprüchliche Kriterien scheitern vor der DB-Abfrage.
 - Der Kick-/Snare-Mapper akzeptiert exakt einen 16-Schritt-Takt. Mehrere
   ausgewählte DB-Rhythmen werden erst einzeln gemappt und danach in
   Anfragereihenfolge zu einem MIDI-Pattern verbunden.

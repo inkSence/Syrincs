@@ -44,6 +44,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RootCmdRhythmCliTest {
@@ -628,8 +629,111 @@ class RootCmdRhythmCliTest {
                 new String[]{"--info", "3", "--deviation-max", "Infinity"},
                 new String[]{"--info", "3", "--deviation-min", "Infinity"},
                 new String[]{"--info", "3", "--deviation-max", "NaN"},
-                new String[]{"--info", "3", "--deviation-min", "0.9", "--deviation-max", "0.1"})
+                new String[]{"--info", "3", "--deviation-min", "0.9", "--deviation-max", "0.1"},
+                new String[]{"--info", "3", "--beat-profile", ""},
+                new String[]{"--info", "3", "--beat-profile="},
+                new String[]{"--info", "3", "--beat-profile", "1,1,1"},
+                new String[]{"--info", "3", "--beat-profile", "1,1,0,1,0"},
+                new String[]{"--info", "3", "--beat-profile", "1,-1,2,1"},
+                new String[]{"--info", "3", "--beat-profile", "1,no,0,1"},
+                new String[]{"--info", "3", "--beat-profile", "1,1.0,0,1"},
+                new String[]{"--info", "3", "--beat-profile", "1,,1,1"},
+                new String[]{"--info", "3", "--beat-profile", "1,1,0,1,"},
+                new String[]{"--info", "3", "--beat-profile", "2147483648,0,0,0"},
+                new String[]{"--info", "3", "--beat-profile", "2147483647,2147483647,4,1"},
+                new String[]{"--info", "4", "--beat-profile", "1,1,0,1"},
+                new String[]{"--info", "3", "--peak-beat", "0"},
+                new String[]{"--info", "3", "--peak-beat", "5"},
+                new String[]{"--info", "3", "--peak-beat", "-1"},
+                new String[]{"--info", "3", "--peak-beat", "two"},
+                new String[]{"--info", "3", "--beat-profile", "1,1,0,1", "--peak-beat", "3"},
+                new String[]{"--info", "3", "--beat-profile", "2,0,1,0", "--peak-beat", "2"})
                 .map(args -> Arguments.of((Object) args));
+    }
+
+    @Test
+    void searchRhythmsExactProfileAndPeakAreAndedWithDeviationBeforeLimit() {
+        var low = new HuffmanRhythm(4, 4, 120, "xooo xoxo xooo xoxo");
+        var high = new HuffmanRhythm(4, 4, 120, "xoxo xooo xoxo xooo");
+        var repo = new FilteringRhythmRepository(List.of(high, low, high, low));
+        var playback = new CapturingRhythmPlaybackPort();
+        var output = new StringWriter();
+        var error = new StringWriter();
+        int code = new CommandLine(withForbiddenDeviceQueries(buildRoot(playback, repo)))
+                .setOut(new PrintWriter(output)).setErr(new PrintWriter(error))
+                .execute("search", "rhythms", "--info", "3", "--beat-profile", "2, 0, 1, 0",
+                        "--peak-beat", "1", "--deviation-min", Double.toString(high.getStandardDeviation()),
+                        "--deviation-max", Double.toString(high.getStandardDeviation()), "--limit", "1");
+        assertEquals(0, code, error.toString());
+        assertTrue(output.toString().contains("Limit=1 | Total=1 | Shown=1 | BeatProfile=[2, 0, 1, 0] | PeakBeat=1"));
+        assertTrue(output.toString().contains("Rhythm=xoxoxoooxoxoxooo"));
+        assertFalse(output.toString().contains("Rhythm=xoooxoxoxoooxoxo"));
+        assertEquals(new DeviationRange(high.getStandardDeviation(), high.getStandardDeviation()), repo.lastRange);
+        assertEquals(1, repo.rangeQueries);
+        assertEquals(0, repo.strictQueries);
+        assertEquals(0, playback.calls);
+
+        output = new StringWriter();
+        assertEquals(0, new CommandLine(buildRoot(playback, repo)).setOut(new PrintWriter(output))
+                .execute("search", "rhythms", "--info", "3", "--beat-profile", "2,0,1,0", "--deviation-max", "0.5"));
+        assertTrue(output.toString().contains("Total=0 | Shown=0"));
+        assertEquals(1, output.toString().lines().count());
+
+        // The first candidate in canonical order is LOW and must not consume the limit before profile filtering.
+        output = new StringWriter();
+        assertEquals(0, new CommandLine(buildRoot(playback, repo)).setOut(new PrintWriter(output))
+                .execute("search", "rhythms", "--info", "3", "--beat-profile", "2,0,1,0", "--limit", "1"));
+        assertTrue(output.toString().contains("Total=1 | Shown=1"));
+        assertTrue(output.toString().contains("Rhythm=xoxoxoooxoxoxooo"));
+    }
+
+    @Test
+    void searchRhythmsPeakCountsTiesIncludingSilenceAndDoesNotLimitTheCount() {
+        var playback = new CapturingRhythmPlaybackPort();
+        for (int beat = 1; beat <= 4; beat++) {
+            var output = new StringWriter();
+            assertEquals(0, new CommandLine(withForbiddenDeviceQueries(buildRoot(playback, freshCatalog())))
+                    .setOut(new PrintWriter(output)).execute("search", "rhythms", "--info", "3",
+                            "--peak-beat", Integer.toString(beat), "--limit", "1"));
+            int total = beat == 1 ? 2 : beat == 3 ? 0 : 1;
+            assertTrue(output.toString().contains("Total=" + total + " | Shown=" + Math.min(total, 1)));
+            assertTrue(output.toString().contains("BeatProfile=none | PeakBeat=" + beat));
+            if (beat != 3) assertTrue(output.toString().contains("Rhythm=xoooxoxoxoooxoxo"));
+
+            output = new StringWriter();
+            assertEquals(0, new CommandLine(buildRoot(playback, freshCatalog())).setOut(new PrintWriter(output))
+                    .execute("search", "rhythms", "--info", "0", "--beat-profile", "0,0,0,0", "--peak-beat", Integer.toString(beat)));
+            assertTrue(output.toString().contains("Total=1 | Shown=1"));
+            assertTrue(output.toString().contains("BeatInformation=[0, 0, 0, 0]"));
+        }
+        assertEquals(0, playback.calls);
+    }
+
+    @Test
+    void searchRhythmsValidAbsentProfileSucceedsAndContradictionsHaveUsefulErrors() {
+        var repo = freshCatalog();
+        var playback = new CapturingRhythmPlaybackPort();
+        var output = new StringWriter();
+        assertEquals(0, new CommandLine(buildRoot(playback, repo)).setOut(new PrintWriter(output))
+                .execute("search", "rhythms", "--info", "3", "--beat-profile", "0,3,0,0"));
+        assertTrue(output.toString().contains("Total=0 | Shown=0"));
+        assertEquals(1, output.toString().lines().count());
+
+        for (var options : List.of(new String[]{"--beat-profile", "1,1,0,1", "--peak-beat", "3"},
+                new String[]{"--beat-profile", "1,1,1,1"})) {
+            var empty = new FilteringRhythmRepository(List.of());
+            var error = new StringWriter();
+            output = new StringWriter();
+            var args = new ArrayList<>(List.of("search", "rhythms", "--info", "3"));
+            args.addAll(List.of(options));
+            assertEquals(1, new CommandLine(buildRoot(playback, empty)).setOut(new PrintWriter(output))
+                    .setErr(new PrintWriter(error)).execute(args.toArray(String[]::new)));
+            assertTrue(error.toString().contains("--beat-profile"));
+            assertTrue(error.toString().contains(options.length == 4 ? "--peak-beat" : "--info"));
+            assertEquals("", output.toString());
+            assertEquals(0, empty.queries);
+        }
+        assertEquals(0, playback.calls);
     }
 
     @Test
@@ -661,10 +765,12 @@ class RootCmdRhythmCliTest {
         var output = new StringWriter();
         var command = new CommandLine(new RootCmd(null, (MidiDeviceQueryPort) null)).setOut(new PrintWriter(output));
         assertEquals(0, command.execute("search", "rhythms", "--help"));
-        for (String option : List.of("--info", "--limit", "--deviation-min", "--deviation-max")) {
+        for (String option : List.of("--info", "--limit", "--deviation-min", "--deviation-max", "--beat-profile", "--peak-beat")) {
             assertTrue(output.toString().contains(option));
         }
         assertTrue(output.toString().contains("default: 20"));
+        assertTrue(output.toString().contains("4/4"));
+        assertTrue(output.toString().contains("ties count"));
         var extended = new ByteArrayOutputStream();
         var previous = System.out;
         try {
@@ -675,6 +781,8 @@ class RootCmdRhythmCliTest {
         }
         assertTrue(extended.toString(StandardCharsets.UTF_8).contains("Subcommand 'search rhythms' usage:"));
         assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--limit"));
+        assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--beat-profile"));
+        assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--peak-beat"));
     }
 
     private static void assertPlayedOnsets(CapturingRhythmPlaybackPort playback, String expected) {
