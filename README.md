@@ -335,11 +335,14 @@ syrincs play rhythm info 3 5 7
 syrincs play rhythm info --device "Virtual Out" 3 5 7
 syrincs play rhythm info 3 5 --deviation-min 0.2 --deviation-max 0.8
 syrincs play rhythm info 0 --deviation-min 0
+syrincs play rhythm info 3 5 3 --seed 42 --dry-run
 ```
 
-Für jeden Informationsgrad lädt Syrincs passende Kandidaten und wählt
-zufällig einen aus. Ohne Deviation-Optionen bleibt der bisherige strikte
-Filter `deviation > 0.7` erhalten. Explizite Grenzen ersetzen ihn vollständig:
+Für jede angefragte Position lädt Syrincs passende Kandidaten und wählt
+zufällig einen aus. Wiederholte Grade bleiben getrennte Positionen; dasselbe
+Pattern darf mehrfach gewählt werden. Ohne Deviation-Optionen bleibt der
+bisherige strikte Filter `deviation > 0.7` erhalten. Explizite Grenzen ersetzen
+ihn vollständig:
 
 | Optionen | Deviation-Filter |
 | --- | --- |
@@ -355,9 +358,28 @@ beim Laden werden die Aggregate aus den Onsets neu berechnet. Bei älteren
 Katalogdaten können beide Bewertungen abweichen. Gespeichertes `NULL` in
 Deviation erfüllt keine gesetzte Grenze; es wird hier nicht migriert.
 
-Grade ohne Kandidaten werden weiterhin übersprungen; nur wenn
-für keinen angefragten Grad ein Kandidat existiert, endet der Befehl mit
-Fehler und einem Hinweis auf `init` und `calculate rhythms`.
+Fehlt für eine Position ein Kandidat, werden alle fehlenden Positionen mit
+ihrem Grad gemeldet und der gesamte Aufruf schlägt vor dem Playback fehl.
+Es gibt keine stille Verkürzung mehr. Die Fehlermeldung nennt auch `init`
+und `calculate rhythms` zur Vorbereitung des Katalogs.
+
+Vor dem Playback zeigt die CLI den verwendeten Seed und jede ausgewählte
+Position mit normalisierten Onsets, Beat-Profil, Gesamtinformation und
+Deviation. `--dry-run` führt dieselbe Auswahl und Ausgabe durch, ohne MIDI
+zu öffnen oder die Wiedergabe aufzurufen.
+
+`--seed LONG` verwendet einmal pro Aufruf `java.util.Random`. Vor jeder
+Ziehung sind die Kandidaten wie bei der Suche dedupliziert und nach Zähler,
+Nenner und Onsets sortiert. Aus der vollständigen Liste wird in
+Anfragereihenfolge genau einmal mit `nextInt(Kandidatenzahl)` gezogen,
+auch bei nur einem Kandidaten. Das Ausgabe-Limit von `search rhythms`
+begrenzt diese Auswahl nicht. Ohne `--seed` wird ein nichtdeterministischer
+Seed erzeugt und ebenfalls angezeigt.
+
+Gleicher Seed, unveränderte normalisierte Kandidateninhalte, gleiche
+Kriterienfolge und gleiche Programmversion ergeben dieselbe Auswahl.
+Ein Seed ist nach Katalog- oder Algorithmusänderungen keine dauerhafte
+Pattern-Adresse. Seed und Auswahl werden nicht gespeichert.
 
 Die ausgewählten Takte werden in der angefragten Reihenfolge zu einem
 durchgehenden MIDI-Pattern verbunden. Eine regelbasierte Gewichtung verteilt
@@ -368,9 +390,9 @@ Kick-Note 36 und Snare-Note 38 auf Kanal 9, Velocity 90 und Gate 50 Prozent.
 Gespeicherte Rhythmen enthalten kein Tempo;
 DB-Playback verwendet daher aktuell 120 BPM.
 
-Die Auswahl startet direkt das Playback. `search rhythms` ermöglicht die
-separate Kandidatenansicht; Profilfilter und eine Seed-Option sind derzeit
-nicht verfügbar.
+Ohne `--dry-run` folgt auf die Ausgabe das Playback. `search rhythms`
+zeigt stattdessen die Kandidatenliste ohne Zufallsauswahl. Profilfilter sind
+noch nicht verfügbar.
 
 ## RDL-0
 

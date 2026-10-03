@@ -42,6 +42,8 @@ class RootCmdCompletionCliTest {
         assertTrue(text.contains("--details"));
         assertTrue(text.contains("--deviation-min"));
         assertTrue(text.contains("--deviation-max"));
+        assertTrue(text.contains("--seed"));
+        assertTrue(text.contains("--dry-run"));
         assertTrue(text.contains("--output"));
         assertTrue(text.contains("--host"));
         assertTrue(text.contains("--port"));

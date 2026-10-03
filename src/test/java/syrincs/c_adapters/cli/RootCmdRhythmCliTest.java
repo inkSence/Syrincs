@@ -121,7 +121,7 @@ class RootCmdRhythmCliTest {
         }
 
         String text = error.toString(StandardCharsets.UTF_8);
-        assertTrue(text.contains("No stored Huffman rhythms found for information grades [3]"));
+        assertTrue(text.contains("No stored Huffman rhythms found for position 1 (info=3)"));
         assertTrue(text.contains("syrincs init"));
         assertTrue(text.contains("syrincs calculate rhythms"));
         assertTrue(text.contains("syrincs play rhythm info 3"));
@@ -372,6 +372,150 @@ class RootCmdRhythmCliTest {
                 new HuffmanRhythm(4, 4, 120, "xoxo xooo xoxo xooo"),
                 new HuffmanRhythm(4, 4, 120, "xoxo xooo xooo xooo"),
                 new HuffmanRhythm(4, 4, 120, "o".repeat(16))));
+    }
+
+    @Test
+    void seededPlaybackPrintsExactSelectionBeforeOneCombinedPlaybackAndDryRunIsIdentical() {
+        var output = new StringWriter();
+        var playback = new CapturingRhythmPlaybackPort() {
+            @Override public void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String device) {
+                assertTrue(output.toString().contains("Position=4 | RequestedInfo=3"));
+                super.play(pattern, spec, voices, device);
+            }
+        };
+        String[] arguments = {"3", "0", "3", "3", "--deviation-min", "0", "--seed", "42", "--device", "Virtual Out"};
+        var command = new CommandLine(buildRoot(playback, freshCatalog())).setOut(new PrintWriter(output));
+        var args = new ArrayList<>(List.of("play", "rhythm", "info"));
+        args.addAll(List.of(arguments));
+
+        assertEquals(0, command.execute(args.toArray(String[]::new)));
+        assertEquals(1, playback.calls);
+        assertEquals(4, playback.spec.bars);
+        assertEquals("Virtual Out", playback.deviceNameSubstring);
+        assertPlayedOnsets(playback, "xoxoxoooxoxoxooo" + "o".repeat(16) + "xoxoxoooxoxoxooo" + "xoooxoxoxoooxoxo");
+        String expected = "[SELECTION] Seed=42 | Algorithm=java.util.Random | DeviationFilter=DeviationRange[min=0.0, max=null] | Count=4" + System.lineSeparator()
+                + "[SELECTED] Position=1 | RequestedInfo=3 | Time=4/4 | Rhythm=xoxoxoooxoxoxooo | BeatInformation=[2, 0, 1, 0] | Info=3 | Deviation=0.829156" + System.lineSeparator()
+                + "[SELECTED] Position=2 | RequestedInfo=0 | Time=4/4 | Rhythm=oooooooooooooooo | BeatInformation=[0, 0, 0, 0] | Info=0 | Deviation=0.000000" + System.lineSeparator()
+                + "[SELECTED] Position=3 | RequestedInfo=3 | Time=4/4 | Rhythm=xoxoxoooxoxoxooo | BeatInformation=[2, 0, 1, 0] | Info=3 | Deviation=0.829156" + System.lineSeparator()
+                + "[SELECTED] Position=4 | RequestedInfo=3 | Time=4/4 | Rhythm=xoooxoxoxoooxoxo | BeatInformation=[1, 1, 0, 1] | Info=3 | Deviation=0.433013" + System.lineSeparator();
+        assertEquals(expected, output.toString());
+
+        args.add("--dry-run");
+        var dryPlayback = new CapturingRhythmPlaybackPort();
+        var root = buildRoot(dryPlayback, freshCatalog());
+        var dryOutput = new StringWriter();
+        assertEquals(0, new CommandLine(withForbiddenDeviceQueries(root)).setOut(new PrintWriter(dryOutput))
+                .execute(args.toArray(String[]::new)));
+        assertEquals(expected, dryOutput.toString());
+        assertEquals(0, dryPlayback.calls);
+    }
+
+    @Test
+    void unseededDryRunShowsActualSeedAndCanBeReplayed() {
+        var playback = new CapturingRhythmPlaybackPort();
+        var first = runInfo(freshCatalog(), playback, "3", "3", "--deviation-min", "0", "--dry-run");
+        assertEquals(0, first.code());
+        var seed = java.util.regex.Pattern.compile("Seed=(-?\\d+)").matcher(first.output());
+        assertTrue(seed.find());
+        var second = runInfo(freshCatalog(), playback, "3", "3", "--deviation-min", "0", "--seed", seed.group(1), "--dry-run");
+        assertEquals(0, second.code());
+        assertEquals(first.output(), second.output());
+        assertEquals(0, playback.calls);
+    }
+
+    @Test
+    void incompleteSelectionReportsEveryMissingPositionWithoutPrintingOrPlayingPartialSelection() {
+        for (boolean dryRun : List.of(false, true)) {
+            var playback = new CapturingRhythmPlaybackPort();
+            var args = new ArrayList<>(List.of("3", "99", "0", "98", "99", "--deviation-min", "0", "--seed", "42"));
+            if (dryRun) args.add("--dry-run");
+            var result = runInfo(freshCatalog(), playback, args.toArray(String[]::new));
+            assertEquals(1, result.code());
+            assertEquals("", result.output());
+            assertTrue(result.error().contains("position 2 (info=99)"));
+            assertTrue(result.error().contains("position 4 (info=98)"));
+            assertTrue(result.error().contains("position 5 (info=99)"));
+            assertEquals(0, playback.calls);
+        }
+    }
+
+    @Test
+    void seedAcceptsFullSignedLongRangeAndRejectsInvalidValuesBeforeQuery() {
+        for (String seed : List.of("-9223372036854775808", "9223372036854775807", "-1", "0")) {
+            var result = runInfo(freshCatalog(), new CapturingRhythmPlaybackPort(), "3", "--seed", seed, "--dry-run");
+            assertEquals(0, result.code());
+            assertTrue(result.output().contains("Seed=" + seed + " |"));
+        }
+        for (String seed : List.of("not-a-long", "9223372036854775808")) {
+            var repo = freshCatalog();
+            var playback = new CapturingRhythmPlaybackPort();
+            var result = runInfo(repo, playback, "3", "--seed", seed, "--dry-run");
+            assertTrue(result.code() != 0);
+            assertTrue(!result.error().isBlank());
+            assertEquals(0, repo.queries);
+            assertEquals(0, playback.calls);
+        }
+    }
+
+    @Test
+    void negativePlaybackGradeAndRepositoryFailureDoNotPrintOrPlaySelection() {
+        var repo = freshCatalog();
+        var playback = new CapturingRhythmPlaybackPort();
+        var negative = runInfo(repo, playback, "3", "-1", "--seed", "42", "--dry-run");
+        assertEquals(1, negative.code());
+        assertTrue(negative.error().contains("position 2 must be non-negative"));
+        assertEquals(0, repo.queries);
+        var failure = new FilteringRhythmRepository(List.of()) {
+            @Override public List<HuffmanRhythm> getAllByInformationAndMinDeviation(Integer info, Double minimum) {
+                throw new IllegalStateException("Database unavailable");
+            }
+        };
+        var result = runInfo(failure, playback, "3", "--seed", "42", "--dry-run");
+        assertEquals(1, result.code());
+        assertEquals("", result.output());
+        assertTrue(result.error().contains("Database unavailable"));
+        assertTrue(!result.error().contains("\tat syrincs."));
+        assertEquals(0, playback.calls);
+    }
+
+    @Test
+    void playbackHelpDocumentsSeedDryRunAndRootHelpIncludesBothOptions() {
+        var command = new CommandLine(new RootCmd(null, (MidiDeviceQueryPort) null));
+        var help = new StringWriter();
+        command.setOut(new PrintWriter(help));
+        assertEquals(0, command.execute("play", "rhythm", "info", "--help"));
+        assertTrue(help.toString().contains("--seed"));
+        assertTrue(help.toString().contains("java.util.Random"));
+        assertTrue(help.toString().contains("--dry-run"));
+        var extended = new ByteArrayOutputStream();
+        var previous = System.out;
+        try {
+            System.setOut(new PrintStream(extended));
+            RootCmd.printExtendedHelp(command);
+        } finally {
+            System.setOut(previous);
+        }
+        assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--seed"));
+        assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--dry-run"));
+    }
+
+    private record InfoRun(int code, String output, String error) {}
+
+    private InfoRun runInfo(RhythmRepository repo, CapturingRhythmPlaybackPort playback, String... arguments) {
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var args = new ArrayList<>(List.of("play", "rhythm", "info"));
+        args.addAll(List.of(arguments));
+        int code = new CommandLine(withForbiddenDeviceQueries(buildRoot(playback, repo)))
+                .setOut(new PrintWriter(output)).setErr(new PrintWriter(error)).execute(args.toArray(String[]::new));
+        return new InfoRun(code, output.toString(), error.toString());
+    }
+
+    private static RootCmd withForbiddenDeviceQueries(RootCmd root) {
+        return new RootCmd(root.interactor, root.midiInteractor, new MidiDeviceQueryPort() {
+            @Override public List<syrincs.b_application.ports.dto.MidiEndpoint> listOutputs() { throw new AssertionError("MIDI query"); }
+            @Override public syrincs.b_application.ports.dto.MidiEndpoint findOutput(String name) { throw new AssertionError("MIDI query"); }
+        }, null);
     }
 
     @Test
