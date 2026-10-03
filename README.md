@@ -308,12 +308,28 @@ Batch-Inserts. Auch hier hängen Wiederholungen weitere Zeilen an.
 ```bash
 syrincs search rhythms --info 3
 syrincs search rhythms --info 3 --deviation-min 0.2 --deviation-max 0.8 --limit 5
+syrincs search rhythms --info 3 --beat-profile 1,1,0,1
+syrincs search rhythms --info 3 --peak-beat 2 --deviation-max 0.5
 ```
 
 Die reine Suche liest den Katalog, ohne Zufallsauswahl oder MIDI-Zugriff.
 `--info` ist ein einzelner exakter, nichtnegativer Ganzzahlwert. Ohne
 Deviation-Option gelten keine Deviation-Grenzen; explizite Grenzen sind
 inklusiv, endlich und nichtnegativ, mit `MIN <= MAX`.
+
+`--beat-profile A,B,C,D` verlangt exakt vier nichtnegative Ganzzahlen in
+Beat-Reihenfolge; ihre Summe muss `--info` entsprechen. `--peak-beat N`
+verlangt ein globales Informationsmaximum auf Beat 1 bis 4. Bei Gleichstand
+zählt jede maximale Position: `[1,1,0,1]` trifft auf 1, 2 und 4; `[2,0,1,0]`
+nur auf 1; das Nullprofil auf alle vier Beats. Beide Optionen sind unabhängig
+optional und gelten nur für einen einzelnen 4/4-Takt. Andere Taktarten und
+mehrtaktige Kandidaten werden bei gesetzten Profilkriterien ausgeschlossen.
+
+Alle gesetzten Kriterien werden mit UND verknüpft. Ein Profil mit falscher
+Summe oder ein dazu widersprüchlicher Peak wird vor der DB-Abfrage abgelehnt.
+Die Profilkriterien prüfen die aus den Onsets berechneten Beat-Werte nach
+der skalaren DB-Abfrage, aber vor Deduplizierung, Sortierung, Trefferzählung
+und Ausgabe-Limit. Ein gültiges, nicht vorhandenes Profil ergibt null Treffer.
 
 Identische normalisierte Onsets mit gleichem Zähler und Nenner erscheinen
 nur einmal. Die eindeutigen Treffer werden nach Zähler, Nenner und Onsets
@@ -391,8 +407,9 @@ Gespeicherte Rhythmen enthalten kein Tempo;
 DB-Playback verwendet daher aktuell 120 BPM.
 
 Ohne `--dry-run` folgt auf die Ausgabe das Playback. `search rhythms`
-zeigt stattdessen die Kandidatenliste ohne Zufallsauswahl. Profilfilter sind
-noch nicht verfügbar.
+zeigt stattdessen die Kandidatenliste ohne Zufallsauswahl und unterstützt
+exakte Beat-Profile und Peak-Positionen. Diese Filter sind nicht Teil des
+Playbacks; Profilähnlichkeit und mehrtaktige Informationsverläufe bleiben offen.
 
 ## RDL-0
 

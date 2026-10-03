@@ -2,6 +2,7 @@ package syrincs.b_application;
 
 import org.junit.jupiter.api.Test;
 import syrincs.a_domain.rhythm.HuffmanRhythm;
+import syrincs.b_application.ports.dto.BeatProfileCriteria;
 import syrincs.b_application.ports.dto.DeviationRange;
 
 import java.util.ArrayList;
@@ -104,5 +105,85 @@ class SearchRhythmsUseCaseTest {
 
     private static HuffmanRhythm rhythm(int numerator, int denominator, String onsets) {
         return new HuffmanRhythm(numerator, denominator, 120, onsets);
+    }
+
+    @Test
+    void exactProfilesDistinguishEqualInformationBeforeDeduplicationCountAndLimit() {
+        var low = rhythm(4, 4, LOW);
+        var high = rhythm(4, 4, HIGH);
+        var source = List.of(high, low, rhythm(4, 4, HIGH.toUpperCase()), low);
+        var repo = new FilteringRhythmRepository(source);
+        var search = new SearchRhythmsUseCase(repo);
+        var criteria = new BeatProfileCriteria(List.of(2, 0, 1, 0), 1);
+        var result = search.search(3, ALL, 1, criteria);
+        assertEquals(1, result.totalMatches());
+        assertEquals(1, result.candidates().size());
+        assertEquals(high.getOnsetList(), result.candidates().getFirst().onsets());
+        assertEquals(1, repo.rangeQueries);
+        assertEquals(0, repo.strictQueries);
+        var reversed = new ArrayList<>(source);
+        Collections.reverse(reversed);
+        assertEquals(result, new SearchRhythmsUseCase(new FilteringRhythmRepository(reversed)).search(3, ALL, 1, criteria));
+        assertEquals(low.getOnsetList(), search.search(3, ALL, 1,
+                new BeatProfileCriteria(List.of(1, 1, 0, 1), null)).candidates().getFirst().onsets());
+        // Both pass peak 1, but duplicated rows must not inflate the count, and limit is last.
+        assertEquals(2, search.search(3, ALL, 1, new BeatProfileCriteria(null, 1)).totalMatches());
+        assertEquals(0, search.search(3, ALL, 1, new BeatProfileCriteria(List.of(0, 3, 0, 0), null)).totalMatches());
+    }
+
+    @Test
+    void peakAndExactProfileUseOneQueryWithTheExistingDeviationBounds() {
+        var low = rhythm(4, 4, LOW);
+        var high = rhythm(4, 4, HIGH);
+        var repo = new FilteringRhythmRepository(List.of(high, low));
+        var range = new DeviationRange(low.getStandardDeviation(), low.getStandardDeviation());
+        var criteria = new BeatProfileCriteria(List.of(1, 1, 0, 1), 2);
+        var result = new SearchRhythmsUseCase(repo).search(3, range, 20, criteria);
+        assertEquals(1, result.totalMatches());
+        assertEquals(low.getOnsetList(), result.candidates().getFirst().onsets());
+        assertEquals(range, repo.lastRange);
+        assertEquals(1, repo.queries);
+        assertEquals(0, repo.strictQueries);
+        assertEquals(0, new SearchRhythmsUseCase(repo).search(3,
+                new DeviationRange(high.getStandardDeviation(), null), 20, criteria).totalMatches());
+    }
+
+    @Test
+    void profileCriteriaOnlyApplyToASingleFourFourBar() {
+        var low = rhythm(4, 4, LOW);
+        var repo = new FilteringRhythmRepository(FilteringRhythmRepository.Entry.fresh(low),
+                FilteringRhythmRepository.Entry.fresh(rhythm(4, 8, LOW)),
+                FilteringRhythmRepository.Entry.fresh(rhythm(2, 4, LOW)),
+                new FilteringRhythmRepository.Entry(rhythm(4, 4, LOW + LOW), 3, 0.5));
+        var search = new SearchRhythmsUseCase(repo);
+        assertEquals(4, search.search(3, ALL, 20).totalMatches());
+        assertEquals(1, search.search(3, ALL, 20, new BeatProfileCriteria(null, 1)).totalMatches());
+        assertEquals(1, search.search(3, ALL, 20,
+                new BeatProfileCriteria(List.of(1, 1, 0, 1), null)).totalMatches());
+    }
+
+    @Test
+    void profileMatchingUsesReconstructedValuesWithoutChangingStoredAggregateFilters() {
+        var low = rhythm(4, 4, LOW);
+        var high = rhythm(4, 4, HIGH);
+        var repo = new FilteringRhythmRepository(new FilteringRhythmRepository.Entry(low, 3, 0.9),
+                new FilteringRhythmRepository.Entry(high, 3, 0.9));
+        var result = new SearchRhythmsUseCase(repo).search(3, new DeviationRange(0.9, 0.9), 20,
+                new BeatProfileCriteria(List.of(1, 1, 0, 1), 2));
+        assertEquals(1, result.totalMatches());
+        assertEquals(low.getStandardDeviation(), result.candidates().getFirst().deviation());
+        assertEquals(List.of(1, 1, 0, 1), result.candidates().getFirst().beatInformation());
+    }
+
+    @Test
+    void invalidProfileSumFailsBeforeRepositoryQueryIncludingOverflow() {
+        var repo = new FilteringRhythmRepository(List.of());
+        var search = new SearchRhythmsUseCase(repo);
+        assertThrows(IllegalArgumentException.class, () -> search.search(4, ALL, 20,
+                new BeatProfileCriteria(List.of(1, 1, 0, 1), null)));
+        assertThrows(IllegalArgumentException.class, () -> search.search(3, ALL, 20,
+                new BeatProfileCriteria(List.of(Integer.MAX_VALUE, Integer.MAX_VALUE, 4, 1), null)));
+        assertThrows(NullPointerException.class, () -> search.search(3, ALL, 20, null));
+        assertEquals(0, repo.queries);
     }
 }

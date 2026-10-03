@@ -9,6 +9,7 @@ import picocli.CommandLine.ParentCommand;
 import syrincs.a_domain.Tone;
 import syrincs.b_application.UseCaseInteractor;
 import syrincs.b_application.AppDefaults;
+import syrincs.b_application.ports.dto.BeatProfileCriteria;
 import syrincs.b_application.ports.dto.DeviationRange;
 import syrincs.b_application.ports.MidiDeviceQueryPort;
 import syrincs.c_adapters.RhythmFileParser;
@@ -807,7 +808,7 @@ public class RootCmd implements Runnable {
         }
 
         @Command(name = "rhythms", mixinStandardHelpOptions = true,
-                description = "List unique stored rhythms by exact information and optional inclusive deviation bounds")
+                description = "List unique stored rhythms by information, optional deviation bounds and beat-profile criteria (AND)")
         public static class RhythmsCmd implements Callable<Integer> {
             @ParentCommand SearchCmd parent;
             @CommandLine.Spec CommandLine.Model.CommandSpec spec;
@@ -821,6 +822,14 @@ public class RootCmd implements Runnable {
             @Option(names = "--deviation-max", description = "Inclusive maximum stored deviation; absent by default")
             Double deviationMax;
 
+            @Option(names = "--beat-profile", paramLabel = "A,B,C,D",
+                    description = "Exact four non-negative beat-information values for one 4/4 bar; sum must equal --info")
+            String beatProfile;
+
+            @Option(names = "--peak-beat", paramLabel = "N",
+                    description = "Beat 1..4 must carry a global information maximum in one 4/4 bar; ties count")
+            Integer peakBeat;
+
             @Option(names = "--limit", description = "Positive output limit (default: ${DEFAULT-VALUE}); total count is not limited")
             int limit = AppDefaults.DEFAULT_RHYTHM_SEARCH_LIMIT;
 
@@ -828,13 +837,17 @@ public class RootCmd implements Runnable {
             public Integer call() {
                 try {
                     var range = new DeviationRange(deviationMin, deviationMax);
-                    var result = parent.parent.interactor.searchRhythms(information, range, limit);
+                    var criteria = new BeatProfileCriteria(parseBeatProfile(), peakBeat);
+                    var result = parent.parent.interactor.searchRhythms(information, range, limit, criteria);
                     var out = spec.commandLine().getOut();
                     out.printf(Locale.ROOT,
-                            "[SEARCH] Info=%d | DeviationMin=%s | DeviationMax=%s | Limit=%d | Total=%d | Shown=%d%n",
+                            "[SEARCH] Info=%d | DeviationMin=%s | DeviationMax=%s | Limit=%d | Total=%d | Shown=%d%s%n",
                             result.information(), range.min() == null ? "none" : range.min(),
                             range.max() == null ? "none" : range.max(), result.limit(),
-                            result.totalMatches(), result.candidates().size());
+                            result.totalMatches(), result.candidates().size(), criteria.active()
+                                    ? " | BeatProfile=" + (criteria.profile() == null ? "none" : criteria.profile())
+                                        + " | PeakBeat=" + (criteria.peakBeat() == null ? "none" : criteria.peakBeat())
+                                    : "");
                     for (var candidate : result.candidates()) {
                         out.printf(Locale.ROOT,
                                 "[CANDIDATE] Time=%d/%d | Rhythm=%s | BeatInformation=%s | Info=%d | Deviation=%.6f%n",
@@ -845,6 +858,16 @@ public class RootCmd implements Runnable {
                 } catch (Exception e) {
                     spec.commandLine().getErr().println("[ERROR] " + e.getMessage());
                     return 1;
+                }
+            }
+
+            private List<Integer> parseBeatProfile() {
+                if (beatProfile == null) return null;
+                try {
+                    return Arrays.stream(beatProfile.split(",", -1)).map(String::trim)
+                            .map(Integer::parseInt).toList();
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("--beat-profile requires four comma-separated non-negative integers");
                 }
             }
         }

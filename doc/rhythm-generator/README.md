@@ -8,7 +8,8 @@ Huffman-Baum und komprimiert keine Audiodaten.
 Diese Dokumentation beschreibt den aktuellen Stand. Informationsprofile
 pro Beat sind öffentlich abrufbar und mit `analyze rhythm --details` sichtbar.
 Die Zufallsauswahl ist mit `--seed` reproduzierbar und mit `--dry-run` ohne
-Playback sichtbar. Eine Suche nach Profilformen ist noch nicht implementiert.
+Playback sichtbar. Die reine Suche unterstützt exakte Beat-Profile und
+Peak-Positionen; allgemeine Profilformen sind noch nicht implementiert.
 
 ## Funktionsübersicht des Rhythmusmoduls
 
@@ -22,7 +23,7 @@ Huffman-Analyse.
 | Onsets analysieren | `analyze rhythm "xooo xoxo xooo xoxo" [--details]` | Normalisierung, Gesamtinformation, Standardabweichung und Beat-Onset-Strings ausgeben; optional Beat-Informationswerte und Mittelwert, ohne DB oder Playback. |
 | Schema vorbereiten | `init` | Rhythmustabelle anlegen oder älteres Schema ergänzen. |
 | Rhythmen erzeugen | `calculate rhythms` | Alle 65.536 eintaktigen 4/4-Pattern bewerten und speichern. |
-| DB-Rhythmen suchen | `search rhythms --info 3` | Eindeutige, kanonisch sortierte Kandidaten mit Beat-Profilen anzeigen; optionale inklusive Deviation-Grenzen, keine Zufallsauswahl und kein Playback. |
+| DB-Rhythmen suchen | `search rhythms --info 3` | Eindeutige, kanonisch sortierte Kandidaten anzeigen; optional inklusive Deviation-Grenzen, exaktes Beat-Profil und Peak-Position, ohne Zufallsauswahl oder Playback. |
 | DB-Rhythmen auswählen | `play rhythm info 3 5 7 [--seed 42] [--dry-run]` | Je Position einen eindeutigen Kandidaten auswählen und vorher anzeigen; optional reproduzierbar oder ohne Playback. Default `deviation > 0.7`, optional inklusive Min-/Max-Grenzen. |
 | Kick/Snare zuordnen | Intern beim DB-Playback | Jeden Onset eines 16-Schritt-Takts anhand gewichteter Positionsregeln einer Stimme zuweisen. |
 | Takte verbinden | Intern beim DB-Playback | Einzeln gemappte Takte in Anfragereihenfolge zu einem Pattern verbinden. |
@@ -302,6 +303,8 @@ den Onset-String noch eine Deduplizierung im Use Case. Jeder erneute Aufruf von
 ```bash
 syrincs search rhythms --info 3
 syrincs search rhythms --info 3 --deviation-max 0.5 --limit 5
+syrincs search rhythms --info 3 --beat-profile 1,1,0,1 --peak-beat 4
+syrincs search rhythms --info 3 --peak-beat 2
 ```
 
 [`SearchRhythmsUseCase`](../../src/main/java/syrincs/b_application/SearchRhythmsUseCase.java)
@@ -312,14 +315,31 @@ Deviation-Grenzen sind optional und inklusiv; ohne Optionen gilt kein
 Deviation-Filter, insbesondere nicht der historische Playback-Default.
 Der `DeviationRange`-Vertrag aus dem Playback gilt auch hier.
 
+`--beat-profile A,B,C,D` filtert exakt vier nichtnegative Informationswerte
+in zeitlicher Reihenfolge. Ihre Summe muss `--info` entsprechen.
+`--peak-beat N` ist einbasiert (1 bis 4) und verlangt auf dieser Position
+einen globalen Maximalwert. Gleichstände sind erlaubt: Für `[1,1,0,1]`
+sind 1, 2 und 4 Peaks, für `[2,0,1,0]` nur 1, für `[0,0,0,0]` alle vier.
+Die Optionen sind unabhängig optional und werden mit Information und
+Deviation durch UND verknüpft. Ungültige Profile, falsche Summen und Peaks,
+die dem expliziten Profil widersprechen, scheitern vor der Repository-Abfrage.
+
+Der frameworkfreie `BeatProfileCriteria`-Vertrag prüft die vorhandenen,
+beim Laden rekonstruierten Beat-Werte; er ersetzt das Informationsmaß nicht.
+Bei gesetzten Profilkriterien werden nur einzelne 4/4-Takte mit vier
+Beat-Werten betrachtet. Andere Taktarten und mehrtaktige Patterns sind keine
+Treffer. Ohne Profilkriterien bleibt die bisherige Suche unverändert.
+
 Die Kandidatenidentität besteht aus normalisierten Onsets, Zähler und
-Nenner, nicht aus DB-ID oder Tempo. Nach der Repository-Filterung werden
+Nenner, nicht aus DB-ID oder Tempo. Nach der skalaren Repository-Abfrage und
+den optionalen Profil-/Peak-Filtern werden
 Duplikate zusammengefasst und alle eindeutigen Kandidaten kanonisch nach
 Zähler, Nenner und Onsets sortiert. Erst danach wird `--limit` angewandt:
 positiv, standardmäßig 20. Die Gesamtzahl bezieht sich auf alle eindeutigen
 Treffer, nicht auf die begrenzte Ausgabe. Der Katalog wird nicht bereinigt.
 
-Die Kopfzeile zeigt die angewandten Filter, `Limit`, `Total` und `Shown`.
+Die Kopfzeile zeigt die angewandten Filter, `Limit`, `Total` und `Shown`;
+bei Profilkriterien zusätzlich `BeatProfile` und `PeakBeat`.
 Kandidaten zeigen Taktart, Onsets, Beat-Informationswerte, Gesamtinformation
 und Deviation. Diese Analysewerte werden beim Laden aus den Onsets neu
 berechnet; die oben beschriebene mögliche Abweichung zu gespeicherten
@@ -398,8 +418,9 @@ weder Seed noch Auswahl persistiert.
 
 Aktuell gibt es dabei:
 
-- keine Suche nach einem geordneten Beat-Informationsprofil;
-- keine Filter nach Peak-Position, Onset-Dichte oder metrischer Gewichtung;
+- keine Profil- oder Peak-Filter im Playback; diese gehören zur reinen Suche;
+- keine Suche nach Profilähnlichkeit, allgemeinen Profilformen oder Taktverläufen;
+- keine Filter nach Onset-Dichte oder metrischer Gewichtung;
 - keine Persistenz der Zufallsauswahl; ihre Vorschau erfolgt mit `--dry-run`,
   die separate Kandidatensuche über `search rhythms`.
 
@@ -407,7 +428,7 @@ Diese Punkte gehören nicht in die Erzeugung der 65.536 Grundrhythmen. Sie
 lassen sich auf der erzeugten Datenbasis als eigenes Analyse- und
 Suchverhalten ergänzen. Die öffentliche, unveränderliche Beat-Liste steht
 dafür bereits bereit; beim Laden wird sie aus den Onsets neu berechnet.
-Eine Suche nach diesen Werten ist noch nicht implementiert.
+Die reine Suche nutzt diese Werte bereits für exakte Profile und Maxima.
 
 ## Kick-/Snare-Mapping und Verkettung
 
