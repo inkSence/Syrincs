@@ -234,6 +234,11 @@ endet der Befehl ohne Playback.
 
 ## Huffman-Rhythmik
 
+Die [Dokumentation des Rhythmusmoduls](doc/rhythm-generator/README.md)
+enthält eine Funktionsübersicht und technische Details zu Analyse, Generator,
+Informationsmaß, Persistenz, Kick-/Snare-Mapping, RDL und MIDI-Playback.
+Die folgenden Abschnitte beschreiben die Bedienung.
+
 ### Onset-Format und Analyse
 
 ```bash
@@ -244,10 +249,18 @@ Im einfachen Onset-Format bedeutet `x` Einsatz und `o` kein neuer Einsatz.
 Groß-/Kleinschreibung spielt keine Rolle, Whitespace wird entfernt. Der
 Analysepfad verwendet 4/4, 120 BPM und vier Positionen pro Beat. Die
 normalisierte Länge muss deshalb ein positives Vielfaches von 16 sein.
+Mehrere vollständige Takte werden gemeinsam ausgewertet. Die Analyse braucht
+weder Datenbank noch MIDI-Gerät und speichert keine Daten. Die allgemeine
+Domänenklasse prüft ein Vielfaches von `4 × Taktzähler`; die CLI verwendet
+hier fest den Zähler 4.
 
 `Info` ist die Anzahl der Codesymbole, welche die interne Zustandsmaschine
 erzeugt. Ihr Spielzustand wird über Beatgrenzen fortgeführt. `Deviation` ist
 die Populationsstandardabweichung der Informationswerte der einzelnen Beats.
+Beide Werte beziehen sich auf die gesamte Eingabe; der Spielzustand läuft
+auch über Taktgrenzen weiter. `Beats=[...]` zeigt die Onset-Strings der Beats,
+keine numerischen Beat-Informationswerte. Diese sind noch nicht öffentlich
+abrufbar.
 
 Kodifizierte Beispiele:
 
@@ -284,8 +297,15 @@ Fehler und einem Hinweis auf `init` und `calculate rhythms`.
 Die ausgewählten Takte werden in der angefragten Reihenfolge zu einem
 durchgehenden MIDI-Pattern verbunden. Eine regelbasierte Gewichtung verteilt
 jeden Onset auf Kick oder Snare: Backbeats bevorzugen die Snare, Downbeats und
-Antizipationen eher die Kick. Gespeicherte Rhythmen enthalten kein Tempo;
+Antizipationen eher die Kick. Der Mapper verarbeitet jeweils genau einen
+16-Schritt-Takt; erst danach werden die Takte verbunden. Standard sind
+Kick-Note 36 und Snare-Note 38 auf Kanal 9, Velocity 90 und Gate 50 Prozent.
+Gespeicherte Rhythmen enthalten kein Tempo;
 DB-Playback verwendet daher aktuell 120 BPM.
+
+Die Auswahl startet direkt das Playback. Eine Kandidatenvorschau, ein
+eigenständiger Suchbefehl, Profilfilter und eine Seed-Option sind derzeit
+nicht verfügbar.
 
 ## RDL-0
 
@@ -327,7 +347,10 @@ Ohne `--in` wird `data/beat.rdl` verwendet. Für RDL-0 gelten folgende Regeln:
   eine zum Header passende Patternlänge.
 
 RDL-0 (`x`/`-`) und das Huffman-Onset-Format (`x`/`o`) sind zwei verschiedene
-Formate. RDL- und Huffman-Playback laufen immer über MIDI. Der erzeugten
+Formate. RDL-Pattern sind bereits auf Stimmen verteilt; sie durchlaufen weder
+Huffman-Bewertung noch automatische Kick-/Snare-Zuordnung. Tempo, Raster,
+Taktanzahl und Voice-Parameter werden in der Datei festgelegt.
+RDL- und Huffman-Playback laufen immer über MIDI. Der erzeugten
 MIDI-Sequenz werden standardmäßig zwei Sekunden Nachlauf angefügt, damit
 Synth- und Effektfahnen ausklingen können.
 
