@@ -443,7 +443,7 @@ Abspielen:
 syrincs play rhythm
 syrincs play rhythm --in data/beat.rdl
 syrincs play rhythm --in data/beat.rdl --device DP603
-syrincs play rhythm --in data/beat.rdl --tempo 108 --device Gervill
+syrincs play rhythm --in data/beat.rdl --tempo 108 --device Gervill --count-in
 ```
 
 Ohne `--in` wird `data/beat.rdl` verwendet. Für RDL-0 gelten folgende Regeln:
@@ -468,18 +468,38 @@ RDL- und Huffman-Playback laufen immer über MIDI. Der erzeugten
 MIDI-Sequenz werden standardmäßig zwei Sekunden Nachlauf angefügt, damit
 Synth- und Effektfahnen ausklingen können.
 
-`--tempo BPM` überschreibt für diesen Playback-Aufruf den RDL-Tempoheader,
-ohne die Datei zu ändern. Ohne Option bleibt der Header maßgeblich.
-Die Option verlangt eine ganze BPM-Zahl im technisch darstellbaren Bereich
-**4..60.000.000**: Die MIDI-Sequenz kodiert Mikrosekunden pro Viertelnote
-mit höchstens drei Bytes. Die obere Grenze entspricht einer Mikrosekunde
-pro Viertelnote; extreme Werte sind technische Grenzen, keine Empfehlung.
-Ungültige Angaben werden vor Datei-/DB-Zugriff und Playback abgewiesen.
-Raster, Gate-Anteile und Taktanzahl bleiben erhalten; deren Dauer in Sekunden
-folgt dem effektiven Tempo. Der Nachlauf bleibt zwei Sekunden lang.
+`--tempo BPM` überschreibt das Playback-Tempo für diesen Aufruf. Bei RDL wird
+so das Tempo aus dem Header überschrieben, ohne die Datei zu ändern; bei
+Katalogrhythmen gilt sonst 120 BPM. Ohne Option bleibt der RDL-Header beziehungsweise das bisherige
+Katalogtempo maßgeblich. Die Option verlangt eine ganze BPM-Zahl im technisch
+darstellbaren Bereich **4..60.000.000**. Ungültige Angaben werden vor Datei-
+oder DB-Zugriff abgewiesen. Raster, Gate-Anteile und Taktanzahl bleiben
+unverändert, ihre Dauer in Sekunden folgt dem effektiven Tempo.
+
+Mit `--count-in` erklingt vor dem gesamten Playback genau ein Takt Einzählen
+mit vier Schlägen auf den Viertelzählzeiten und betonter Eins. Der Rhythmus
+beginnt am nächsten Taktanfang; Anfangspausen bleiben erhalten. Auch vor
+mehreren ausgewählten Takten wird nur einmal eingezählt. Einzählen und
+Rhythmus verwenden denselben effektiven Wert von `--tempo`.
+
+```bash
+syrincs play rhythm info 3 5 3 --seed 42 --tempo 108 --count-in
+syrincs play rhythm info 3 5 3 --seed 42 --tempo 108 --count-in --dry-run
+```
+
+`--tempo` und `--count-in` funktionieren vor oder nach `info`. Ein Tempo nach
+`info` hat Vorrang vor dem Tempo davor. Einzählen ist aktiviert, wenn
+`--count-in` vor oder nach `info` gesetzt ist. Die Vorschau zeigt
+das effektive Tempo mit `[PLAYBACK] TempoBpm=N`. Mit `--count-in` erscheint
+zusätzlich `[COUNT-IN] Bars=1 | Beats=4 | Time=4/4`. `--dry-run` öffnet kein
+MIDI-Gerät. Der erste Einzählumfang gilt für 4/4; andere Taktarten werden
+bei aktiviertem Einzählen abgewiesen, auch bei `--dry-run`. Der Einzählklang
+ist General MIDI **High Wood Block** (Note 76, nullbasierter Kanal 9),
+mit Velocity 110 auf der Eins und 90 auf den übrigen Zählzeiten. Das gewählte
+MIDI-Gerät bestimmt den konkreten Klang.
 
 Die [Tempo-Präsentation](doc/rhythm-generator/tempo-ausprobieren.md) zeigt
-einen Hörvergleich bei 120 und 108 BPM und eine reproduzierbare Katalogauswahl.
+den Hörvergleich zwischen 120 und 108 BPM.
 
 ## MIDI
 

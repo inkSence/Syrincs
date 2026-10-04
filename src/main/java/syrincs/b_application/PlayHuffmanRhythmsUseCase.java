@@ -44,6 +44,9 @@ public class PlayHuffmanRhythmsUseCase {
         if (rhythms == null || rhythms.isEmpty()) {
             return;
         }
+        for (HuffmanRhythm rhythm : rhythms) {
+            options.validateMeter(rhythm.getNumerator(), rhythm.getDenominator());
+        }
         List<VoiceSpec> voices = RhythmMapperFromOnsetStringToKickAndSnare.defaultVoiceSpecs();
         Pattern combinedPattern = combinePatterns(rhythms, voices, options);
         RhythmSpec combinedSpec = combinedSpec(rhythms, options);

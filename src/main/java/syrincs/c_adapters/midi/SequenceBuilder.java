@@ -16,6 +16,12 @@ import java.util.Map;
 public class SequenceBuilder {
     public static final int DEFAULT_TRAILING_SILENCE_MS = 2_000;
 
+    // General MIDI percussion: a high, short click without changing any instrument program.
+    private static final int COUNT_IN_CHANNEL = 9;
+    private static final int COUNT_IN_NOTE = 76; // High Wood Block
+    private static final int COUNT_IN_ACCENT_VELOCITY = 110;
+    private static final int COUNT_IN_VELOCITY = 90;
+
     private final int trailingSilenceMs;
 
     public SequenceBuilder() {
@@ -32,6 +38,7 @@ public class SequenceBuilder {
 
     public Sequence build(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices,
                           RhythmPlaybackOptions options) throws InvalidMidiDataException {
+        options.validateMeter(spec.meterNumerator, spec.meterDenominator);
         spec = options.applyTo(spec);
         int ppq = MidiConfig.defaults().ppq();
         Sequence seq = new Sequence(Sequence.PPQ, ppq);
@@ -48,6 +55,19 @@ public class SequenceBuilder {
         tempoMsg.setMessage(0x51, data, data.length);
         track.add(new MidiEvent(tempoMsg, 0));
 
+        long countInTicks = options.countIn() ? 4L * ppq : 0;
+        if (options.countIn()) {
+            for (int beat = 0; beat < 4; beat++) {
+                long tick = (long) beat * ppq;
+                ShortMessage on = new ShortMessage();
+                on.setMessage(ShortMessage.NOTE_ON, COUNT_IN_CHANNEL, COUNT_IN_NOTE,
+                        beat == 0 ? COUNT_IN_ACCENT_VELOCITY : COUNT_IN_VELOCITY);
+                track.add(new MidiEvent(on, tick));
+                ShortMessage off = new ShortMessage();
+                off.setMessage(ShortMessage.NOTE_OFF, COUNT_IN_CHANNEL, COUNT_IN_NOTE, 0);
+                track.add(new MidiEvent(off, tick + Math.max(1, ppq / 16)));
+            }
+        }
         int stepTicks = ppq / spec.resPerBeat;
 
         Map<String, boolean[]> vmap = pattern.voices();
@@ -58,7 +78,7 @@ public class SequenceBuilder {
             if (gateTicks < 1) gateTicks = 1;
             for (int idx = 0; idx < steps.length; idx++) {
                 if (!steps[idx]) continue;
-                long startTick = (long) idx * stepTicks;
+                long startTick = countInTicks + (long) idx * stepTicks;
                 long endTick = startTick + gateTicks;
                 // Note On
                 ShortMessage on = new ShortMessage();
@@ -72,7 +92,7 @@ public class SequenceBuilder {
         }
 
         // Keep the MIDI output open briefly after the last event so synth/effect tails can decay.
-        long totalTicks = (long) spec.totalSteps() * stepTicks;
+        long totalTicks = countInTicks + (long) spec.totalSteps() * stepTicks;
         long endTick = totalTicks + trailingSilenceTicks(ppq, tempo);
         MetaMessage eot = new MetaMessage();
         eot.setMessage(0x2F, new byte[0], 0);

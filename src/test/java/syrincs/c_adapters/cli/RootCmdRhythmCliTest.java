@@ -67,18 +67,19 @@ class RootCmdRhythmCliTest {
             """;
 
     @Test
-    void tempoOverridesRdlHeaderWithoutEditingFileAndDefaultKeepsHeader() throws Exception {
+    void rdlTempoAndCountInCanBeCombinedAndDefaultsKeepTheRdlHeader() throws Exception {
         var playback = new CapturingRhythmPlaybackPort();
         Path file = writeRhythmFile();
         String original = RDL.replace("tempo: 120", "tempo: 96");
         Files.writeString(file, original);
         assertEquals(0, new CommandLine(buildRoot(playback, null)).execute("play", "rhythm", "--in",
-                file.toString(), "--tempo", "108", "--device", "Virtual Out"));
+                file.toString(), "--tempo", "108", "--count-in", "--device", "Virtual Out"));
+        assertEquals(1, playback.calls);
         assertEquals(108, playback.spec.tempoBpm);
         assertEquals(1, playback.spec.bars);
         assertEquals(16, playback.pattern.voices().get("kick").length);
         assertEquals("Virtual Out", playback.deviceNameSubstring);
-        assertEquals(new RhythmPlaybackOptions(108), playback.options);
+        assertEquals(new RhythmPlaybackOptions(108, true), playback.options);
         assertEquals(original, Files.readString(file));
         assertEquals(0, new CommandLine(buildRoot(playback, null)).execute("play", "rhythm", "--in", file.toString()));
         assertEquals(96, playback.spec.tempoBpm);
@@ -109,6 +110,25 @@ class RootCmdRhythmCliTest {
     }
 
     @Test
+    void countInPreservesSeededSelectionAndDryRunDoesNotCallPlayback() {
+        var plain = runInfo(freshCatalog(), new CapturingRhythmPlaybackPort(), "3", "3", "--seed", "42", "--dry-run");
+        var playback = new CapturingRhythmPlaybackPort();
+        var counted = runInfo(freshCatalog(), playback, "3", "3", "--seed", "42", "--count-in", "--device", "Virtual Out");
+        var dryPlayback = new CapturingRhythmPlaybackPort();
+        var dry = runInfo(freshCatalog(), dryPlayback, "3", "3", "--seed", "42", "--count-in", "--dry-run");
+        assertEquals(0, plain.code());
+        assertEquals(0, counted.code());
+        assertEquals(0, dry.code());
+        assertEquals(plain.output() + "[COUNT-IN] Bars=1 | Beats=4 | Time=4/4" + System.lineSeparator(), counted.output());
+        assertEquals(counted.output(), dry.output());
+        assertEquals(1, playback.calls);
+        assertEquals(2, playback.spec.bars);
+        assertTrue(playback.options.countIn());
+        assertEquals("Virtual Out", playback.deviceNameSubstring);
+        assertEquals(0, dryPlayback.calls);
+    }
+
+    @Test
     void tempoBeforeInfoIsInheritedAndChildTempoWins() {
         var playback = new CapturingRhythmPlaybackPort();
         var root = buildRoot(playback, freshCatalog());
@@ -134,7 +154,6 @@ class RootCmdRhythmCliTest {
             assertEquals(0, repo.queries);
             assertEquals(0, playback.calls);
         }
-        // The RDL endpoint validates before reading its file or touching MIDI.
         var error = new ByteArrayOutputStream();
         var oldErr = System.err;
         try {
@@ -149,6 +168,30 @@ class RootCmdRhythmCliTest {
     }
 
     @Test
+    void countInCanBeSpecifiedBeforeInfo() {
+        var playback = new CapturingRhythmPlaybackPort();
+        assertEquals(0, new CommandLine(buildRoot(playback, freshCatalog()))
+                .execute("play", "rhythm", "--count-in", "info", "3"));
+        assertTrue(playback.options.countIn());
+        assertEquals(1, playback.calls);
+    }
+
+    @Test
+    void unsupportedCountInMeterFailsBeforePlaybackEvenInDryRun() {
+        for (boolean dryRun : List.of(false, true)) {
+            var repo = new FilteringRhythmRepository(List.of(new HuffmanRhythm(4, 8, 120, "xoxoxoooxoxoxooo")));
+            var playback = new CapturingRhythmPlaybackPort();
+            var args = new ArrayList<>(List.of("3", "--count-in"));
+            if (dryRun) args.add("--dry-run");
+            var result = runInfo(repo, playback, args.toArray(String[]::new));
+            assertEquals(1, result.code());
+            assertTrue(result.error().contains("4/4"));
+            assertEquals("", result.output());
+            assertEquals(0, playback.calls);
+        }
+    }
+
+    @Test
     void playRhythm_passesDeviceToPlaybackPort() throws Exception {
         CapturingRhythmPlaybackPort playback = new CapturingRhythmPlaybackPort();
         RootCmd root = buildRoot(playback, null);
@@ -159,6 +202,7 @@ class RootCmdRhythmCliTest {
         assertEquals(0, code);
         assertEquals(1, playback.calls);
         assertEquals("Virtual Out", playback.deviceNameSubstring);
+        assertFalse(playback.options.countIn());
     }
 
     @Test
@@ -573,6 +617,7 @@ class RootCmdRhythmCliTest {
         assertTrue(help.toString().contains("java.util.Random"));
         assertTrue(help.toString().contains("--dry-run"));
         assertTrue(help.toString().contains("--tempo"));
+        assertTrue(help.toString().contains("--count-in"));
         var extended = new ByteArrayOutputStream();
         var previous = System.out;
         try {
@@ -584,6 +629,7 @@ class RootCmdRhythmCliTest {
         assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--seed"));
         assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--dry-run"));
         assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--tempo"));
+        assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--count-in"));
     }
 
     private record InfoRun(int code, String output, String error) {}

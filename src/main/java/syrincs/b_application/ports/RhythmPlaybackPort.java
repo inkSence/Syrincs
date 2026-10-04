@@ -20,6 +20,11 @@ public interface RhythmPlaybackPort {
 
     default void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices,
                       String deviceNameSubstring, RhythmPlaybackOptions options) throws Exception {
-        play(pattern, options.applyTo(spec), voices, deviceNameSubstring);
+        options.validateMeter(spec.meterNumerator, spec.meterDenominator);
+        RhythmSpec playbackSpec = options.applyTo(spec);
+        if (options.countIn()) {
+            throw new UnsupportedOperationException("This playback adapter does not support count-in.");
+        }
+        play(pattern, playbackSpec, voices, deviceNameSubstring);
     }
 }

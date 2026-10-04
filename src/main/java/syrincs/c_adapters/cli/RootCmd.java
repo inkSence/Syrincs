@@ -277,10 +277,13 @@ public class RootCmd implements Runnable {
             @Option(names = "--tempo", paramLabel = "BPM", description = "Override playback tempo in whole BPM (4..60000000); default: RDL header or stored-rhythm tempo")
             Integer tempo;
 
+            @Option(names = "--count-in", description = "Play one bar of high clicks before playback (4/4 only; first beat accented)")
+            boolean countIn;
+
             @Override
             public Integer call() {
                 try {
-                    var options = new RhythmPlaybackOptions(tempo);
+                    var options = new RhythmPlaybackOptions(tempo, countIn);
                     RhythmFileParser.MidiData res = new RhythmFileParser().parse(inFile);
                     parentPlay.parent.midiInteractor.playRhythm(res.pattern, res.spec, res.voices, device, options);
                     return 0;
@@ -318,6 +321,9 @@ public class RootCmd implements Runnable {
                 @Option(names = "--tempo", paramLabel = "BPM", description = "Override playback tempo in whole BPM (4..60000000); overrides parent --tempo; default: 120")
                 Integer tempo;
 
+                @Option(names = "--count-in", description = "Play one bar of high clicks before the complete selection (4/4 only)")
+                boolean countIn;
+
                 @Override
                 public Integer call() {
                     try {
@@ -326,6 +332,9 @@ public class RootCmd implements Runnable {
                         var range = deviationMin == null && deviationMax == null ? null : new DeviationRange(deviationMin, deviationMax);
                         var interactor = parent.parentPlay.parent.midiInteractor;
                         var selection = interactor.selectRhythmsByInformationGrades(infos, range, seed);
+                        for (var rhythm : selection.rhythms()) {
+                            options.validateMeter(rhythm.getNumerator(), rhythm.getDenominator());
+                        }
                         var out = spec.commandLine().getOut();
                         out.printf(Locale.ROOT, "[SELECTION] Seed=%d | Algorithm=java.util.Random | DeviationFilter=%s | Count=%d%n",
                                 selection.seed(), range == null ? "> " + AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION : range,
@@ -339,6 +348,9 @@ public class RootCmd implements Runnable {
                         }
                         out.printf(Locale.ROOT, "[PLAYBACK] TempoBpm=%d%n",
                                 options.effectiveTempo(selection.rhythms().getFirst().getTempo()));
+                        if (options.countIn()) {
+                            out.println("[COUNT-IN] Bars=1 | Beats=4 | Time=4/4");
+                        }
                         out.flush();
                         if (!dryRun) {
                             interactor.playRhythms(selection.rhythms(), effectiveDevice(), options);
@@ -351,8 +363,9 @@ public class RootCmd implements Runnable {
                 }
 
                 private RhythmPlaybackOptions effectiveOptions() {
-                    var parentOptions = new RhythmPlaybackOptions(parent.tempo);
-                    return tempo == null ? parentOptions : new RhythmPlaybackOptions(tempo);
+                    var parentOptions = new RhythmPlaybackOptions(parent.tempo, parent.countIn);
+                    Integer effectiveTempo = tempo == null ? parentOptions.tempoBpm() : tempo;
+                    return new RhythmPlaybackOptions(effectiveTempo, countIn || parentOptions.countIn());
                 }
 
                 private String effectiveDevice() {

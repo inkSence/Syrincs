@@ -418,17 +418,34 @@ weiterhin die bisherigen Tempi. Vor `info` gesetztes Tempo wird geerbt,
 eine explizite Angabe danach hat Vorrang. Die Vorschau ergänzt stets
 `[PLAYBACK] TempoBpm=N` und bleibt mit `--dry-run` ohne MIDI-Zugriff.
 
-`RhythmPlaybackOptions` ist ein frameworkfreies DTO mit optionalem Tempo.
-Es validiert explizite Angaben als ganze BPM-Zahlen im Transportbereich
-4..60.000.000. Aus der Quellspezifikation wird bei Bedarf eine neue
-`RhythmSpec` abgeleitet und über den Playback-Port weitergegeben. Beim
-Verketten zählt das effektive Tempo; unterschiedliche Quelltempi können
-mit einer gemeinsamen Überschreibung gespielt werden. Quellobjekte,
-Onsets, Beat-Information, Deviation, Seed und Persistenz bleiben unverändert.
-Der MIDI-Adapter erzeugt das Tempoereignis; Grid und Gate bleiben in Ticks
-unverändert, ihre Dauer in Sekunden folgt dem Tempo. Der Nachlauf bleibt
-zwei Sekunden. Die [Tempo-Präsentation](tempo-ausprobieren.md) führt durch
-die neuen Befehle.
+`RhythmPlaybackOptions` ist ein frameworkfreies DTO für die Wiedergabeoptionen
+Tempo und Einzählen. Es validiert explizite Tempi als ganze BPM-Zahlen im
+Transportbereich 4..60.000.000. Aus der Quellspezifikation wird bei Bedarf
+eine neue `RhythmSpec` abgeleitet; Rhythmusobjekte, Onsets, Beat-Information,
+Deviation, Seed-Auswahl und gespeicherte Werte bleiben unverändert. Beim
+Verketten gilt das effektive Tempo für die vollständige Folge; unterschiedliche
+Quelltempi können mit einer gemeinsamen Überschreibung gespielt werden.
+Der MIDI-Adapter setzt das Tempoereignis; Raster und Gate bleiben in Ticks
+erhalten, ihre Dauer in Sekunden folgt dem effektiven Tempo. Der Nachlauf
+bleibt zwei Sekunden.
+
+Beide Rhythmus-Playback-Wege unterstützen optional `--count-in`: einen
+4/4-Takt mit vier Schlägen vor der vollständigen Wiedergabe, auch wenn mehrere
+Rhythmen verkettet werden. Das Einzählen verwendet dasselbe effektive Tempo
+und denselben MIDI-Ausgang wie der Rhythmus. Andere Taktarten werden nur bei
+aktivierter Option abgewiesen. `--dry-run --count-in` zeigt
+`[COUNT-IN] Bars=1 | Beats=4 | Time=4/4`, ohne Playback oder Gerätezugriff.
+
+Die frameworkfreien `RhythmPlaybackOptions` werden über Anwendung und
+Playback-Port weitergereicht. Erst `SequenceBuilder` ergänzt General-MIDI
+High Wood Block (Note 76, Kanal 9): Velocity 110 auf der Eins, sonst 90,
+jeweils 30 Ticks lang bei PPQ 480. Das Einzählen wird genau einmal vor die
+gesamte Folge gesetzt; alle Rhythmus-Note-On/Off-Ereignisse werden um 1920
+Ticks verschoben, Anfangspausen und Gates bleiben erhalten. Der zweisekündige
+Nachlauf folgt auf die gesamte Sequenz. Die Rhythmusdomäne erhält keine
+zusätzliche Voice; Onsets, Analyse und Zufallsauswahl bleiben unverändert.
+Ohne `--count-in` werden keine Einzählereignisse ergänzt; Startzeitpunkte
+und Gates der Rhythmusnoten bleiben in Ticks erhalten.
 
 Reproduzierbarkeit gilt bei unverändertem normalisiertem Kandidateninhalt,
 gleicher Kriterienfolge, gleichem Seed und gleicher Programmversion,

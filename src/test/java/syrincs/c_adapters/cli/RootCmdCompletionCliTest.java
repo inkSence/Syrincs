@@ -47,6 +47,7 @@ class RootCmdCompletionCliTest {
         assertTrue(text.contains("--seed"));
         assertTrue(text.contains("--dry-run"));
         assertTrue(text.contains("--tempo"));
+        assertTrue(text.contains("--count-in"));
         assertTrue(text.contains("--output"));
         assertTrue(text.contains("--host"));
         assertTrue(text.contains("--port"));

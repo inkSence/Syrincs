@@ -1,8 +1,8 @@
 # Rhythmen direkt im gewünschten Tempo hören
 
-Stand: 4. Oktober 2026, `feat/rhythm-tempo/VR-14`, auf Basis des
-PROJEKT-Branches (`90e0629`). Diese Präsentation zeigt die Tempo-Erweiterung
-unabhängig vom Einzählen auf dem separaten VR-13-Branch.
+Stand: 4. Oktober 2026, `feat/rhythm-count-in/VR-13`, auf Basis von
+`feat/rhythm-tempo/VR-14`. Diese Präsentation zeigt die gemeinsame Anwendung
+der Tempo-Erweiterung und des optionalen Einzählens.
 
 Mit `--tempo` kannst du denselben Rhythmus langsamer oder schneller hören,
 ohne eine RDL-Datei zu ändern oder eine Katalogauswahl nach RDL zu exportieren.
@@ -75,17 +75,42 @@ target/app/bin/syrincs play rhythm --tempo 96 info 3 --tempo 108 --seed 42 --dry
 Die erste Vorschau zeigt 96 BPM, die zweite 108 BPM. Ohne Tempoangabe
 zeigt die Katalogvorschau weiterhin 120 BPM.
 
-## Grenzen und späteres Einzählen
+## 4. Tempo und Einzählen gemeinsam hören
+
+Lass dir vor der gesamten Wiedergabe einen 4/4-Takt einzählen:
+
+```bash
+target/app/bin/syrincs play rhythm --in data/beat.rdl --tempo 108 --count-in --device Gervill
+target/app/bin/syrincs play rhythm info 3 5 3 --deviation-min 0 --seed 42 --tempo 108 --count-in --dry-run
+target/app/bin/syrincs play rhythm info 3 5 3 --deviation-min 0 --seed 42 --tempo 108 --count-in --device Gervill
+```
+
+Die Vorschau ergänzt diese beiden Zeilen, ohne ein MIDI-Gerät zu öffnen:
+
+```text
+[PLAYBACK] TempoBpm=108
+[COUNT-IN] Bars=1 | Beats=4 | Time=4/4
+```
+
+Einzählen und Rhythmus verwenden beide 108 BPM. Vor der gesamten
+dreitaktigen Katalogfolge erklingt genau ein Einzähltakt mit vier Schlägen
+und betonter Eins. Anfangspausen des Rhythmus bleiben erhalten. Vergleiche
+denselben Aufruf mit `--tempo 120`; die Patterns bleiben bei gleichem Seed
+und unverändertem Katalog dieselben.
+
+`--count-in` aktiviert das Einzählen vor oder nach `info`. Es läuft nur vor
+der Folge; während der Rhythmuswiedergabe gibt es keinen zusätzlichen Klick.
+
+## Grenzen
 
 `--tempo` akzeptiert ganze BPM-Zahlen von 4 bis 60.000.000; dies sind
 technische Grenzen des Tempoformats, keine musikalisch empfohlenen Werte.
 Null, negative Werte, Dezimalzahlen und Werte außerhalb dieses Bereichs
 werden vor DB-Abfrage und Playback abgewiesen.
 
-Einzählen (`--count-in`) wird separat in VR-13 umgesetzt. Nach dessen Rebase
-sollen Einzählen und Rhythmus dasselbe effektive Tempo verwenden. Dieser
-VR-14-Branch bringt das Einzählen selbst noch nicht mit; der gemeinsame
-Hörtest erfolgt nach der Integration beider Änderungen.
+Einzählen unterstützt derzeit nur 4/4. Mit aktivierter Option werden andere
+Taktarten auch bei `--dry-run` abgewiesen. Das gewählte MIDI-Gerät bestimmt
+die Klangfarbe; die Geräteoption lädt keine bestimmte Soundbank.
 
 Weitere Details stehen in der [Projekt-README](../../README.md) und der
 [Rhythmusmodul-Dokumentation](README.md).
