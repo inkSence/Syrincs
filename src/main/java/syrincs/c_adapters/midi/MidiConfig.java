@@ -12,6 +12,8 @@ public record MidiConfig(
         int snareNote,
         int basedrumNote
 ) {
+    public static final int DEFAULT_RHYTHM_REVERB_SEND = 16;
+
     public static MidiConfig defaults(){
         return new MidiConfig(
                 "Roland Digital Piano",

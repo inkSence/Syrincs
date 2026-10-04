@@ -467,6 +467,10 @@ Taktanzahl und Voice-Parameter werden in der Datei festgelegt.
 RDL- und Huffman-Playback laufen immer über MIDI. Der erzeugten
 MIDI-Sequenz werden standardmäßig zwei Sekunden Nachlauf angefügt, damit
 Synth- und Effektfahnen ausklingen können.
+Vor dem ersten Ton setzt die Sequenz auf jedem verwendeten MIDI-Kanal den
+Hall-Send (CC 91) auf **16 von 127**, auch für das Einzählen. Der konkrete
+Hallklang und zusätzliche Einstellungen der Soundbank bleiben Sache des
+Klangerzeugers.
 
 `--tempo BPM` überschreibt das Playback-Tempo für diesen Aufruf. Bei RDL wird
 so das Tempo aus dem Header überschrieben, ohne die Datei zu ändern; bei

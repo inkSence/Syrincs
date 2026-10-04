@@ -12,6 +12,7 @@ import javax.sound.midi.Sequence;
 import javax.sound.midi.ShortMessage;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 
 public class SequenceBuilder {
     public static final int DEFAULT_TRAILING_SILENCE_MS = 2_000;
@@ -54,6 +55,19 @@ public class SequenceBuilder {
         MetaMessage tempoMsg = new MetaMessage();
         tempoMsg.setMessage(0x51, data, data.length);
         track.add(new MidiEvent(tempoMsg, 0));
+
+        // Set the rhythm mix before any note, including a count-in at tick zero.
+        var channels = new TreeSet<Integer>();
+        for (VoiceSpec voice : voices) {
+            channels.add(voice.channel);
+        }
+        if (options.countIn()) channels.add(COUNT_IN_CHANNEL);
+        for (int channel : channels) {
+            ShortMessage reverb = new ShortMessage();
+            reverb.setMessage(ShortMessage.CONTROL_CHANGE, channel, 91,
+                    MidiConfig.DEFAULT_RHYTHM_REVERB_SEND);
+            track.add(new MidiEvent(reverb, 0));
+        }
 
         long countInTicks = options.countIn() ? 4L * ppq : 0;
         if (options.countIn()) {

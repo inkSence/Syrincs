@@ -154,12 +154,44 @@ class SequenceBuilderTest {
         throw new AssertionError("Missing tempo event");
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void setsReverbOncePerUsedChannelBeforeFirstNote(boolean countIn) throws Exception {
+        var pattern = new Pattern();
+        boolean[] hits = new boolean[16];
+        hits[0] = true;
+        pattern.put("kick", hits);
+        pattern.put("snare", hits);
+        var voices = List.of(new VoiceSpec("kick", 2, 36, 90, 50),
+                new VoiceSpec("snare", 2, 38, 90, 50));
+        var sequence = new SequenceBuilder().build(pattern, new RhythmSpec(4, 4, 108, 4, 1),
+                voices, new RhythmPlaybackOptions(countIn));
+        var controls = new ArrayList<Integer>();
+        boolean noteStarted = false;
+        var track = sequence.getTracks()[0];
+        for (int i = 0; i < track.size(); i++) {
+            var event = track.get(i);
+            if (event.getMessage() instanceof ShortMessage message) {
+                if (message.getCommand() == ShortMessage.NOTE_ON) noteStarted = true;
+                if (message.getCommand() == ShortMessage.CONTROL_CHANGE) {
+                    assertFalse(noteStarted, "Hall must be configured before the first note");
+                    assertEquals(0, event.getTick());
+                    assertEquals(91, message.getData1());
+                    assertEquals(16, message.getData2());
+                    controls.add(message.getChannel());
+                }
+            }
+        }
+        assertEquals(countIn ? List.of(2, 9) : List.of(2), controls);
+    }
+
     private static List<String> noteStrings(Sequence sequence) {
         var result = new ArrayList<String>();
         var track = sequence.getTracks()[0];
         for (int i = 0; i < track.size(); i++) {
             var event = track.get(i);
-            if (event.getMessage() instanceof ShortMessage message) {
+            if (event.getMessage() instanceof ShortMessage message
+                    && (message.getCommand() == ShortMessage.NOTE_ON || message.getCommand() == ShortMessage.NOTE_OFF)) {
                 result.add(event.getTick() + ":" + message.getCommand() + ":" + message.getChannel() + ":" + message.getData1() + ":" + message.getData2());
             }
         }
@@ -171,7 +203,8 @@ class SequenceBuilderTest {
         var track = sequence.getTracks()[0];
         for (int i = 0; i < track.size(); i++) {
             var event = track.get(i);
-            if (event.getMessage() instanceof ShortMessage message) {
+            if (event.getMessage() instanceof ShortMessage message
+                    && (message.getCommand() == ShortMessage.NOTE_ON || message.getCommand() == ShortMessage.NOTE_OFF)) {
                 result.add(new Note(event.getTick(), message.getCommand(), message.getChannel(), message.getData1(), message.getData2()));
             }
         }

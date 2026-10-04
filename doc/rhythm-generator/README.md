@@ -447,6 +447,11 @@ zusätzliche Voice; Onsets, Analyse und Zufallsauswahl bleiben unverändert.
 Ohne `--count-in` werden keine Einzählereignisse ergänzt; Startzeitpunkte
 und Gates der Rhythmusnoten bleiben in Ticks erhalten.
 
+Für den Rhythmus-Mix setzt die Sequenz vor sämtlichen Note-On-Ereignissen
+auf jedem verwendeten Kanal CC 91 auf 16 (Hall-Send, Skala 0..127).
+Dies gilt mit und ohne Einzählen; der Einzählkanal wird bei Bedarf ebenfalls
+initialisiert. Der Default liegt zentral in `MidiConfig`.
+
 Reproduzierbarkeit gilt bei unverändertem normalisiertem Kandidateninhalt,
 gleicher Kriterienfolge, gleichem Seed und gleicher Programmversion,
 unabhängig von DB-Reihenfolge und Duplikaten. Ein Seed ist keine dauerhafte
