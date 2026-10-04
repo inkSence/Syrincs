@@ -3,6 +3,7 @@ package syrincs.b_application.ports;
 import syrincs.a_domain.rhythm.Pattern;
 import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
+import syrincs.b_application.ports.dto.RhythmPlaybackOptions;
 
 import java.util.List;
 
@@ -15,5 +16,10 @@ public interface RhythmPlaybackPort {
 
     default void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring) throws Exception {
         play(pattern, spec, voices);
+    }
+
+    default void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices,
+                      String deviceNameSubstring, RhythmPlaybackOptions options) throws Exception {
+        play(pattern, options.applyTo(spec), voices, deviceNameSubstring);
     }
 }

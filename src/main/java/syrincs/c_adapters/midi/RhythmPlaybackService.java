@@ -4,6 +4,7 @@ import syrincs.a_domain.rhythm.Pattern;
 import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
 import syrincs.b_application.ports.RhythmPlaybackPort;
+import syrincs.b_application.ports.dto.RhythmPlaybackOptions;
 
 import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiSystem;
@@ -31,7 +32,13 @@ public class RhythmPlaybackService implements RhythmPlaybackPort {
 
     @Override
     public void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring) throws Exception {
-        Sequence seq = sequenceBuilder.build(pattern, spec, voices);
+        play(pattern, spec, voices, deviceNameSubstring, RhythmPlaybackOptions.DEFAULT);
+    }
+
+    @Override
+    public void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String deviceNameSubstring,
+                     RhythmPlaybackOptions options) throws Exception {
+        Sequence seq = sequenceBuilder.build(pattern, spec, voices, options);
         MidiDevice.Info info = DeviceService.resolveOutput(deviceNameSubstring);
         if (info == null) {
             throw new IllegalStateException(missingDeviceMessage(deviceNameSubstring));

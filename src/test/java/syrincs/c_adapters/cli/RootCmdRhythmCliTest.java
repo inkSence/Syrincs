@@ -29,6 +29,7 @@ import syrincs.b_application.ports.MidiDeviceQueryPort;
 import syrincs.b_application.ports.RhythmPlaybackPort;
 import syrincs.b_application.ports.RhythmRepository;
 import syrincs.b_application.ports.dto.DeviationRange;
+import syrincs.b_application.ports.dto.RhythmPlaybackOptions;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -64,6 +65,88 @@ class RootCmdRhythmCliTest {
             pattern kick:  | x - - - | x - - - | x - - - | x - - - |
             pattern snare: | - - - - | x - - - | - - - - | x - - - |
             """;
+
+    @Test
+    void tempoOverridesRdlHeaderWithoutEditingFileAndDefaultKeepsHeader() throws Exception {
+        var playback = new CapturingRhythmPlaybackPort();
+        Path file = writeRhythmFile();
+        String original = RDL.replace("tempo: 120", "tempo: 96");
+        Files.writeString(file, original);
+        assertEquals(0, new CommandLine(buildRoot(playback, null)).execute("play", "rhythm", "--in",
+                file.toString(), "--tempo", "108", "--device", "Virtual Out"));
+        assertEquals(108, playback.spec.tempoBpm);
+        assertEquals(1, playback.spec.bars);
+        assertEquals(16, playback.pattern.voices().get("kick").length);
+        assertEquals("Virtual Out", playback.deviceNameSubstring);
+        assertEquals(new RhythmPlaybackOptions(108), playback.options);
+        assertEquals(original, Files.readString(file));
+        assertEquals(0, new CommandLine(buildRoot(playback, null)).execute("play", "rhythm", "--in", file.toString()));
+        assertEquals(96, playback.spec.tempoBpm);
+        assertEquals(RhythmPlaybackOptions.DEFAULT, playback.options);
+    }
+
+    @Test
+    void tempoKeepsSeededSelectionAndDryRunShowsEffectiveTempoWithoutPlayback() {
+        var normalPlayback = new CapturingRhythmPlaybackPort();
+        var normal = runInfo(freshCatalog(), normalPlayback, "3", "0", "3", "--seed", "42", "--deviation-min", "0");
+        var slowPlayback = new CapturingRhythmPlaybackPort();
+        var slow = runInfo(freshCatalog(), slowPlayback, "3", "0", "3", "--seed", "42", "--deviation-min", "0", "--tempo", "108");
+        var dryPlayback = new CapturingRhythmPlaybackPort();
+        var dry = runInfo(freshCatalog(), dryPlayback, "3", "0", "3", "--seed", "42", "--deviation-min", "0", "--tempo", "108", "--dry-run");
+        assertEquals(0, normal.code());
+        assertEquals(0, slow.code());
+        assertEquals(0, dry.code());
+        assertEquals(normal.output().replace("TempoBpm=120", "TempoBpm=108"), slow.output());
+        assertEquals(slow.output(), dry.output());
+        assertEquals(120, normalPlayback.spec.tempoBpm);
+        assertEquals(108, slowPlayback.spec.tempoBpm);
+        assertEquals(3, slowPlayback.spec.bars);
+        assertEquals(1, slowPlayback.calls);
+        for (var voice : normalPlayback.pattern.voices().keySet()) {
+            org.junit.jupiter.api.Assertions.assertArrayEquals(normalPlayback.pattern.voices().get(voice), slowPlayback.pattern.voices().get(voice));
+        }
+        assertEquals(0, dryPlayback.calls);
+    }
+
+    @Test
+    void tempoBeforeInfoIsInheritedAndChildTempoWins() {
+        var playback = new CapturingRhythmPlaybackPort();
+        var root = buildRoot(playback, freshCatalog());
+        assertEquals(0, new CommandLine(root).execute("play", "rhythm", "--tempo", "108", "info", "3"));
+        assertEquals(108, playback.spec.tempoBpm);
+        assertEquals(0, new CommandLine(buildRoot(playback, freshCatalog()))
+                .execute("play", "rhythm", "--tempo", "96", "info", "3", "--tempo", "108"));
+        assertEquals(108, playback.spec.tempoBpm);
+    }
+
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"0", "-1", "1", "3", "108.5", "NaN", "60000001", "2147483648"})
+    void invalidTempoFailsBeforeDatabaseOrPlayback(String tempo) throws Exception {
+        var repo = freshCatalog();
+        var playback = new CapturingRhythmPlaybackPort();
+        for (boolean dryRun : List.of(false, true)) {
+            var args = new ArrayList<>(List.of("3", "--tempo", tempo));
+            if (dryRun) args.add("--dry-run");
+            var result = runInfo(repo, playback, args.toArray(String[]::new));
+            assertTrue(result.code() != 0);
+            assertTrue(result.error().contains("--tempo"));
+            assertEquals("", result.output());
+            assertEquals(0, repo.queries);
+            assertEquals(0, playback.calls);
+        }
+        // The RDL endpoint validates before reading its file or touching MIDI.
+        var error = new ByteArrayOutputStream();
+        var oldErr = System.err;
+        try {
+            System.setErr(new PrintStream(error));
+            assertTrue(new CommandLine(buildRoot(playback, null)).setErr(new PrintWriter(error, true))
+                    .execute("play", "rhythm", "--in", tempDir.resolve("missing.rdl").toString(), "--tempo", tempo) != 0);
+        } finally {
+            System.setErr(oldErr);
+        }
+        assertTrue(error.toString(StandardCharsets.UTF_8).contains("--tempo"));
+        assertEquals(0, playback.calls);
+    }
 
     @Test
     void playRhythm_passesDeviceToPlaybackPort() throws Exception {
@@ -398,7 +481,8 @@ class RootCmdRhythmCliTest {
                 + "[SELECTED] Position=1 | RequestedInfo=3 | Time=4/4 | Rhythm=xoxoxoooxoxoxooo | BeatInformation=[2, 0, 1, 0] | Info=3 | Deviation=0.829156" + System.lineSeparator()
                 + "[SELECTED] Position=2 | RequestedInfo=0 | Time=4/4 | Rhythm=oooooooooooooooo | BeatInformation=[0, 0, 0, 0] | Info=0 | Deviation=0.000000" + System.lineSeparator()
                 + "[SELECTED] Position=3 | RequestedInfo=3 | Time=4/4 | Rhythm=xoxoxoooxoxoxooo | BeatInformation=[2, 0, 1, 0] | Info=3 | Deviation=0.829156" + System.lineSeparator()
-                + "[SELECTED] Position=4 | RequestedInfo=3 | Time=4/4 | Rhythm=xoooxoxoxoooxoxo | BeatInformation=[1, 1, 0, 1] | Info=3 | Deviation=0.433013" + System.lineSeparator();
+                + "[SELECTED] Position=4 | RequestedInfo=3 | Time=4/4 | Rhythm=xoooxoxoxoooxoxo | BeatInformation=[1, 1, 0, 1] | Info=3 | Deviation=0.433013" + System.lineSeparator()
+                + "[PLAYBACK] TempoBpm=120" + System.lineSeparator();
         assertEquals(expected, output.toString());
 
         args.add("--dry-run");
@@ -488,6 +572,7 @@ class RootCmdRhythmCliTest {
         assertTrue(help.toString().contains("--seed"));
         assertTrue(help.toString().contains("java.util.Random"));
         assertTrue(help.toString().contains("--dry-run"));
+        assertTrue(help.toString().contains("--tempo"));
         var extended = new ByteArrayOutputStream();
         var previous = System.out;
         try {
@@ -498,6 +583,7 @@ class RootCmdRhythmCliTest {
         }
         assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--seed"));
         assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--dry-run"));
+        assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--tempo"));
     }
 
     private record InfoRun(int code, String output, String error) {}
@@ -827,6 +913,15 @@ class RootCmdRhythmCliTest {
     }
 
     private static class CapturingRhythmPlaybackPort implements RhythmPlaybackPort {
+        RhythmPlaybackOptions options = RhythmPlaybackOptions.DEFAULT;
+
+        @Override
+        public void play(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices, String device,
+                         RhythmPlaybackOptions options) {
+            this.options = options;
+            play(pattern, spec, voices, device);
+        }
+
         int calls;
         Pattern pattern;
         RhythmSpec spec;

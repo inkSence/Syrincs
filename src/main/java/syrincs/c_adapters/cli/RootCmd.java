@@ -15,6 +15,7 @@ import syrincs.b_application.ports.MidiDeviceQueryPort;
 import syrincs.c_adapters.RhythmFileParser;
 import syrincs.c_adapters.osc.SuperColliderOscOutputAdapter;
 import syrincs.c_adapters.runtime.LocalRuntime;
+import syrincs.b_application.ports.dto.RhythmPlaybackOptions;
 
 import java.util.Arrays;
 import java.util.List;
@@ -273,11 +274,15 @@ public class RootCmd implements Runnable {
             @Option(names = "--device", description = "MIDI output device name substring. Default: SYRINCS_MIDI_DEVICE, Roland Digital Piano/DP603, then first MIDI out")
             String device;
 
+            @Option(names = "--tempo", paramLabel = "BPM", description = "Override playback tempo in whole BPM (4..60000000); default: RDL header or stored-rhythm tempo")
+            Integer tempo;
+
             @Override
             public Integer call() {
                 try {
+                    var options = new RhythmPlaybackOptions(tempo);
                     RhythmFileParser.MidiData res = new RhythmFileParser().parse(inFile);
-                    parentPlay.parent.midiInteractor.playRhythm(res.pattern, res.spec, res.voices, device);
+                    parentPlay.parent.midiInteractor.playRhythm(res.pattern, res.spec, res.voices, device, options);
                     return 0;
                 } catch (Exception e) {
                     System.err.println("[ERROR] " + e.getMessage());
@@ -310,9 +315,13 @@ public class RootCmd implements Runnable {
                 @Option(names = "--dry-run", description = "Show the same selection without opening MIDI or starting playback")
                 boolean dryRun;
 
+                @Option(names = "--tempo", paramLabel = "BPM", description = "Override playback tempo in whole BPM (4..60000000); overrides parent --tempo; default: 120")
+                Integer tempo;
+
                 @Override
                 public Integer call() {
                     try {
+                        var options = effectiveOptions();
                         List<Integer> infos = Arrays.stream(infoGrades).boxed().toList();
                         var range = deviationMin == null && deviationMax == null ? null : new DeviationRange(deviationMin, deviationMax);
                         var interactor = parent.parentPlay.parent.midiInteractor;
@@ -328,15 +337,22 @@ public class RootCmd implements Runnable {
                                     position.position(), position.requestedInformation(), rhythm.getNumerator(), rhythm.getDenominator(),
                                     rhythm.getOnsetList(), rhythm.getBeatInformation(), rhythm.getInformation(), rhythm.getStandardDeviation());
                         }
+                        out.printf(Locale.ROOT, "[PLAYBACK] TempoBpm=%d%n",
+                                options.effectiveTempo(selection.rhythms().getFirst().getTempo()));
                         out.flush();
                         if (!dryRun) {
-                            interactor.playRhythms(selection.rhythms(), effectiveDevice());
+                            interactor.playRhythms(selection.rhythms(), effectiveDevice(), options);
                         }
                         return 0;
                     } catch (Exception e) {
                         spec.commandLine().getErr().println("[ERROR] " + e.getMessage());
                         return 1;
                     }
+                }
+
+                private RhythmPlaybackOptions effectiveOptions() {
+                    var parentOptions = new RhythmPlaybackOptions(parent.tempo);
+                    return tempo == null ? parentOptions : new RhythmPlaybackOptions(tempo);
                 }
 
                 private String effectiveDevice() {

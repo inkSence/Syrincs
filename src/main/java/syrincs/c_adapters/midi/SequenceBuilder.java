@@ -3,6 +3,7 @@ package syrincs.c_adapters.midi;
 import syrincs.a_domain.rhythm.Pattern;
 import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
+import syrincs.b_application.ports.dto.RhythmPlaybackOptions;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaMessage;
@@ -26,6 +27,12 @@ public class SequenceBuilder {
     }
 
     public Sequence build(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices) throws InvalidMidiDataException {
+        return build(pattern, spec, voices, RhythmPlaybackOptions.DEFAULT);
+    }
+
+    public Sequence build(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices,
+                          RhythmPlaybackOptions options) throws InvalidMidiDataException {
+        spec = options.applyTo(spec);
         int ppq = MidiConfig.defaults().ppq();
         Sequence seq = new Sequence(Sequence.PPQ, ppq);
         var track = seq.createTrack();
@@ -78,7 +85,7 @@ public class SequenceBuilder {
         if (trailingSilenceMs == 0) {
             return 0;
         }
-        double quarterNotes = trailingSilenceMs * Math.max(1, tempoBpm) / 60_000.0;
+        double quarterNotes = trailingSilenceMs * (double) Math.max(1, tempoBpm) / 60_000.0;
         return Math.round(quarterNotes * ppq);
     }
 }

@@ -357,6 +357,7 @@ ist ein nachgelagerter Ablauf:
 syrincs play rhythm info 3 5 7
 syrincs play rhythm info 3 5 --deviation-min 0.2 --deviation-max 0.8
 syrincs play rhythm info 3 5 3 --seed 42 --dry-run
+syrincs play rhythm info 3 5 3 --seed 42 --tempo 108 --dry-run
 ```
 
 Der `UseCaseInteractor` trennt Kandidatensuche, Auswahl und Playback.
@@ -409,6 +410,25 @@ ausgewiesen, da gespeicherte Aggregate in älteren Katalogen abweichen können.
 aufzurufen oder MIDI-Geräte zu öffnen. Sonst wird exakt diese Auswahl einmal
 gemeinsam an `PlayHuffmanRhythmsUseCase` übergeben; dieser übernimmt Mapping,
 Verkettung, Validierung und Übergabe an das Playback. Die Anwendung druckt nichts.
+
+Beide Rhythmusbefehle unterstützen `--tempo BPM`. Bei RDL überschreibt es
+den Tempoheader nur für die Wiedergabe; bei Katalogrhythmen ersetzt es das
+bisherige Tempo von 120 BPM für die gesamte Auswahl. Ohne Option gelten
+weiterhin die bisherigen Tempi. Vor `info` gesetztes Tempo wird geerbt,
+eine explizite Angabe danach hat Vorrang. Die Vorschau ergänzt stets
+`[PLAYBACK] TempoBpm=N` und bleibt mit `--dry-run` ohne MIDI-Zugriff.
+
+`RhythmPlaybackOptions` ist ein frameworkfreies DTO mit optionalem Tempo.
+Es validiert explizite Angaben als ganze BPM-Zahlen im Transportbereich
+4..60.000.000. Aus der Quellspezifikation wird bei Bedarf eine neue
+`RhythmSpec` abgeleitet und über den Playback-Port weitergegeben. Beim
+Verketten zählt das effektive Tempo; unterschiedliche Quelltempi können
+mit einer gemeinsamen Überschreibung gespielt werden. Quellobjekte,
+Onsets, Beat-Information, Deviation, Seed und Persistenz bleiben unverändert.
+Der MIDI-Adapter erzeugt das Tempoereignis; Grid und Gate bleiben in Ticks
+unverändert, ihre Dauer in Sekunden folgt dem Tempo. Der Nachlauf bleibt
+zwei Sekunden. Die [Tempo-Präsentation](tempo-ausprobieren.md) führt durch
+die neuen Befehle.
 
 Reproduzierbarkeit gilt bei unverändertem normalisiertem Kandidateninhalt,
 gleicher Kriterienfolge, gleichem Seed und gleicher Programmversion,

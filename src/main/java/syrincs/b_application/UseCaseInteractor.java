@@ -10,6 +10,7 @@ import syrincs.a_domain.rhythm.HuffmanRhythm;
 import syrincs.b_application.ports.RhythmRepository;
 import syrincs.b_application.ports.dto.BeatProfileCriteria;
 import syrincs.b_application.ports.dto.DeviationRange;
+import syrincs.b_application.ports.dto.RhythmPlaybackOptions;
 
 import java.util.List;
 import java.util.Objects;
@@ -180,6 +181,12 @@ public class UseCaseInteractor {
         rhythmPlayback.playRhythm(pattern, spec, voices, deviceNameSubstring);
     }
 
+    public void playRhythm(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices,
+                           String deviceNameSubstring, RhythmPlaybackOptions options) throws Exception {
+        validate.validate(pattern, spec, voices);
+        rhythmPlayback.playRhythm(pattern, spec, voices, deviceNameSubstring, options);
+    }
+
     public Integer analyzeRhythm(String onsetList) {
         return analyseRhythmUseCase.analyzeInformation(onsetList);
     }
@@ -219,6 +226,14 @@ public class UseCaseInteractor {
             throw new IllegalStateException("PlayHuffmanRhythmsUseCase not wired in UseCaseInteractor");
         }
         playHuffmanRhythmsUseCase.playRhythms(rhythms, deviceNameSubstring);
+    }
+
+    public void playRhythms(List<HuffmanRhythm> rhythms, String deviceNameSubstring,
+                            RhythmPlaybackOptions options) throws Exception {
+        if (playHuffmanRhythmsUseCase == null) {
+            throw new IllegalStateException("PlayHuffmanRhythmsUseCase not wired in UseCaseInteractor");
+        }
+        playHuffmanRhythmsUseCase.playRhythms(rhythms, deviceNameSubstring, options);
     }
 
     /**

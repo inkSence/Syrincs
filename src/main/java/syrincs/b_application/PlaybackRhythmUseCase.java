@@ -4,6 +4,7 @@ import syrincs.a_domain.rhythm.Pattern;
 import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
 import syrincs.b_application.ports.RhythmPlaybackPort;
+import syrincs.b_application.ports.dto.RhythmPlaybackOptions;
 
 import java.util.List;
 import java.util.Objects;
@@ -24,4 +25,8 @@ public class PlaybackRhythmUseCase {
         playbackPort.play(pattern, spec, voices, deviceNameSubstring);
     }
 
+    public void playRhythm(Pattern pattern, RhythmSpec spec, List<VoiceSpec> voices,
+                           String deviceNameSubstring, RhythmPlaybackOptions options) throws Exception {
+        playbackPort.play(pattern, options.applyTo(spec), voices, deviceNameSubstring, options);
+    }
 }

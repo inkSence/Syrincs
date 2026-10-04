@@ -5,6 +5,7 @@ import syrincs.a_domain.rhythm.Pattern;
 import syrincs.a_domain.rhythm.RhythmMapperFromOnsetStringToKickAndSnare;
 import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
+import syrincs.b_application.ports.dto.RhythmPlaybackOptions;
 
 import java.util.List;
 import java.util.Map;
@@ -35,22 +36,27 @@ public class PlayHuffmanRhythmsUseCase {
     }
 
     public void playRhythms(List<HuffmanRhythm> rhythms, String deviceNameSubstring) throws Exception {
+        playRhythms(rhythms, deviceNameSubstring, RhythmPlaybackOptions.DEFAULT);
+    }
+
+    public void playRhythms(List<HuffmanRhythm> rhythms, String deviceNameSubstring,
+                            RhythmPlaybackOptions options) throws Exception {
         if (rhythms == null || rhythms.isEmpty()) {
             return;
         }
         List<VoiceSpec> voices = RhythmMapperFromOnsetStringToKickAndSnare.defaultVoiceSpecs();
-        Pattern combinedPattern = combinePatterns(rhythms, voices);
-        RhythmSpec combinedSpec = combinedSpec(rhythms);
+        Pattern combinedPattern = combinePatterns(rhythms, voices, options);
+        RhythmSpec combinedSpec = combinedSpec(rhythms, options);
 
         validate.validate(combinedPattern, combinedSpec, voices);
-        playback.playRhythm(combinedPattern, combinedSpec, voices, deviceNameSubstring);
+        playback.playRhythm(combinedPattern, combinedSpec, voices, deviceNameSubstring, options);
     }
 
-    private Pattern combinePatterns(List<HuffmanRhythm> rhythms, List<VoiceSpec> voices) throws Exception {
-        RhythmSpec firstSpec = buildSpec(Objects.requireNonNull(rhythms.getFirst(), "rhythm"));
+    private Pattern combinePatterns(List<HuffmanRhythm> rhythms, List<VoiceSpec> voices, RhythmPlaybackOptions options) throws Exception {
+        RhythmSpec firstSpec = buildSpec(Objects.requireNonNull(rhythms.getFirst(), "rhythm"), options);
         int totalSteps = 0;
         for (HuffmanRhythm hr : rhythms) {
-            RhythmSpec spec = buildSpec(Objects.requireNonNull(hr, "rhythm"));
+            RhythmSpec spec = buildSpec(Objects.requireNonNull(hr, "rhythm"), options);
             requireCompatible(firstSpec, spec);
             totalSteps += spec.totalSteps();
         }
@@ -60,7 +66,7 @@ public class PlayHuffmanRhythmsUseCase {
         int offset = 0;
         for (HuffmanRhythm hr : rhythms) {
             Pattern pattern = buildPattern(hr);
-            RhythmSpec spec = buildSpec(hr);
+            RhythmSpec spec = buildSpec(hr, options);
             validate.validate(pattern, spec, voices);
             Map<String, boolean[]> voicePatterns = pattern.voices();
             boolean[] kickPart = voicePatterns.get("kick");
@@ -76,11 +82,11 @@ public class PlayHuffmanRhythmsUseCase {
         return combined;
     }
 
-    private RhythmSpec combinedSpec(List<HuffmanRhythm> rhythms) throws Exception {
-        RhythmSpec first = buildSpec(Objects.requireNonNull(rhythms.getFirst(), "rhythm"));
+    private RhythmSpec combinedSpec(List<HuffmanRhythm> rhythms, RhythmPlaybackOptions options) throws Exception {
+        RhythmSpec first = buildSpec(Objects.requireNonNull(rhythms.getFirst(), "rhythm"), options);
         int bars = 0;
         for (HuffmanRhythm hr : rhythms) {
-            RhythmSpec spec = buildSpec(Objects.requireNonNull(hr, "rhythm"));
+            RhythmSpec spec = buildSpec(Objects.requireNonNull(hr, "rhythm"), options);
             requireCompatible(first, spec);
             bars += spec.bars;
         }
@@ -103,12 +109,12 @@ public class PlayHuffmanRhythmsUseCase {
         return RhythmMapperFromOnsetStringToKickAndSnare.toPattern(result);
     }
 
-    private RhythmSpec buildSpec(HuffmanRhythm hr) throws Exception {
+    private RhythmSpec buildSpec(HuffmanRhythm hr, RhythmPlaybackOptions options) throws Exception {
         // Derive spec from HuffmanRhythm (assume 16th grid -> resPerBeat=4)
         int num = hr.getNumerator();
         int den = hr.getDenominator();
         int resPerBeat = 4;
         int bars = Math.max(1, hr.getOnsetList().length() / (num * resPerBeat));
-        return new RhythmSpec(num, den, hr.getTempo(), resPerBeat, bars);
+        return new RhythmSpec(num, den, options.effectiveTempo(hr.getTempo()), resPerBeat, bars);
     }
 }

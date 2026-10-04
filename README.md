@@ -352,6 +352,7 @@ syrincs play rhythm info --device "Virtual Out" 3 5 7
 syrincs play rhythm info 3 5 --deviation-min 0.2 --deviation-max 0.8
 syrincs play rhythm info 0 --deviation-min 0
 syrincs play rhythm info 3 5 3 --seed 42 --dry-run
+syrincs play rhythm info 3 5 3 --seed 42 --tempo 108 --dry-run
 ```
 
 Für jede angefragte Position lädt Syrincs passende Kandidaten und wählt
@@ -382,7 +383,8 @@ und `calculate rhythms` zur Vorbereitung des Katalogs.
 Vor dem Playback zeigt die CLI den verwendeten Seed und jede ausgewählte
 Position mit normalisierten Onsets, Beat-Profil, Gesamtinformation und
 Deviation. `--dry-run` führt dieselbe Auswahl und Ausgabe durch, ohne MIDI
-zu öffnen oder die Wiedergabe aufzurufen.
+zu öffnen oder die Wiedergabe aufzurufen. Eine zusätzliche Zeile
+`[PLAYBACK] TempoBpm=120` zeigt das effektive Tempo, auch ohne `--tempo`.
 
 `--seed LONG` verwendet einmal pro Aufruf `java.util.Random`. Vor jeder
 Ziehung sind die Kandidaten wie bei der Suche dedupliziert und nach Zähler,
@@ -404,7 +406,14 @@ Antizipationen eher die Kick. Der Mapper verarbeitet jeweils genau einen
 16-Schritt-Takt; erst danach werden die Takte verbunden. Standard sind
 Kick-Note 36 und Snare-Note 38 auf Kanal 9, Velocity 90 und Gate 50 Prozent.
 Gespeicherte Rhythmen enthalten kein Tempo;
-DB-Playback verwendet daher aktuell 120 BPM.
+DB-Playback verwendet daher ohne Überschreibung 120 BPM.
+Mit `--tempo 108` gilt stattdessen 108 BPM für die gesamte Folge, ohne
+Patterns, Analysewerte, Seed-Auswahl oder gespeicherte Daten zu verändern.
+Die Option kann vor oder nach `info` stehen; eine Angabe danach hat Vorrang:
+
+```bash
+syrincs play rhythm --tempo 96 info 3 5 3 --seed 42 --tempo 108
+```
 
 Ohne `--dry-run` folgt auf die Ausgabe das Playback. `search rhythms`
 zeigt stattdessen die Kandidatenliste ohne Zufallsauswahl und unterstützt
@@ -434,6 +443,7 @@ Abspielen:
 syrincs play rhythm
 syrincs play rhythm --in data/beat.rdl
 syrincs play rhythm --in data/beat.rdl --device DP603
+syrincs play rhythm --in data/beat.rdl --tempo 108 --device Gervill
 ```
 
 Ohne `--in` wird `data/beat.rdl` verwendet. Für RDL-0 gelten folgende Regeln:
@@ -457,6 +467,19 @@ Taktanzahl und Voice-Parameter werden in der Datei festgelegt.
 RDL- und Huffman-Playback laufen immer über MIDI. Der erzeugten
 MIDI-Sequenz werden standardmäßig zwei Sekunden Nachlauf angefügt, damit
 Synth- und Effektfahnen ausklingen können.
+
+`--tempo BPM` überschreibt für diesen Playback-Aufruf den RDL-Tempoheader,
+ohne die Datei zu ändern. Ohne Option bleibt der Header maßgeblich.
+Die Option verlangt eine ganze BPM-Zahl im technisch darstellbaren Bereich
+**4..60.000.000**: Die MIDI-Sequenz kodiert Mikrosekunden pro Viertelnote
+mit höchstens drei Bytes. Die obere Grenze entspricht einer Mikrosekunde
+pro Viertelnote; extreme Werte sind technische Grenzen, keine Empfehlung.
+Ungültige Angaben werden vor Datei-/DB-Zugriff und Playback abgewiesen.
+Raster, Gate-Anteile und Taktanzahl bleiben erhalten; deren Dauer in Sekunden
+folgt dem effektiven Tempo. Der Nachlauf bleibt zwei Sekunden lang.
+
+Die [Tempo-Präsentation](doc/rhythm-generator/tempo-ausprobieren.md) zeigt
+einen Hörvergleich bei 120 und 108 BPM und eine reproduzierbare Katalogauswahl.
 
 ## MIDI
 
@@ -708,8 +731,9 @@ kein Grund, fachliche Defaults oder Validierung zu lockern.
 
 ## Bekannte Grenzen und Inkonsistenzen
 
-- Huffman-Generierung und DB-Playback sind auf einen 4/4-Takt im
-  16tel-Raster und 120 BPM spezialisiert.
+- Huffman-Generierung und Mapping sind auf einen 4/4-Takt im 16tel-Raster
+  spezialisiert. Das Playback-Tempo kann mit `--tempo` überschrieben werden;
+  Generierung und DB-Playback ohne Überschreibung verwenden 120 BPM.
 - Rhythmus-Playback nutzt immer MIDI; ein OSC-Rhythmuspfad ist nicht
   implementiert.
 - `calculate rhythms` erzeugt immer alle 65.536 Pattern und dedupliziert die
