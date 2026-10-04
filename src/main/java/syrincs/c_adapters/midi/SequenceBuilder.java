@@ -18,7 +18,7 @@ public class SequenceBuilder {
 
     // General MIDI percussion: a high, short click without changing any instrument program.
     private static final int COUNT_IN_CHANNEL = 9;
-    private static final int COUNT_IN_NOTE = 76; // High Wood Block
+    private static final int COUNT_IN_NOTE = 75; // Claves
     private static final int COUNT_IN_ACCENT_VELOCITY = 110;
     private static final int COUNT_IN_VELOCITY = 90;
 

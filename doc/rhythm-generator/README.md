@@ -438,7 +438,7 @@ aktivierter Option abgewiesen. `--dry-run --count-in` zeigt
 
 Die frameworkfreien `RhythmPlaybackOptions` werden über Anwendung und
 Playback-Port weitergereicht. Erst `SequenceBuilder` ergänzt General-MIDI
-High Wood Block (Note 76, Kanal 9): Velocity 110 auf der Eins, sonst 90,
+Claves (Note 75, Kanal 9): Velocity 110 auf der Eins, sonst 90,
 jeweils 30 Ticks lang bei PPQ 480. Das Einzählen wird genau einmal vor die
 gesamte Folge gesetzt; alle Rhythmus-Note-On/Off-Ereignisse werden um 1920
 Ticks verschoben, Anfangspausen und Gates bleiben erhalten. Der zweisekündige
@@ -485,6 +485,16 @@ Kick 36 und Snare 38, jeweils Kanal 9, Velocity 90 und Gate 50 Prozent.
 zu einem gemeinsamen Playback. Er verlangt übereinstimmende Taktart, Tempo
 und Raster. Die Mehrtaktfähigkeit der Analyse bedeutet nicht, dass der
 Mapper einen mehrtaktigen Onset-String direkt verarbeiten kann.
+
+Für reproduzierbare Software-Klangfarben akzeptieren `play rhythm` und
+`play rhythm info` zusätzlich `--soundbank DATEI`. Der frameworkfreie
+`RhythmPlaybackOptions`-DTO reicht nur den Pfad weiter; Laden und Ersetzen
+der Instrumente übernimmt der MIDI-Adapter. Die Auswahl gilt für die ganze
+Wiedergabe, einschließlich Einzählen. Gervills Standardbank gibt die GM-Note
+75 als Side Stick wieder; die Hörtour wählt deshalb FluidR3 GM ausdrücklich.
+Hardware-Ausgänge lehnen diese Option ab. Ein Dry-Run zeigt den Pfad, ohne
+die Datei zu lesen oder MIDI zu öffnen. Bei `info` hat eine Angabe nach dem
+Unterbefehl Vorrang vor der Angabe davor.
 
 ## RDL-Eingabe, Validierung und MIDI-Wiedergabe
 

@@ -10,4 +10,11 @@ import javax.sound.midi.Sequence;
  */
 public interface SequencePlayer {
     void play(Sequence sequence, MidiDevice device) throws Exception;
+
+    default void play(Sequence sequence, MidiDevice device, String soundbankPath) throws Exception {
+        if (soundbankPath != null) {
+            throw new UnsupportedOperationException("This sequence player does not support --soundbank.");
+        }
+        play(sequence, device);
+    }
 }

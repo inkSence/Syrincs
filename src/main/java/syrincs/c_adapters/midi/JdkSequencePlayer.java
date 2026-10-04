@@ -11,7 +11,19 @@ public class JdkSequencePlayer implements SequencePlayer {
 
     @Override
     public void play(Sequence sequence, MidiDevice device) throws Exception {
+        play(sequence, device, null);
+    }
+
+    @Override
+    public void play(Sequence sequence, MidiDevice device, String soundbankPath) throws Exception {
         if (sequence == null) throw new IllegalArgumentException("sequence must not be null");
+        Soundbank bank = null;
+        if (soundbankPath != null) {
+            if (!(device instanceof Synthesizer)) {
+                throw new IllegalArgumentException("--soundbank requires a software MIDI synthesizer; use --device Gervill.");
+            }
+            bank = MidiSoundbank.read(soundbankPath);
+        }
         Sequencer sequencer = MidiSystem.getSequencer(false); // not connected to default Synth
         boolean openedDev = false;
         boolean openedSeq = false;
@@ -19,6 +31,7 @@ public class JdkSequencePlayer implements SequencePlayer {
         try {
             if (!sequencer.isOpen()) { sequencer.open(); openedSeq = true; }
             if (!device.isOpen()) { device.open(); openedDev = true; }
+            if (bank != null) MidiSoundbank.install((Synthesizer) device, bank);
             Transmitter seqTx = sequencer.getTransmitter();
             Receiver devRx = device.getReceiver();
             seqTx.setReceiver(devRx);

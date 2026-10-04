@@ -110,8 +110,8 @@ class SequenceBuilderTest {
         var events = notes(counted);
         assertEquals(notes(plain).size() + 8, events.size());
         for (int beat = 0; beat < 4; beat++) {
-            assertEquals(new Note(480L * beat, ShortMessage.NOTE_ON, 9, 76, beat == 0 ? 110 : 90), events.get(2 * beat));
-            assertEquals(new Note(480L * beat + 30, ShortMessage.NOTE_OFF, 9, 76, 0), events.get(2 * beat + 1));
+            assertEquals(new Note(480L * beat, ShortMessage.NOTE_ON, 9, 75, beat == 0 ? 110 : 90), events.get(2 * beat));
+            assertEquals(new Note(480L * beat + 30, ShortMessage.NOTE_OFF, 9, 75, 0), events.get(2 * beat + 1));
         }
         assertEquals(notes(plain).stream().map(n -> new Note(n.tick + 1920, n.command, n.channel, n.note, n.velocity)).toList(),
                 events.subList(8, events.size()));

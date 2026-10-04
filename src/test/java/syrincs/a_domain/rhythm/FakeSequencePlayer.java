@@ -28,6 +28,14 @@ public class FakeSequencePlayer implements SequencePlayer {
         }
     }
 
+    public String soundbankPath;
+
+    @Override
+    public void play(Sequence sequence, MidiDevice device, String soundbankPath) {
+        this.soundbankPath = soundbankPath;
+        play(sequence, device);
+    }
+
     private final List<EventRec> events = new ArrayList<>();
 
     @Override

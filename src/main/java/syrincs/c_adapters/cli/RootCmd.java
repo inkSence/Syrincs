@@ -277,13 +277,16 @@ public class RootCmd implements Runnable {
             @Option(names = "--tempo", paramLabel = "BPM", description = "Override playback tempo in whole BPM (4..60000000); default: RDL header or stored-rhythm tempo")
             Integer tempo;
 
+            @Option(names = "--soundbank", paramLabel = "FILE", description = "Load a soundbank for software MIDI playback (e.g. --device Gervill); default: synthesizer soundbank")
+            String soundbank;
+
             @Option(names = "--count-in", description = "Play one bar of high clicks before playback (4/4 only; first beat accented)")
             boolean countIn;
 
             @Override
             public Integer call() {
                 try {
-                    var options = new RhythmPlaybackOptions(tempo, countIn);
+                    var options = new RhythmPlaybackOptions(tempo, countIn, soundbank);
                     RhythmFileParser.MidiData res = new RhythmFileParser().parse(inFile);
                     parentPlay.parent.midiInteractor.playRhythm(res.pattern, res.spec, res.voices, device, options);
                     return 0;
@@ -321,6 +324,9 @@ public class RootCmd implements Runnable {
                 @Option(names = "--tempo", paramLabel = "BPM", description = "Override playback tempo in whole BPM (4..60000000); overrides parent --tempo; default: 120")
                 Integer tempo;
 
+                @Option(names = "--soundbank", paramLabel = "FILE", description = "Load a soundbank for software MIDI playback; overrides parent --soundbank")
+                String soundbank;
+
                 @Option(names = "--count-in", description = "Play one bar of high clicks before the complete selection (4/4 only)")
                 boolean countIn;
 
@@ -348,6 +354,9 @@ public class RootCmd implements Runnable {
                         }
                         out.printf(Locale.ROOT, "[PLAYBACK] TempoBpm=%d%n",
                                 options.effectiveTempo(selection.rhythms().getFirst().getTempo()));
+                        if (options.soundbankPath() != null) {
+                            out.printf("[SOUNDBANK] File=%s%n", options.soundbankPath());
+                        }
                         if (options.countIn()) {
                             out.println("[COUNT-IN] Bars=1 | Beats=4 | Time=4/4");
                         }
@@ -363,9 +372,10 @@ public class RootCmd implements Runnable {
                 }
 
                 private RhythmPlaybackOptions effectiveOptions() {
-                    var parentOptions = new RhythmPlaybackOptions(parent.tempo, parent.countIn);
+                    var parentOptions = new RhythmPlaybackOptions(parent.tempo, parent.countIn, parent.soundbank);
                     Integer effectiveTempo = tempo == null ? parentOptions.tempoBpm() : tempo;
-                    return new RhythmPlaybackOptions(effectiveTempo, countIn || parentOptions.countIn());
+                    return new RhythmPlaybackOptions(effectiveTempo, countIn || parentOptions.countIn(),
+                            soundbank == null ? parent.soundbank : soundbank);
                 }
 
                 private String effectiveDevice() {

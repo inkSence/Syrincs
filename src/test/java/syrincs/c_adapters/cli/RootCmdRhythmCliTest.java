@@ -67,6 +67,53 @@ class RootCmdRhythmCliTest {
             """;
 
     @Test
+    void rdlSoundbankReachesPlaybackTogetherWithTempoAndCountIn() throws Exception {
+        var playback = new CapturingRhythmPlaybackPort();
+        assertEquals(0, new CommandLine(buildRoot(playback, null)).execute("play", "rhythm", "--in",
+                writeRhythmFile().toString(), "--device", "Gervill", "--tempo", "108", "--count-in",
+                "--soundbank", "selected.sf2"));
+        assertEquals(new RhythmPlaybackOptions(108, true, "selected.sf2"), playback.options);
+        assertEquals("Gervill", playback.deviceNameSubstring);
+        assertEquals(1, playback.calls);
+    }
+
+    @Test
+    void infoSoundbankWorksBeforeAndAfterInfoWithChildTakingPrecedence() {
+        for (String[] arguments : List.of(
+                new String[]{"play", "rhythm", "--soundbank", "selected.sf2", "info", "3"},
+                new String[]{"play", "rhythm", "info", "3", "--soundbank", "selected.sf2"},
+                new String[]{"play", "rhythm", "--soundbank", "parent.sf2", "info", "3", "--soundbank", "selected.sf2"})) {
+            var playback = new CapturingRhythmPlaybackPort();
+            var cli = new CommandLine(buildRoot(playback, freshCatalog()));
+            var output = new StringWriter();
+            cli.setOut(new PrintWriter(output));
+            assertEquals(0, cli.execute(arguments));
+            assertEquals("selected.sf2", playback.options.soundbankPath());
+            assertEquals(1, playback.calls);
+            assertTrue(output.toString().contains("[SOUNDBANK] File=selected.sf2"));
+        }
+    }
+
+    @Test
+    void soundbankDryRunDoesNotReadFilesOrCallPlaybackAndKeepsSelection() {
+        var playback = new CapturingRhythmPlaybackPort();
+        var plain = runInfo(freshCatalog(), new CapturingRhythmPlaybackPort(), "3", "--seed", "42", "--dry-run");
+        var selected = runInfo(freshCatalog(), playback, "3", "--seed", "42", "--dry-run", "--soundbank", "missing.sf2");
+        assertEquals(0, selected.code());
+        assertEquals(0, playback.calls);
+        assertEquals(plain.output() + "[SOUNDBANK] File=missing.sf2" + System.lineSeparator(), selected.output());
+    }
+
+    @Test
+    void emptySoundbankFailsBeforeDatabaseQuery() {
+        var repository = freshCatalog();
+        var result = runInfo(repository, new CapturingRhythmPlaybackPort(), "3", "--soundbank", "");
+        assertEquals(1, result.code());
+        assertTrue(result.error().contains("--soundbank"));
+        assertEquals(0, repository.queries);
+    }
+
+    @Test
     void rdlTempoAndCountInCanBeCombinedAndDefaultsKeepTheRdlHeader() throws Exception {
         var playback = new CapturingRhythmPlaybackPort();
         Path file = writeRhythmFile();
@@ -618,6 +665,7 @@ class RootCmdRhythmCliTest {
         assertTrue(help.toString().contains("--dry-run"));
         assertTrue(help.toString().contains("--tempo"));
         assertTrue(help.toString().contains("--count-in"));
+        assertTrue(help.toString().contains("--soundbank"));
         var extended = new ByteArrayOutputStream();
         var previous = System.out;
         try {
@@ -630,6 +678,7 @@ class RootCmdRhythmCliTest {
         assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--dry-run"));
         assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--tempo"));
         assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--count-in"));
+        assertTrue(extended.toString(StandardCharsets.UTF_8).contains("--soundbank"));
     }
 
     private record InfoRun(int code, String output, String error) {}

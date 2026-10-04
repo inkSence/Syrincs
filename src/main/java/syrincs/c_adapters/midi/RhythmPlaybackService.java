@@ -44,7 +44,7 @@ public class RhythmPlaybackService implements RhythmPlaybackPort {
             throw new IllegalStateException(missingDeviceMessage(deviceNameSubstring));
         }
         MidiDevice device = MidiSystem.getMidiDevice(info);
-        sequencePlayer.play(seq, device);
+        sequencePlayer.play(seq, device, options.soundbankPath());
     }
 
     private String missingDeviceMessage(String deviceNameSubstring) {

@@ -154,6 +154,20 @@ public class RhythmE2ETest {
     }
 
     @Test
+    public void soundbankReachesSequencePlayerWithoutOpeningAudioInFake() throws Exception {
+        File file = writeTemp(RDL);
+        var player = new FakeSequencePlayer();
+        int code = new CommandLine(buildRootWithFake(new FakeMidiOutputPort(), player)).execute(
+                "play", "rhythm", "--in", file.getAbsolutePath(), "--soundbank", "selected.sf2",
+                "--tempo", "108", "--count-in");
+        assertEquals(0, code);
+        assertEquals("selected.sf2", player.soundbankPath);
+        assertEquals(4, player.getEvents().stream().filter(event -> event.on && event.note == 75).count());
+        assertTrue(player.getEvents().stream().filter(event -> event.on && event.note != 75)
+                .allMatch(event -> event.tick >= 1920));
+    }
+
+    @Test
     public void play_withoutDevice_usesDefaultWithFakePort() throws Exception {
         File f = writeTemp(RDL);
         FakeMidiOutputPort fakeMidi = new FakeMidiOutputPort();

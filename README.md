@@ -494,9 +494,28 @@ das effektive Tempo mit `[PLAYBACK] TempoBpm=N`. Mit `--count-in` erscheint
 zusätzlich `[COUNT-IN] Bars=1 | Beats=4 | Time=4/4`. `--dry-run` öffnet kein
 MIDI-Gerät. Der erste Einzählumfang gilt für 4/4; andere Taktarten werden
 bei aktiviertem Einzählen abgewiesen, auch bei `--dry-run`. Der Einzählklang
-ist General MIDI **High Wood Block** (Note 76, nullbasierter Kanal 9),
+ist General MIDI **Claves** (Note 75, nullbasierter Kanal 9),
 mit Velocity 110 auf der Eins und 90 auf den übrigen Zählzeiten. Das gewählte
-MIDI-Gerät bestimmt den konkreten Klang.
+MIDI-Gerät bestimmt den konkreten Klang. Gervills „Emergency GM sound set“
+gibt Note 75 als Side Stick wieder. Für Claves in unserer Hörtour wählen wir
+die lokal installierte FluidR3-GM-Soundbank ausdrücklich:
+
+```bash
+syrincs play rhythm --in data/beat.rdl --tempo 108 --count-in --device Gervill --soundbank /usr/share/sounds/sf2/FluidR3_GM.sf2
+```
+
+`--soundbank DATEI` gilt für `play rhythm` und `play rhythm info`, auch ohne
+Einzählen. Es lädt die Instrumente der Datei in den gewählten Software-MIDI-
+Synthesizer und ersetzt dessen bisher geladene Instrumente, einschließlich
+der Drumkits. Es gilt damit für Rhythmus und Einzählen gemeinsam. Ohne diese
+Option verwendet der Synthesizer seine bisherige Soundbank. Hardware-MIDI-
+Ausgänge lehnen die Option ab. Fehlende, ungültige oder nicht unterstützte
+Dateien führen vor der Wiedergabe zum Fehler; es gibt keinen stillen Fallback.
+Die Datei muss lokal vorhanden sein; Syrincs liefert keine Soundbank mit.
+
+Bei `info` kann die Option vor oder nach dem Unterbefehl stehen; die Angabe
+nach `info` hat Vorrang. Die Vorschau zeigt `[SOUNDBANK] File=…`.
+`--dry-run` liest keine Soundbankdatei und öffnet keinen Synthesizer.
 
 Die [Tempo-Präsentation](doc/rhythm-generator/tempo-ausprobieren.md) zeigt
 den Hörvergleich zwischen 120 und 108 BPM.
