@@ -1,0 +1,14 @@
+# Lokale Hörtour: Original-Onsets in Eingabereihenfolge
+# Rhythm 1: xoooxoxoxoooxoxo
+# Rhythm 2: xoxoxoooxoxoxooo
+# Die gesamte Folge wird 4 Mal gespielt.
+time: 4/4
+tempo: 120
+res-per-beat: 4
+bars: 8
+
+voice kick note=36 channel=9 vel=90 gate=50
+voice snare note=38 channel=9 vel=90 gate=50
+
+pattern kick: | x--- | ---- | x--- | ---- | x-x- | ---- | x-x- | ---- | x--- | ---- | x--- | ---- | x-x- | ---- | x-x- | ---- | x--- | ---- | x--- | ---- | x-x- | ---- | x-x- | ---- | x--- | ---- | x--- | ---- | x-x- | ---- | x-x- | ---- |
+pattern snare: | ---- | x-x- | ---- | x-x- | ---- | x--- | ---- | x--- | ---- | x-x- | ---- | x-x- | ---- | x--- | ---- | x--- | ---- | x-x- | ---- | x-x- | ---- | x--- | ---- | x--- | ---- | x-x- | ---- | x-x- | ---- | x--- | ---- | x--- |

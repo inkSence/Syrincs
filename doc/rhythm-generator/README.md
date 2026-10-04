@@ -452,6 +452,11 @@ auf jedem verwendeten Kanal CC 91 auf 16 (Hall-Send, Skala 0..127).
 Dies gilt mit und ohne Einzählen; der Einzählkanal wird bei Bedarf ebenfalls
 initialisiert. Der Default liegt zentral in `MidiConfig`.
 
+Die [Hörtour](neue-features-ausprobieren.md) zeigt die gemeinsame Anwendung
+von Tempoüberschreibung und Einzählen. Ihr Deviation-Vergleich verbindet acht
+Treffer mit `--deviation-max 0.5` und anschließend acht mit
+`--deviation-min 0.8` zu einer Folge mit einem gemeinsamen Einzähltakt.
+
 Reproduzierbarkeit gilt bei unverändertem normalisiertem Kandidateninhalt,
 gleicher Kriterienfolge, gleichem Seed und gleicher Programmversion,
 unabhängig von DB-Reihenfolge und Duplikaten. Ein Seed ist keine dauerhafte
@@ -487,8 +492,9 @@ Stilwahl und Scores sind nicht über die CLI zugänglich. Standardstimmen sind
 Kick 36 und Snare 38, jeweils Kanal 9, Velocity 90 und Gate 50 Prozent.
 
 `PlayHuffmanRhythmsUseCase` mappt ausgewählte Takte einzeln und verbindet sie
-zu einem gemeinsamen Playback. Er verlangt übereinstimmende Taktart, Tempo
-und Raster. Die Mehrtaktfähigkeit der Analyse bedeutet nicht, dass der
+zu einem gemeinsamen Playback. Er verlangt übereinstimmende Taktart,
+effektives Playback-Tempo und Raster. Eine Tempoüberschreibung vereinheitlicht
+unterschiedliche Quelltempi für die Wiedergabe. Die Mehrtaktfähigkeit der Analyse bedeutet nicht, dass der
 Mapper einen mehrtaktigen Onset-String direkt verarbeiten kann.
 
 Für reproduzierbare Software-Klangfarben akzeptieren `play rhythm` und
@@ -524,8 +530,10 @@ Nachlauf. Rhythmus-Playback besitzt keinen OSC-Pfad.
 Die Geräteauflösung verwendet zuerst `--device`, danach
 `SYRINCS_MIDI_DEVICE`, Roland Digital Piano/DP603 und schließlich den ersten
 verfügbaren Ausgang; Details stehen unter [MIDI](../../README.md#midi).
-Tempo und Voice-Parameter kommen bei RDL aus der Datei, beim DB-Playback aus
-den genannten Defaults. Die Datenbank speichert kein Tempo.
+Voice-Parameter kommen bei RDL aus der Datei, beim DB-Playback aus den
+genannten Defaults. Ohne `--tempo` gilt der RDL-Tempoheader beziehungsweise
+120 BPM für Katalogrhythmen; mit der Option gilt das gewählte Playback-Tempo.
+Die Datenbank speichert kein Tempo.
 
 ## Wichtige Tests
 

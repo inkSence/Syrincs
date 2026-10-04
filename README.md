@@ -474,9 +474,10 @@ Klangerzeugers.
 
 `--tempo BPM` überschreibt das Playback-Tempo für diesen Aufruf. Bei RDL wird
 so das Tempo aus dem Header überschrieben, ohne die Datei zu ändern; bei
-Katalogrhythmen gilt sonst 120 BPM. Ohne Option bleibt der RDL-Header beziehungsweise das bisherige
-Katalogtempo maßgeblich. Die Option verlangt eine ganze BPM-Zahl im technisch
-darstellbaren Bereich **4..60.000.000**. Ungültige Angaben werden vor Datei-
+Katalogrhythmen gilt sonst 120 BPM. Ohne Option bleibt der RDL-Header
+beziehungsweise das bisherige Katalogtempo maßgeblich. Die Option verlangt
+eine ganze BPM-Zahl im technisch darstellbaren Bereich **4..60.000.000**.
+Ungültige Angaben werden vor Datei-
 oder DB-Zugriff abgewiesen. Raster, Gate-Anteile und Taktanzahl bleiben
 unverändert, ihre Dauer in Sekunden folgt dem effektiven Tempo.
 
@@ -496,7 +497,7 @@ syrincs play rhythm info 3 5 3 --seed 42 --tempo 108 --count-in --dry-run
 `--count-in` vor oder nach `info` gesetzt ist. Die Vorschau zeigt
 das effektive Tempo mit `[PLAYBACK] TempoBpm=N`. Mit `--count-in` erscheint
 zusätzlich `[COUNT-IN] Bars=1 | Beats=4 | Time=4/4`. `--dry-run` öffnet kein
-MIDI-Gerät. Der erste Einzählumfang gilt für 4/4; andere Taktarten werden
+MIDI-Gerät. Einzählen unterstützt derzeit nur 4/4; andere Taktarten werden
 bei aktiviertem Einzählen abgewiesen, auch bei `--dry-run`. Der Einzählklang
 ist General MIDI **Claves** (Note 75, nullbasierter Kanal 9),
 mit Velocity 110 auf der Eins und 90 auf den übrigen Zählzeiten. Das gewählte
@@ -521,8 +522,10 @@ Bei `info` kann die Option vor oder nach dem Unterbefehl stehen; die Angabe
 nach `info` hat Vorrang. Die Vorschau zeigt `[SOUNDBANK] File=…`.
 `--dry-run` liest keine Soundbankdatei und öffnet keinen Synthesizer.
 
-Die [Tempo-Präsentation](doc/rhythm-generator/tempo-ausprobieren.md) zeigt
-den Hörvergleich zwischen 120 und 108 BPM.
+Die [Hörtour](doc/rhythm-generator/neue-features-ausprobieren.md) zeigt den
+A/B-Vergleich, die Tempoüberschreibung und das gemeinsame Starten mit Einzählen.
+Für Deviation vergleicht sie zwei Gruppen mit je acht Suchtreffern direkt
+hintereinander nach einem gemeinsamen Einzählen.
 
 ## MIDI
 
