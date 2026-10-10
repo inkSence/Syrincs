@@ -418,17 +418,23 @@ nicht automatisch eine Zusage der Wiedergabefähigkeit.
 
 ## S02 – Öffentliche Bedienung
 
-Die alte CLI bleibt unverändert.
-
-Ohne neue Maßauswahl gilt weiterhin `legacy-fsm-v1` mit bisherigen
-Defaults und Ausgabe. Ein möglicher neuer Einstieg lautet:
+Die bestehenden Endpunkte behalten ihre Syntax, Defaults, Ausgaben und
+Legacy-Bedeutung. Auf Philipps Vorgabe für den Implementierungsplan erhalten
+die neuen Features eigene Endpunkte in einem neuen Befehlsbereich:
 
 ```text
-analyze rhythm ONSETS --measure description-v1
-generate rhythms --measure description-v1 --scope global-description ...
+syrincs rhythm-info analyze ONSETS ...
+syrincs rhythm-info generate ...
+syrincs rhythm-info decode ...
 ```
 
-Diese Schreibweisen sind Vorschläge für die spätere CLI-Planung.
+Dieser Entwurf ersetzt den früheren Vorschlag, `analyze rhythm` um eine
+Maßauswahl zu erweitern. Insbesondere erhält der bestehende Endpunkt keine
+Option `--measure`; die neue Maßauswahl gehört ausschließlich zu den neuen
+Endpunkten. Root-Hilfe und Completion ergänzen den neuen Befehlsbereich.
+Der [Implementierungsplan](04-implementierungsplan.md) konkretisiert Syntax,
+Datenverträge, Arbeitspakete und Kompatibilitätsprüfungen.
+
 Analyse braucht keine DB oder Audiohardware. Generierung zeigt zunächst
 Rhythmen und Analysen; Speichern und Wiedergabe sind ausdrückliche
 nachgelagerte Aktionen. Öffentliche Hilfe muss Informationseinheit, Scope,

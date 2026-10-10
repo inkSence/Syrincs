@@ -57,6 +57,7 @@ mathematische Definition, keinen solchen Wahrnehmungsnachweis.
 | [01 – Maß und Beschreibung](01-mass-und-beschreibung.md) | Eingabevertrag, gemeinsame Einheit, endliche Sprache, Decoder, Minimum, Kontext und metrische Interpretation. |
 | [02 – Analyse und Generierung](02-analyse-und-generierung.md) | Analyseergebnisse, Taktvertrag, Parameter, Suchstatus, Reproduzierbarkeit, Architektur und Kompatibilität. |
 | [03 – Prüffälle und Abnahme](03-prueffaelle-und-abnahme.md) | Durchgerechnete Beispiele, Gegenproben, Invarianten und Anforderungen mit überprüfbarer Abnahme. |
+| [04 – Implementierungsplan](04-implementierungsplan.md) | Neue CLI-Endpunkte, Datenverträge, Arbeitspakete, Abhängigkeiten und überprüfbare Lieferstufen; bestehende Endpunkte bleiben erhalten. |
 | [Numerische Fixtures](fixtures-description-v1.json) | Maschinenlesbare Beispielwerte und kanonische Beschreibungen für spätere Vertragstests. |
 
 **MUSS** bezeichnet eine Anforderung innerhalb dieses Vorschlags.
