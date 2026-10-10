@@ -1,0 +1,1663 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:syrincs:rhythm-info-result-v1",
+  "title": "Rhythm information result v1",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "rhythm-info-result-v1"
+        },
+        "kind": {
+          "const": "analysis"
+        },
+        "primary": {
+          "$ref": "#/$defs/analysis"
+        },
+        "additionalGlobal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/analysis"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "legacyComparison": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/legacyComparison"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sourceEventTimesMs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "primary",
+        "additionalGlobal",
+        "legacyComparison",
+        "sourceEventTimesMs"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "rhythm-info-result-v1"
+        },
+        "kind": {
+          "const": "decoded"
+        },
+        "code": {
+          "type": "string"
+        },
+        "witnessLength": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "normalizedOnsets": {
+          "type": "string"
+        },
+        "measurementKey": {
+          "$ref": "#/$defs/key"
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/witness"
+          },
+          "minItems": 1
+        },
+        "analysis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/analysis"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "code",
+        "witnessLength",
+        "normalizedOnsets",
+        "measurementKey",
+        "messages",
+        "analysis"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "rhythm-info-result-v1"
+        },
+        "kind": {
+          "const": "generation"
+        },
+        "request": {
+          "$ref": "#/$defs/resolvedGenerationRequest"
+        },
+        "requestedCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "returnedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "targetsSatisfiedForEveryResult": {
+          "type": "boolean"
+        },
+        "requestedCountReached": {
+          "type": "boolean"
+        },
+        "shortfall": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "searchComplete": {
+          "type": "boolean"
+        },
+        "stopReason": {
+          "enum": [
+            "COMPLETE",
+            "NO_SOLUTION",
+            "BUDGET_EXHAUSTED",
+            "REQUESTED_COUNT_REACHED",
+            "INTERRUPTED"
+          ]
+        },
+        "attempts": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "uniqueCandidatesEvaluated": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "matchingCandidatesObserved": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "totalMatches": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "maskSpaceSize": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "selectionPerformed": {
+          "type": "boolean"
+        },
+        "randomAlgorithm": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "enumerationVersion": {
+          "type": "string"
+        },
+        "measurementKey": {
+          "$ref": "#/$defs/key"
+        },
+        "totalMatchesUnavailableReason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rhythms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "primary": {
+                "$ref": "#/$defs/analysis"
+              },
+              "additionalGlobal": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/analysis"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "primary",
+              "additionalGlobal"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "codeSpaceSize": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "request",
+        "requestedCount",
+        "returnedCount",
+        "targetsSatisfiedForEveryResult",
+        "requestedCountReached",
+        "shortfall",
+        "searchComplete",
+        "stopReason",
+        "attempts",
+        "uniqueCandidatesEvaluated",
+        "matchingCandidatesObserved",
+        "totalMatches",
+        "maskSpaceSize",
+        "codeSpaceSize",
+        "selectionPerformed",
+        "randomAlgorithm",
+        "enumerationVersion",
+        "measurementKey",
+        "totalMatchesUnavailableReason",
+        "rhythms"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "rhythm-info-result-v1"
+        },
+        "kind": {
+          "const": "error"
+        },
+        "code": {
+          "enum": [
+            "INVALID_REQUEST",
+            "IO_ERROR",
+            "CALCULATION_FAILED"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "code",
+        "message"
+      ],
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "witness": {
+      "type": "object",
+      "properties": {
+        "form": {
+          "enum": [
+            "EMPTY",
+            "FULL",
+            "LITERAL",
+            "REPEAT",
+            "CONCAT",
+            "PATCH",
+            "DIRECT",
+            "REUSE_CONFIRM",
+            "REUSE_CHANGE"
+          ]
+        },
+        "slots": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[01]+$"
+        },
+        "totalBits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "modelBits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "residualBits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "period": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "split": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "template": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "templateIndex": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "exceptionPositions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 0
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/witness"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "form",
+        "slots",
+        "code",
+        "totalBits",
+        "modelBits",
+        "residualBits",
+        "period",
+        "split",
+        "template",
+        "templateIndex",
+        "exceptionPositions",
+        "children"
+      ],
+      "additionalProperties": false
+    },
+    "ambiguity": {
+      "type": "object",
+      "properties": {
+        "optimalCodeCount": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "viewTruncated": {
+          "type": "boolean"
+        },
+        "dag": {
+          "type": "object",
+          "properties": {
+            "root": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "kind": {
+                    "enum": [
+                      "FIXED",
+                      "PREFIX",
+                      "PRODUCT",
+                      "CHOICE",
+                      "PATCH"
+                    ]
+                  },
+                  "prefix": {
+                    "type": "string"
+                  },
+                  "children": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "sourceBits": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "period": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "tiedResidues": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "count": {
+                    "type": "string",
+                    "pattern": "^[0-9]+$"
+                  },
+                  "canonicalCode": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "prefix",
+                  "children",
+                  "sourceBits",
+                  "period",
+                  "tiedResidues",
+                  "count",
+                  "canonicalCode"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "root",
+            "nodes"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "optimalCodeCount",
+        "alternatives",
+        "viewTruncated",
+        "dag"
+      ],
+      "additionalProperties": false
+    },
+    "window": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "normalizedOnsets": {
+          "type": "string"
+        },
+        "measurementKey": {
+          "$ref": "#/$defs/key"
+        },
+        "unit": {
+          "const": "BITS"
+        },
+        "totalBits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "modelBits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "residualBits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "canonicalCode": {
+          "type": "string"
+        },
+        "descriptionTree": {
+          "$ref": "#/$defs/witness"
+        },
+        "optimality": {
+          "const": "EXACT"
+        },
+        "contextDictionary": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "ambiguitySummary": {
+          "$ref": "#/$defs/ambiguity"
+        }
+      },
+      "required": [
+        "position",
+        "start",
+        "end",
+        "normalizedOnsets",
+        "measurementKey",
+        "unit",
+        "totalBits",
+        "modelBits",
+        "residualBits",
+        "canonicalCode",
+        "descriptionTree",
+        "optimality",
+        "contextDictionary",
+        "ambiguitySummary"
+      ],
+      "additionalProperties": false
+    },
+    "analysis": {
+      "type": "object",
+      "properties": {
+        "normalizedOnsets": {
+          "type": "string"
+        },
+        "onsetPositions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 0
+        },
+        "onsetCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "frame": {
+          "$ref": "#/$defs/frame"
+        },
+        "measurementKey": {
+          "$ref": "#/$defs/key"
+        },
+        "unit": {
+          "const": "BITS"
+        },
+        "totalBits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "optimality": {
+          "const": "EXACT"
+        },
+        "globalDescription": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/window"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "isolatedTotal": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "continuationTotal": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/window"
+          },
+          "minItems": 0
+        },
+        "barContributions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 0
+        },
+        "windowMetrics": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/metrics"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "barMetrics": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/metrics"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "referenceAssessments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/assessment"
+          },
+          "minItems": 1
+        },
+        "referenceAmbiguityCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "windowMetricsUnavailableReason": {
+          "anyOf": [
+            {
+              "const": "GLOBAL_SCOPE_HAS_NO_LOCAL_PROFILE"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "barMetricsUnavailableReason": {
+          "anyOf": [
+            {
+              "const": "NO_BAR_GROUPING"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "normalizedOnsets",
+        "onsetPositions",
+        "onsetCount",
+        "frame",
+        "measurementKey",
+        "unit",
+        "totalBits",
+        "optimality",
+        "globalDescription",
+        "isolatedTotal",
+        "continuationTotal",
+        "windows",
+        "barContributions",
+        "windowMetrics",
+        "barMetrics",
+        "referenceAssessments",
+        "referenceAmbiguityCount",
+        "windowMetricsUnavailableReason",
+        "barMetricsUnavailableReason"
+      ],
+      "additionalProperties": false
+    },
+    "key": {
+      "type": "object",
+      "properties": {
+        "measureId": {
+          "const": "description-v1"
+        },
+        "grammarVersion": {
+          "const": "description-v1"
+        },
+        "scope": {
+          "enum": [
+            "GLOBAL_DESCRIPTION",
+            "ISOLATED_WINDOWS",
+            "CAUSAL_WINDOWS"
+          ]
+        },
+        "contextPolicy": {
+          "enum": [
+            "NONE",
+            "suffix-periods-16-v1"
+          ]
+        },
+        "frame": {
+          "$ref": "#/$defs/frame"
+        },
+        "segmentation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/segmentation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "initialHistory": {
+          "type": "string"
+        },
+        "metricReferences": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        },
+        "referenceProfile": {
+          "anyOf": [
+            {
+              "const": "london-time-window-v1"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "measureId",
+        "grammarVersion",
+        "scope",
+        "contextPolicy",
+        "frame",
+        "segmentation",
+        "initialHistory",
+        "metricReferences",
+        "referenceProfile"
+      ],
+      "additionalProperties": false
+    },
+    "reference": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cycleSlots": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "phase": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "beatLevel": {
+          "type": "string"
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "SUBDIVISION",
+                  "BEAT",
+                  "GROUP",
+                  "CYCLE_MARKER"
+                ]
+              },
+              "positions": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "positions"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "provenance": {
+          "enum": [
+            "SUPPLIED",
+            "CANDIDATE"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "cycleSlots",
+        "phase",
+        "beatLevel",
+        "levels",
+        "provenance",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "frame": {
+      "type": "object",
+      "properties": {
+        "slots": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        },
+        "origin": {
+          "const": 0
+        },
+        "observation": {
+          "const": "GRID_EXACT"
+        },
+        "time": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "KNOWN",
+                "UNKNOWN"
+              ]
+            },
+            "slotDurationMs": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^-?[0-9]+/[1-9][0-9]*$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "quarterBpm": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^-?[0-9]+/[1-9][0-9]*$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ticksPerQuarter": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "status",
+            "slotDurationMs",
+            "quarterBpm",
+            "ticksPerQuarter"
+          ],
+          "additionalProperties": false
+        },
+        "notation": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "numerator": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "denominator": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "barSlots": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "numerator",
+                "denominator",
+                "barSlots"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "slots",
+        "origin",
+        "observation",
+        "time",
+        "notation"
+      ],
+      "additionalProperties": false
+    },
+    "segmentation": {
+      "type": "object",
+      "properties": {
+        "boundaries": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "barBoundaries": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "required": [
+        "boundaries",
+        "barBoundaries"
+      ],
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "basis": {
+          "enum": [
+            "CAUSAL_WINDOWS",
+            "ISOLATED_WINDOWS",
+            "CAUSAL_WINDOWS_BAR_CONTRIBUTIONS",
+            "ISOLATED_WINDOWS_BAR_CONTRIBUTIONS"
+          ]
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "mean": {
+          "type": "string",
+          "pattern": "^-?[0-9]+/[1-9][0-9]*$"
+        },
+        "variance": {
+          "type": "string",
+          "pattern": "^-?[0-9]+/[1-9][0-9]*$"
+        },
+        "deviation": {
+          "type": "number",
+          "minimum": 0
+        },
+        "peakPositions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "required": [
+        "basis",
+        "values",
+        "mean",
+        "variance",
+        "deviation",
+        "peakPositions"
+      ],
+      "additionalProperties": false
+    },
+    "assessment": {
+      "type": "object",
+      "properties": {
+        "reference": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/reference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "profile": {
+          "anyOf": [
+            {
+              "const": "london-time-window-v1"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT_EVALUABLE"
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "condition": {
+                "type": "string"
+              },
+              "durationsMs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^-?[0-9]+/[1-9][0-9]*$"
+                }
+              },
+              "passed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "condition",
+              "durationsMs",
+              "passed"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "observedLevels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "positions": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "required": [
+              "id",
+              "positions"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "reference",
+        "profile",
+        "status",
+        "reason",
+        "checks",
+        "observedLevels"
+      ],
+      "additionalProperties": false
+    },
+    "intRange": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false
+    },
+    "rationalRange": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^-?[0-9]+/[1-9][0-9]*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^-?[0-9]+/[1-9][0-9]*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "frame": {
+          "$ref": "#/$defs/frame"
+        },
+        "scope": {
+          "enum": [
+            "GLOBAL_DESCRIPTION",
+            "ISOLATED_WINDOWS",
+            "CAUSAL_WINDOWS"
+          ]
+        },
+        "segmentation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/segmentation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "initialHistory": {
+          "type": "string"
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        },
+        "referenceProfile": {
+          "anyOf": [
+            {
+              "const": "london-time-window-v1"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "frame",
+        "scope",
+        "segmentation",
+        "initialHistory",
+        "references",
+        "referenceProfile"
+      ],
+      "additionalProperties": false
+    },
+    "events": {
+      "type": "object",
+      "properties": {
+        "onsetCount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/intRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "density": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/rationalRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requiredPositions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "uniqueItems": true
+        },
+        "forbiddenPositions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "uniqueItems": true
+        },
+        "minOnsetGap": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "maxZeroRun": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "onsetCount",
+        "density",
+        "requiredPositions",
+        "forbiddenPositions",
+        "minOnsetGap",
+        "maxZeroRun"
+      ],
+      "additionalProperties": false
+    },
+    "profiles": {
+      "type": "object",
+      "properties": {
+        "windows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/intRange"
+          }
+        },
+        "bars": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/intRange"
+          }
+        },
+        "deviation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/rationalRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "deviationBasis": {
+          "anyOf": [
+            {
+              "enum": [
+                "WINDOWS",
+                "BARS"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "peaks": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "uniqueItems": true
+        },
+        "peakBasis": {
+          "anyOf": [
+            {
+              "enum": [
+                "WINDOWS",
+                "BARS"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "windows",
+        "bars",
+        "deviation",
+        "deviationBasis",
+        "peaks",
+        "peakBasis"
+      ],
+      "additionalProperties": false
+    },
+    "resolvedGenerationRequest": {
+      "type": "object",
+      "properties": {
+        "settings": {
+          "$ref": "#/$defs/settings"
+        },
+        "information": {
+          "$ref": "#/$defs/intRange"
+        },
+        "additionalGlobalInformation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/intRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "events": {
+          "$ref": "#/$defs/events"
+        },
+        "profiles": {
+          "$ref": "#/$defs/profiles"
+        },
+        "requireReferencePass": {
+          "type": "boolean"
+        },
+        "strategy": {
+          "enum": [
+            "EXHAUSTIVE",
+            "CODE_LENGTH_SEARCH",
+            "BOUNDED_RANDOM"
+          ]
+        },
+        "attemptBudget": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resultLimit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selection": {
+          "enum": [
+            "FIRST",
+            "RANDOM_WITHOUT_REPLACEMENT"
+          ]
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^-?[0-9]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "settings",
+        "information",
+        "additionalGlobalInformation",
+        "events",
+        "profiles",
+        "requireReferencePass",
+        "strategy",
+        "attemptBudget",
+        "resultLimit",
+        "selection",
+        "seed"
+      ],
+      "additionalProperties": false
+    },
+    "legacyKey": {
+      "type": "object",
+      "properties": {
+        "measureId": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "slots": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "numerator": {
+          "type": "integer"
+        },
+        "denominator": {
+          "type": "integer"
+        },
+        "slotsPerBeat": {
+          "type": "integer"
+        },
+        "initialPlayingState": {
+          "type": "string"
+        },
+        "subdivisionReset": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "measureId",
+        "scope",
+        "slots",
+        "numerator",
+        "denominator",
+        "slotsPerBeat",
+        "initialPlayingState",
+        "subdivisionReset"
+      ],
+      "additionalProperties": false
+    },
+    "legacyComparison": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "AVAILABLE",
+            "UNAVAILABLE"
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "measureId": {
+          "type": "string"
+        },
+        "unit": {
+          "const": "CODE_SYMBOLS"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "beatInformation": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "deviation": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "numerator": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "denominator": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slotsPerBeat": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "measurementKey": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/legacyKey"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "reason",
+        "measureId",
+        "unit",
+        "total",
+        "beatInformation",
+        "deviation",
+        "numerator",
+        "denominator",
+        "slotsPerBeat",
+        "measurementKey"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

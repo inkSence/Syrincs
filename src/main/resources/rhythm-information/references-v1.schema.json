@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:syrincs:rhythm-info-references-v1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "rhythm-info-references-v1"
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reference"
+      },
+      "minItems": 0
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "references"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "reference": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cycleSlots": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "phase": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "beatLevel": {
+          "type": "string"
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "SUBDIVISION",
+                  "BEAT",
+                  "GROUP",
+                  "CYCLE_MARKER"
+                ]
+              },
+              "positions": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "positions"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "provenance": {
+          "enum": [
+            "SUPPLIED",
+            "CANDIDATE"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "cycleSlots",
+        "phase",
+        "beatLevel",
+        "levels",
+        "provenance",
+        "source"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

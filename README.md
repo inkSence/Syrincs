@@ -57,7 +57,8 @@ Externe Komponenten werden erst für Persistenz oder Playback gebraucht:
 - optional SuperCollider mit `sclang`
 - optional ein MIDI-Ausgang
 
-Die Laufzeitabhängigkeiten sind Picocli und der PostgreSQL-JDBC-Treiber. Die
+Die Laufzeitabhängigkeiten sind Picocli, der PostgreSQL-JDBC-Treiber und Gson
+für die neuen JSON-Ein-/Ausgabeadapter. Die
 Tests verwenden JUnit 5; konkrete Versionen stehen in [`pom.xml`](pom.xml).
 
 Während der Entwicklung können Befehle direkt über Maven ausgeführt werden:
