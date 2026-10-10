@@ -11,6 +11,13 @@ Die Zufallsauswahl ist mit `--seed` reproduzierbar und mit `--dry-run` ohne
 Playback sichtbar. Die reine Suche unterstützt exakte Beat-Profile und
 Peak-Positionen; allgemeine Profilformen sind noch nicht implementiert.
 
+Der weiterführende
+[Spezifikationsvorschlag zum Informationsmaß](specs-informationsmass/README.md)
+verbindet diesen Code mit dem angestrebten Beschreibungsmaß und der
+Literaturauswertung, insbesondere *Hearing in Time*. Er definiert einen
+zusätzlichen Analyse- und Generierungsmodus für einen späteren
+Implementierungsplan; dessen Befehle sind noch nicht implementiert.
+
 ## Funktionsübersicht des Rhythmusmoduls
 
 Das Modul umfasst neben dem Generator auch Analyse, Dateieingabe, Auswahl,

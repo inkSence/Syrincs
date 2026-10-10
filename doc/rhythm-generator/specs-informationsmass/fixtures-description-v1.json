@@ -1,0 +1,2247 @@
+{
+  "schemaVersion": "rhythm-information-spec-fixtures-v1",
+  "status": "Normative example expectations for the specification proposal; no production implementation",
+  "measurement": {
+    "measureId": "description-v1",
+    "grammarVersion": "description-v1",
+    "contextPolicy": "suffix-periods-16-v1",
+    "maxSlots": 128,
+    "unit": "BITS"
+  },
+  "baseCases": [
+    {
+      "id": "silence-16",
+      "normalizedOnsets": "oooooooooooooooo",
+      "frame": {
+        "slots": 16,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 3,
+        "canonicalCode": "000"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          4,
+          2,
+          2,
+          2
+        ],
+        "canonicalCodes": [
+          "0000",
+          "10",
+          "10",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ]
+        ],
+        "continuationTotal": 10
+      },
+      "legacyExpected": {
+        "unit": "CODE_SYMBOLS",
+        "total": 0
+      }
+    },
+    {
+      "id": "quarters-16",
+      "normalizedOnsets": "xoooxoooxoooxooo",
+      "frame": {
+        "slots": 16,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 13,
+        "canonicalCode": "0110110101000"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          8,
+          3,
+          3
+        ],
+        "canonicalCodes": [
+          "00101000",
+          "00101000",
+          "101",
+          "101"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "0"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ]
+        ],
+        "continuationTotal": 22
+      },
+      "legacyExpected": {
+        "unit": "CODE_SYMBOLS",
+        "total": 1
+      }
+    },
+    {
+      "id": "eighths-16",
+      "normalizedOnsets": "xoxoxoxoxoxoxoxo",
+      "frame": {
+        "slots": 16,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 11,
+        "canonicalCode": "01100101010"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          2,
+          2,
+          2
+        ],
+        "canonicalCodes": [
+          "00101010",
+          "10",
+          "10",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ]
+        ],
+        "continuationTotal": 14
+      },
+      "legacyExpected": {
+        "unit": "CODE_SYMBOLS",
+        "total": 5
+      }
+    },
+    {
+      "id": "full-16",
+      "normalizedOnsets": "xxxxxxxxxxxxxxxx",
+      "frame": {
+        "slots": 16,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 3,
+        "canonicalCode": "001"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          4,
+          2,
+          2,
+          2
+        ],
+        "canonicalCodes": [
+          "0001",
+          "10",
+          "10",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "1"
+          ],
+          [
+            "1"
+          ],
+          [
+            "1"
+          ]
+        ],
+        "continuationTotal": 10
+      },
+      "legacyExpected": {
+        "unit": "CODE_SYMBOLS",
+        "total": 9
+      }
+    },
+    {
+      "id": "xxox-16",
+      "normalizedOnsets": "xxoxxxoxxxoxxxox",
+      "frame": {
+        "slots": 16,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 13,
+        "canonicalCode": "0110110101101"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          8,
+          2,
+          2
+        ],
+        "canonicalCodes": [
+          "00101101",
+          "00101101",
+          "10",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [],
+          [
+            "1101"
+          ],
+          [
+            "1101"
+          ]
+        ],
+        "continuationTotal": 20
+      },
+      "legacyExpected": {
+        "unit": "CODE_SYMBOLS",
+        "total": 17
+      }
+    },
+    {
+      "id": "quarter-omission",
+      "normalizedOnsets": "xoooooooxoooxooo",
+      "frame": {
+        "slots": 16,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 19,
+        "canonicalCode": "0101000000010001000"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          2,
+          8,
+          8
+        ],
+        "canonicalCodes": [
+          "00101000",
+          "10",
+          "00101000",
+          "00101000"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ]
+        ],
+        "continuationTotal": 26
+      },
+      "legacyExpected": {
+        "unit": "CODE_SYMBOLS",
+        "total": 3
+      }
+    },
+    {
+      "id": "one-onset-at-start",
+      "normalizedOnsets": "xooooooooooooooo",
+      "frame": {
+        "slots": 16,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 13,
+        "canonicalCode": "1000000001000"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          2,
+          2,
+          2
+        ],
+        "canonicalCodes": [
+          "00101000",
+          "10",
+          "10",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ]
+        ],
+        "continuationTotal": 14
+      },
+      "legacyExpected": {
+        "unit": "CODE_SYMBOLS",
+        "total": 2
+      }
+    },
+    {
+      "id": "alternating-quarter-eighth",
+      "normalizedOnsets": "xoooxoxoxoooxoxo",
+      "frame": {
+        "slots": 16,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 17,
+        "canonicalCode": "01111101010001010"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          8,
+          8,
+          8
+        ],
+        "canonicalCodes": [
+          "00101000",
+          "00101010",
+          "00101000",
+          "00101010"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "0"
+          ],
+          [
+            "10"
+          ],
+          [
+            "0"
+          ]
+        ],
+        "continuationTotal": 32
+      },
+      "legacyExpected": {
+        "unit": "CODE_SYMBOLS",
+        "total": 3
+      }
+    },
+    {
+      "id": "alternating-eighth-quarter",
+      "normalizedOnsets": "xoxoxoooxoxoxooo",
+      "frame": {
+        "slots": 16,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 17,
+        "canonicalCode": "01111101010101000"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          8,
+          8,
+          8
+        ],
+        "canonicalCodes": [
+          "00101010",
+          "00101000",
+          "00101010",
+          "00101000"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "10"
+          ],
+          [
+            "0"
+          ],
+          [
+            "10"
+          ]
+        ],
+        "continuationTotal": 32
+      },
+      "legacyExpected": {
+        "unit": "CODE_SYMBOLS",
+        "total": 3
+      }
+    },
+    {
+      "id": "quarters-32",
+      "normalizedOnsets": "xoooxoooxoooxoooxoooxoooxoooxooo",
+      "frame": {
+        "slots": 32,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 14,
+        "canonicalCode": "01100110101000"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          8,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "canonicalCodes": [
+          "00101000",
+          "00101000",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "0"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ]
+        ],
+        "continuationTotal": 34
+      }
+    },
+    {
+      "id": "eighths-32",
+      "normalizedOnsets": "xoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxo",
+      "frame": {
+        "slots": 32,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 12,
+        "canonicalCode": "011000101010"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "canonicalCodes": [
+          "00101010",
+          "10",
+          "10",
+          "10",
+          "10",
+          "10",
+          "10",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ]
+        ],
+        "continuationTotal": 22
+      },
+      "legacyExpected": {
+        "unit": "CODE_SYMBOLS",
+        "total": 9
+      }
+    },
+    {
+      "id": "xxox-32",
+      "normalizedOnsets": "xxoxxxoxxxoxxxoxxxoxxxoxxxoxxxox",
+      "frame": {
+        "slots": 32,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 14,
+        "canonicalCode": "01100110101101"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          8,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "canonicalCodes": [
+          "00101101",
+          "00101101",
+          "10",
+          "10",
+          "10",
+          "10",
+          "10",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [],
+          [
+            "1101"
+          ],
+          [
+            "1101"
+          ],
+          [
+            "1101"
+          ],
+          [
+            "1101"
+          ],
+          [
+            "1101"
+          ],
+          [
+            "1101"
+          ]
+        ],
+        "continuationTotal": 28
+      }
+    },
+    {
+      "id": "rate-switch-16",
+      "normalizedOnsets": "xoooxoooxoxoxoxo",
+      "frame": {
+        "slots": 16,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 19,
+        "canonicalCode": "0101000100010101010"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          8,
+          8,
+          2
+        ],
+        "canonicalCodes": [
+          "00101000",
+          "00101000",
+          "00101010",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "0"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "10"
+          ]
+        ],
+        "continuationTotal": 26
+      }
+    },
+    {
+      "id": "rate-switch-32",
+      "normalizedOnsets": "xoooxoooxoooxoooxoxoxoxoxoxoxoxo",
+      "frame": {
+        "slots": 32,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 32,
+        "canonicalCode": "10001110011011010100001100101001"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          8,
+          3,
+          3,
+          8,
+          2,
+          2,
+          2
+        ],
+        "canonicalCodes": [
+          "00101000",
+          "00101000",
+          "101",
+          "101",
+          "00101010",
+          "10",
+          "10",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "0"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ]
+        ],
+        "continuationTotal": 36
+      }
+    },
+    {
+      "id": "half-rate-switch-32",
+      "normalizedOnsets": "xoooxoooxoooxoooxoooooooxooooooo",
+      "frame": {
+        "slots": 32,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 27,
+        "canonicalCode": "101001110000000101010011100"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          8,
+          3,
+          3,
+          3,
+          3,
+          8,
+          2
+        ],
+        "canonicalCodes": [
+          "00101000",
+          "00101000",
+          "101",
+          "101",
+          "101",
+          "100",
+          "00101000",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "0"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ]
+        ],
+        "continuationTotal": 38
+      }
+    },
+    {
+      "id": "literal-example",
+      "normalizedOnsets": "xxoxoxxoooxooxox",
+      "frame": {
+        "slots": 16,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 19,
+        "canonicalCode": "0101101011000100101"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          8,
+          8,
+          8
+        ],
+        "canonicalCodes": [
+          "00101101",
+          "00100110",
+          "00100010",
+          "00100101"
+        ],
+        "dictionaries": [
+          [],
+          [],
+          [],
+          []
+        ],
+        "continuationTotal": 32
+      }
+    },
+    {
+      "id": "two-slots",
+      "normalizedOnsets": "xo",
+      "frame": {
+        "slots": 2,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 5,
+        "canonicalCode": "01010"
+      }
+    },
+    {
+      "id": "three-slots",
+      "normalizedOnsets": "xox",
+      "frame": {
+        "slots": 3,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 6,
+        "canonicalCode": "010101"
+      }
+    },
+    {
+      "id": "one-zero",
+      "normalizedOnsets": "o",
+      "frame": {
+        "slots": 1,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 3,
+        "canonicalCode": "000"
+      }
+    },
+    {
+      "id": "one-one",
+      "normalizedOnsets": "x",
+      "frame": {
+        "slots": 1,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 3,
+        "canonicalCode": "001"
+      }
+    },
+    {
+      "id": "silence-32",
+      "normalizedOnsets": "oooooooooooooooooooooooooooooooo",
+      "frame": {
+        "slots": 32,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 3,
+        "canonicalCode": "000"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          4,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "canonicalCodes": [
+          "0000",
+          "10",
+          "10",
+          "10",
+          "10",
+          "10",
+          "10",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ]
+        ],
+        "continuationTotal": 18
+      }
+    },
+    {
+      "id": "period-5",
+      "normalizedOnsets": "xooooxooooxoooo",
+      "frame": {
+        "slots": 15,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 14,
+        "canonicalCode": "01110001010000"
+      }
+    },
+    {
+      "id": "period-7",
+      "normalizedOnsets": "xooooooxoooooo",
+      "frame": {
+        "slots": 14,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 16,
+        "canonicalCode": "0111100101000000"
+      }
+    },
+    {
+      "id": "prefix-before-repeat",
+      "normalizedOnsets": "xoooxoxoxoooxox",
+      "frame": {
+        "slots": 15,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 18,
+        "canonicalCode": "010100010101000101"
+      }
+    },
+    {
+      "id": "quarters-128",
+      "normalizedOnsets": "xoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxoooxooo",
+      "frame": {
+        "slots": 128,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 16,
+        "canonicalCode": "0110000110101000"
+      },
+      "causalFourSlotWindows": {
+        "initialHistory": "",
+        "windowSlots": 4,
+        "costs": [
+          8,
+          8,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "canonicalCodes": [
+          "00101000",
+          "00101000",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101",
+          "101"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "0"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ],
+          [
+            "0",
+            "1000"
+          ]
+        ],
+        "continuationTotal": 106
+      }
+    },
+    {
+      "id": "three-way-tie",
+      "normalizedOnsets": "xoxoxox",
+      "frame": {
+        "slots": 7,
+        "slotDurationMs": "UNKNOWN"
+      },
+      "globalDescription": {
+        "totalBits": 10,
+        "canonicalCode": "0101010101",
+        "minimalDescriptionCount": 3,
+        "allMinimalCodes": [
+          "0101010101",
+          "0110101010",
+          "1010110000"
+        ]
+      }
+    }
+  ],
+  "originalConceptCases": [
+    {
+      "id": "regular",
+      "windowInOriginalUnits": [
+        0,
+        8
+      ],
+      "slotDurationInOriginalUnits": "1/2",
+      "eventSlotPositions": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10,
+        12,
+        14
+      ],
+      "normalizedOnsets": "xoxoxoxoxoxoxoxo",
+      "globalDescription": {
+        "totalBits": 11,
+        "canonicalCode": "01100101010"
+      },
+      "causalFourSlotWindows": {
+        "windowSlots": 4,
+        "costs": [
+          8,
+          2,
+          2,
+          2
+        ],
+        "canonicalCodes": [
+          "00101010",
+          "10",
+          "10",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ]
+        ],
+        "continuationTotal": 14
+      }
+    },
+    {
+      "id": "omission-at-4",
+      "windowInOriginalUnits": [
+        0,
+        8
+      ],
+      "slotDurationInOriginalUnits": "1/2",
+      "eventSlotPositions": [
+        0,
+        2,
+        4,
+        6,
+        10,
+        12,
+        14
+      ],
+      "normalizedOnsets": "xoxoxoxoooxoxoxo",
+      "globalDescription": {
+        "totalBits": 17,
+        "canonicalCode": "10100110000011000"
+      },
+      "causalFourSlotWindows": {
+        "windowSlots": 4,
+        "costs": [
+          8,
+          2,
+          8,
+          8
+        ],
+        "canonicalCodes": [
+          "00101010",
+          "10",
+          "00100010",
+          "00101010"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ],
+          []
+        ],
+        "continuationTotal": 26
+      }
+    },
+    {
+      "id": "double-rate-from-4",
+      "windowInOriginalUnits": [
+        0,
+        8
+      ],
+      "slotDurationInOriginalUnits": "1/2",
+      "eventSlotPositions": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "normalizedOnsets": "xoxoxoxoxxxxxxxx",
+      "globalDescription": {
+        "totalBits": 19,
+        "canonicalCode": "0101010101011111111"
+      },
+      "causalFourSlotWindows": {
+        "windowSlots": 4,
+        "costs": [
+          8,
+          2,
+          4,
+          2
+        ],
+        "canonicalCodes": [
+          "00101010",
+          "10",
+          "0001",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ],
+          [
+            "1"
+          ]
+        ],
+        "continuationTotal": 16
+      }
+    },
+    {
+      "id": "half-rate-from-4",
+      "windowInOriginalUnits": [
+        0,
+        8
+      ],
+      "slotDurationInOriginalUnits": "1/2",
+      "eventSlotPositions": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        12
+      ],
+      "normalizedOnsets": "xoxoxoxoxoooxooo",
+      "globalDescription": {
+        "totalBits": 19,
+        "canonicalCode": "0101010101010001000"
+      },
+      "causalFourSlotWindows": {
+        "windowSlots": 4,
+        "costs": [
+          8,
+          2,
+          8,
+          8
+        ],
+        "canonicalCodes": [
+          "00101010",
+          "10",
+          "00101000",
+          "00101000"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "10"
+          ],
+          [
+            "10"
+          ],
+          [
+            "0"
+          ]
+        ],
+        "continuationTotal": 26
+      }
+    },
+    {
+      "id": "double-rate-throughout",
+      "windowInOriginalUnits": [
+        0,
+        8
+      ],
+      "slotDurationInOriginalUnits": "1/2",
+      "eventSlotPositions": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "normalizedOnsets": "xxxxxxxxxxxxxxxx",
+      "globalDescription": {
+        "totalBits": 3,
+        "canonicalCode": "001"
+      },
+      "causalFourSlotWindows": {
+        "windowSlots": 4,
+        "costs": [
+          4,
+          2,
+          2,
+          2
+        ],
+        "canonicalCodes": [
+          "0001",
+          "10",
+          "10",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "1"
+          ],
+          [
+            "1"
+          ],
+          [
+            "1"
+          ]
+        ],
+        "continuationTotal": 10
+      }
+    },
+    {
+      "id": "silence",
+      "windowInOriginalUnits": [
+        0,
+        8
+      ],
+      "slotDurationInOriginalUnits": "1/2",
+      "eventSlotPositions": [],
+      "normalizedOnsets": "oooooooooooooooo",
+      "globalDescription": {
+        "totalBits": 3,
+        "canonicalCode": "000"
+      },
+      "causalFourSlotWindows": {
+        "windowSlots": 4,
+        "costs": [
+          4,
+          2,
+          2,
+          2
+        ],
+        "canonicalCodes": [
+          "0000",
+          "10",
+          "10",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ]
+        ],
+        "continuationTotal": 10
+      }
+    },
+    {
+      "id": "single-event-at-4",
+      "windowInOriginalUnits": [
+        0,
+        8
+      ],
+      "slotDurationInOriginalUnits": "1/2",
+      "eventSlotPositions": [
+        8
+      ],
+      "normalizedOnsets": "ooooooooxooooooo",
+      "globalDescription": {
+        "totalBits": 16,
+        "canonicalCode": "1010000000011000"
+      },
+      "causalFourSlotWindows": {
+        "windowSlots": 4,
+        "costs": [
+          4,
+          2,
+          8,
+          2
+        ],
+        "canonicalCodes": [
+          "0000",
+          "10",
+          "00101000",
+          "10"
+        ],
+        "dictionaries": [
+          [],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ],
+          [
+            "0"
+          ]
+        ],
+        "continuationTotal": 16
+      }
+    }
+  ],
+  "literatureModelCases": [
+    {
+      "id": "rate-100",
+      "frame": {
+        "slots": 60,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          6000
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
+        1000,
+        1100,
+        1200,
+        1300,
+        1400,
+        1500,
+        1600,
+        1700,
+        1800,
+        1900,
+        2000,
+        2100,
+        2200,
+        2300,
+        2400,
+        2500,
+        2600,
+        2700,
+        2800,
+        2900,
+        3000,
+        3100,
+        3200,
+        3300,
+        3400,
+        3500,
+        3600,
+        3700,
+        3800,
+        3900,
+        4000,
+        4100,
+        4200,
+        4300,
+        4400,
+        4500,
+        4600,
+        4700,
+        4800,
+        4900,
+        5000,
+        5100,
+        5200,
+        5300,
+        5400,
+        5500,
+        5600,
+        5700,
+        5800,
+        5900
+      ],
+      "normalizedOnsets": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "globalDescription": {
+        "totalBits": 3,
+        "canonicalCode": "001"
+      }
+    },
+    {
+      "id": "rate-200",
+      "frame": {
+        "slots": 60,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          6000
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        200,
+        400,
+        600,
+        800,
+        1000,
+        1200,
+        1400,
+        1600,
+        1800,
+        2000,
+        2200,
+        2400,
+        2600,
+        2800,
+        3000,
+        3200,
+        3400,
+        3600,
+        3800,
+        4000,
+        4200,
+        4400,
+        4600,
+        4800,
+        5000,
+        5200,
+        5400,
+        5600,
+        5800
+      ],
+      "normalizedOnsets": "xoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxo",
+      "globalDescription": {
+        "totalBits": 13,
+        "canonicalCode": "0110000101010"
+      }
+    },
+    {
+      "id": "rate-300",
+      "frame": {
+        "slots": 60,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          6000
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        300,
+        600,
+        900,
+        1200,
+        1500,
+        1800,
+        2100,
+        2400,
+        2700,
+        3000,
+        3300,
+        3600,
+        3900,
+        4200,
+        4500,
+        4800,
+        5100,
+        5400,
+        5700
+      ],
+      "normalizedOnsets": "xooxooxooxooxooxooxooxooxooxooxooxooxooxooxooxooxooxooxooxoo",
+      "globalDescription": {
+        "totalBits": 14,
+        "canonicalCode": "01100010010100"
+      }
+    },
+    {
+      "id": "rate-600",
+      "frame": {
+        "slots": 60,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          6000
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        600,
+        1200,
+        1800,
+        2400,
+        3000,
+        3600,
+        4200,
+        4800,
+        5400
+      ],
+      "normalizedOnsets": "xoooooxoooooxoooooxoooooxoooooxoooooxoooooxoooooxoooooxooooo",
+      "globalDescription": {
+        "totalBits": 17,
+        "canonicalCode": "01100101010100000"
+      }
+    },
+    {
+      "id": "twelve-events-200",
+      "frame": {
+        "slots": 12,
+        "slotDurationMs": "200",
+        "windowMs": [
+          0,
+          2400
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        200,
+        400,
+        600,
+        800,
+        1000,
+        1200,
+        1400,
+        1600,
+        1800,
+        2000,
+        2200
+      ],
+      "normalizedOnsets": "xxxxxxxxxxxx",
+      "globalDescription": {
+        "totalBits": 3,
+        "canonicalCode": "001"
+      }
+    },
+    {
+      "id": "twelve-events-600",
+      "frame": {
+        "slots": 12,
+        "slotDurationMs": "600",
+        "windowMs": [
+          0,
+          7200
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        600,
+        1200,
+        1800,
+        2400,
+        3000,
+        3600,
+        4200,
+        4800,
+        5400,
+        6000,
+        6600
+      ],
+      "normalizedOnsets": "xxxxxxxxxxxx",
+      "globalDescription": {
+        "totalBits": 3,
+        "canonicalCode": "001"
+      }
+    },
+    {
+      "id": "two-events",
+      "frame": {
+        "slots": 10,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          1000
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        200
+      ],
+      "normalizedOnsets": "xoxooooooo",
+      "globalDescription": {
+        "totalBits": 13,
+        "canonicalCode": "0101010000000"
+      }
+    },
+    {
+      "id": "three-events",
+      "frame": {
+        "slots": 10,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          1000
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        200,
+        400
+      ],
+      "normalizedOnsets": "xoxoxooooo",
+      "globalDescription": {
+        "totalBits": 13,
+        "canonicalCode": "0101010100000"
+      }
+    },
+    {
+      "id": "same-continuation-A",
+      "frame": {
+        "slots": 36,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          3600
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        200,
+        400,
+        600,
+        800,
+        1000,
+        1200,
+        1400,
+        1600,
+        1800,
+        2000,
+        2200,
+        2400,
+        2600,
+        2800,
+        3000,
+        3200,
+        3400
+      ],
+      "normalizedOnsets": "xoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxo",
+      "globalDescription": {
+        "totalBits": 13,
+        "canonicalCode": "0110000101010"
+      },
+      "knownContext": {
+        "historyBits": "100010001000100010001000100010001000",
+        "dictionary": [
+          "0",
+          "1000"
+        ],
+        "conditionalBlockBits": 14,
+        "canonicalCode": "00110000101010"
+      }
+    },
+    {
+      "id": "same-continuation-B",
+      "frame": {
+        "slots": 36,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          3600
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        200,
+        400,
+        600,
+        800,
+        1000,
+        1200,
+        1400,
+        1600,
+        1800,
+        2000,
+        2200,
+        2400,
+        2600,
+        2800,
+        3000,
+        3200,
+        3400
+      ],
+      "normalizedOnsets": "xoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxoxo",
+      "globalDescription": {
+        "totalBits": 13,
+        "canonicalCode": "0110000101010"
+      },
+      "knownContext": {
+        "historyBits": "100000100000100000100000100000100000",
+        "dictionary": [
+          "0",
+          "100000"
+        ],
+        "conditionalBlockBits": 14,
+        "canonicalCode": "00110000101010"
+      }
+    },
+    {
+      "id": "rate-change-double",
+      "frame": {
+        "slots": 30,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          3000
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        300,
+        600,
+        900,
+        1200,
+        1500,
+        1800,
+        2100,
+        2400,
+        2700
+      ],
+      "normalizedOnsets": "xooxooxooxooxooxooxooxooxooxoo",
+      "globalDescription": {
+        "totalBits": 13,
+        "canonicalCode": "0110010010100"
+      },
+      "knownContext": {
+        "historyBits": "100000100000100000100000100000",
+        "dictionary": [
+          "0",
+          "100000"
+        ],
+        "conditionalBlockBits": 14,
+        "canonicalCode": "00110010010100"
+      }
+    },
+    {
+      "id": "rate-change-half",
+      "frame": {
+        "slots": 30,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          3000
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        1200,
+        2400
+      ],
+      "normalizedOnsets": "xoooooooooooxoooooooooooxooooo",
+      "globalDescription": {
+        "totalBits": 20,
+        "canonicalCode": "01110111000000001000"
+      },
+      "knownContext": {
+        "historyBits": "100000100000100000100000100000",
+        "dictionary": [
+          "0",
+          "100000"
+        ],
+        "conditionalBlockBits": 21,
+        "canonicalCode": "001110111000000001000"
+      }
+    },
+    {
+      "id": "regular-600",
+      "frame": {
+        "slots": 60,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          6000
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        600,
+        1200,
+        1800,
+        2400,
+        3000,
+        3600,
+        4200,
+        4800,
+        5400
+      ],
+      "normalizedOnsets": "xoooooxoooooxoooooxoooooxoooooxoooooxoooooxoooooxoooooxooooo",
+      "globalDescription": {
+        "totalBits": 17,
+        "canonicalCode": "01100101010100000"
+      }
+    },
+    {
+      "id": "omission-at-3000",
+      "frame": {
+        "slots": 60,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          6000
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        600,
+        1200,
+        1800,
+        2400,
+        3600,
+        4200,
+        4800,
+        5400
+      ],
+      "normalizedOnsets": "xoooooxoooooxoooooxoooooxoooooooooooxoooooxoooooxoooooxooooo",
+      "globalDescription": {
+        "totalBits": 26,
+        "canonicalCode": "10100101100000000001011110"
+      }
+    },
+    {
+      "id": "accelerating",
+      "frame": {
+        "slots": 80,
+        "slotDurationMs": "50",
+        "windowMs": [
+          0,
+          4000
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        600,
+        1150,
+        1650,
+        2100,
+        2500,
+        2850,
+        3150,
+        3400,
+        3600,
+        3750,
+        3850,
+        3900
+      ],
+      "normalizedOnsets": "xoooooooooooxooooooooooxoooooooooxooooooooxoooooooxooooooxoooooxooooxoooxooxoxxo",
+      "globalDescription": {
+        "totalBits": 83,
+        "canonicalCode": "01010000000000010000000000100000000010000000010000000100000010000010000100010010110"
+      }
+    },
+    {
+      "id": "decelerating",
+      "frame": {
+        "slots": 80,
+        "slotDurationMs": "50",
+        "windowMs": [
+          0,
+          4000
+        ]
+      },
+      "eventTimesMs": [
+        0,
+        50,
+        150,
+        300,
+        500,
+        750,
+        1050,
+        1400,
+        1800,
+        2250,
+        2750,
+        3300,
+        3900
+      ],
+      "normalizedOnsets": "xxoxooxoooxooooxoooooxooooooxoooooooxooooooooxoooooooooxooooooooooxoooooooooooxo",
+      "globalDescription": {
+        "totalBits": 83,
+        "canonicalCode": "01011010010001000010000010000001000000010000000010000000001000000000010000000000010"
+      }
+    },
+    {
+      "id": "empty-window",
+      "frame": {
+        "slots": 60,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          6000
+        ]
+      },
+      "eventTimesMs": [],
+      "normalizedOnsets": "oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo",
+      "globalDescription": {
+        "totalBits": 3,
+        "canonicalCode": "000"
+      }
+    },
+    {
+      "id": "single-event",
+      "frame": {
+        "slots": 60,
+        "slotDurationMs": "100",
+        "windowMs": [
+          0,
+          6000
+        ]
+      },
+      "eventTimesMs": [
+        3000
+      ],
+      "normalizedOnsets": "ooooooooooooooooooooooooooooooxooooooooooooooooooooooooooooo",
+      "globalDescription": {
+        "totalBits": 21,
+        "canonicalCode": "101000000000001011110"
+      }
+    }
+  ],
+  "verification": {
+    "completeN16Histogram": {
+      "3": 2,
+      "11": 2,
+      "12": 6,
+      "13": 42,
+      "14": 30,
+      "15": 58,
+      "16": 158,
+      "17": 296,
+      "18": 152,
+      "19": 64790
+    },
+    "roundtripsN16": 65536,
+    "prefixFree": true,
+    "patchTemplateChecks": 1708,
+    "conditionalRoundtrips": 64386,
+    "conditionalPrefixFree": true,
+    "independentShortMinima": 510,
+    "smallScopeCodeSearchChecks": [
+      {
+        "scope": "GLOBAL_DESCRIPTION",
+        "slots": 4,
+        "codeAttempts": 248,
+        "candidateMasks": 16
+      },
+      {
+        "scope": "ISOLATED_WINDOWS",
+        "slots": 4,
+        "codeAttempts": 1984,
+        "candidateMasks": 16
+      },
+      {
+        "scope": "CAUSAL_WINDOWS",
+        "slots": 4,
+        "codeAttempts": 8128,
+        "candidateMasks": 16
+      }
+    ],
+    "longCodeSearch": {
+      "slots": 128,
+      "targetBits": 16,
+      "codeAttempts": 65536,
+      "decodedUnique": 270,
+      "exactMatchesWithConstraints": 1
+    }
+  },
+  "invalidDescriptions": [
+    {
+      "id": "reserved-tag",
+      "slots": 16,
+      "code": "110",
+      "expected": "REJECT"
+    },
+    {
+      "id": "truncated-literal",
+      "slots": 16,
+      "code": "010111111111111111",
+      "expected": "REJECT"
+    },
+    {
+      "id": "extra-bits",
+      "slots": 16,
+      "code": "0000",
+      "expected": "REJECT"
+    },
+    {
+      "id": "repeat-period-out-of-range",
+      "slots": 6,
+      "code": "01111",
+      "expected": "REJECT"
+    },
+    {
+      "id": "concat-split-out-of-range",
+      "slots": 6,
+      "code": "100101",
+      "expected": "REJECT"
+    },
+    {
+      "id": "patch-duplicate-index",
+      "slots": 4,
+      "code": "101000100101",
+      "expected": "REJECT"
+    },
+    {
+      "id": "patch-descending-indices",
+      "slots": 4,
+      "code": "101000101001",
+      "expected": "REJECT"
+    },
+    {
+      "id": "patch-index-out-of-range",
+      "slots": 3,
+      "code": "10100111",
+      "expected": "REJECT"
+    },
+    {
+      "id": "repeat-disabled-for-one-slot",
+      "slots": 1,
+      "code": "011",
+      "expected": "REJECT"
+    }
+  ]
+}
