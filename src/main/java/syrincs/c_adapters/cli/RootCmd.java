@@ -8,6 +8,7 @@ import picocli.CommandLine.Parameters;
 import picocli.CommandLine.ParentCommand;
 import syrincs.a_domain.Tone;
 import syrincs.b_application.UseCaseInteractor;
+import syrincs.b_application.rhythm.information.RhythmInformationFacade;
 import syrincs.b_application.AppDefaults;
 import syrincs.b_application.ports.dto.BeatProfileCriteria;
 import syrincs.b_application.ports.dto.DeviationRange;
@@ -36,7 +37,8 @@ import java.util.concurrent.Callable;
                 RootCmd.CalculateCmd.class,
                 RootCmd.AnalyzeCmd.class,
                 RootCmd.SearchCmd.class,
-                RootCmd.DeleteCmd.class
+                RootCmd.DeleteCmd.class,
+                RhythmInfoCmd.class
         }
 )
 public class RootCmd implements Runnable {
@@ -44,6 +46,7 @@ public class RootCmd implements Runnable {
     final UseCaseInteractor midiInteractor;
     final MidiDeviceQueryPort deviceQuery;
     final LocalRuntime runtime;
+    final RhythmInformationFacade informationFacade;
 
     public RootCmd(UseCaseInteractor interactor, MidiDeviceQueryPort deviceQuery) {
         this(interactor, interactor, deviceQuery, null);
@@ -57,10 +60,17 @@ public class RootCmd implements Runnable {
                    UseCaseInteractor midiInteractor,
                    MidiDeviceQueryPort deviceQuery,
                    LocalRuntime runtime) {
+        this(interactor, midiInteractor, deviceQuery, runtime, null);
+    }
+
+    public RootCmd(UseCaseInteractor interactor, UseCaseInteractor midiInteractor,
+                   MidiDeviceQueryPort deviceQuery, LocalRuntime runtime,
+                   RhythmInformationFacade informationFacade) {
         this.interactor = interactor;
         this.midiInteractor = midiInteractor;
         this.deviceQuery = deviceQuery;
         this.runtime = runtime;
+        this.informationFacade = informationFacade;
     }
 
     @Override
@@ -91,6 +101,13 @@ public class RootCmd implements Runnable {
         CommandLine search = root.getSubcommands().get("search");
         if (search != null) {
             printSubcommandUsage(search, "rhythms");
+        }
+        CommandLine information = root.getSubcommands().get("rhythm-info");
+        if (information != null) {
+            printSubcommandUsage(root, "rhythm-info");
+            printSubcommandUsage(information, "analyze");
+            printSubcommandUsage(information, "generate");
+            printSubcommandUsage(information, "decode");
         }
     }
 

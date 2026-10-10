@@ -6,6 +6,12 @@ Anwendung analysiert und erzeugt Akkorde nach Paul Hindemith, bewertet binäre
 musikalisches Material über SuperCollider/OSC oder `javax.sound.midi` aus.
 PostgreSQL speichert erzeugte Akkorde und Rhythmen.
 
+Der zusätzliche Bereich `rhythm-info` analysiert und erzeugt Rhythmen nach
+dem exakten Beschreibungsmaß `description-v1` in Bits. Er rekonstruiert
+Codewörter und unterstützt globale, isolierte und kausale Werte für
+1..128 Positionen, ohne DB oder Audiozugriff. Die bisherigen Endpunkte
+behalten ihre Bedeutung und ihr Informationsmaß.
+
 Der aktuelle Schwerpunkt liegt auf vier durchgängigen Wegen:
 
 - Hindemith-Akkorde ohne externe Dienste analysieren;
@@ -111,6 +117,10 @@ syrincs
 │   └── rhythms                alle 2^16 Onset-Pattern speichern
 ├── search
 │   └── rhythms --info N       eindeutige DB-Kandidaten ohne Playback suchen
+├── rhythm-info                neues Beschreibungsmaß in Bits, ohne DB/Audio
+│   ├── analyze ONSETS         exakte Analyse mit explizitem Scope und Kontext
+│   ├── generate               Ziele und AND-Parameter, drei Suchstrategien
+│   └── decode                 unabhängige Rekonstruktion eines Codeworts
 └── play
     ├── note                   einzelne Note; Default: OSC
     ├── chords                 DB-Akkorde; Default: OSC
@@ -411,6 +421,36 @@ Ohne `--dry-run` folgt auf die Ausgabe das Playback. `search rhythms`
 zeigt stattdessen die Kandidatenliste ohne Zufallsauswahl und unterstützt
 exakte Beat-Profile und Peak-Positionen. Diese Filter sind nicht Teil des
 Playbacks; Profilähnlichkeit und mehrtaktige Informationsverläufe bleiben offen.
+
+## Neues Beschreibungsmaß und gezielte Generierung
+
+```bash
+syrincs rhythm-info analyze "xooo xooo xooo xooo"
+syrincs rhythm-info analyze "xooo xooo xooo xooo" --scope causal --window-slots 4 --bar-slots 16 --include-global
+syrincs rhythm-info decode --slots 16 --code 0110110101000 --analyze
+syrincs rhythm-info generate --slots 16 --info 13 --onset-min 4 --onset-max 4 --required-positions 0,4,8,12 --strategy exhaustive --limit 8
+```
+
+Das erste Beispiel liefert global 13 Bits. Die kausale Analyse liefert
+`[8,8,3,3]` und Summe 22 unter tatsächlichem Vorlauf; diese Summe ist keine
+Zerlegung der globalen 13 Bits. Jedes Ergebnis nennt Maß, Scope, Einheit,
+Kostenzerlegung, Code und Zahl optimaler Beschreibungen. Das Maß beschreibt
+die kürzeste Nachricht innerhalb der versionierten Sprache, nicht
+automatisch gehörte Schwierigkeit oder Überraschung.
+
+Die Vollsuche unterstützt N≤16. `--limit` begrenzt ihre Ausgabe, nicht
+die Trefferzählung. Längere Aufträge wählen ausdrücklich `code-length`
+oder `random` mit positivem `--attempt-budget`; Zufall benötigt `--seed`.
+Status und unbekannte Vollständigkeit werden auch bei null Treffern
+ausgegeben. Ein Budgetabbruch liefert korrekte Teilresultate und Exitcode 3.
+`NO_SOLUTION` ist nur nach vollständiger Abdeckung zulässig.
+
+`--format json` erzeugt ein versioniertes Ergebnisdokument. Für komplexe
+Profile, Referenzen und exakte Ereigniszeitpunkte gibt es `--request FILE`.
+Ausprobierbeispiele, JSON-Dateien, Zeitbedingungen und die vollständigen
+Grenzen stehen in der [Präsentation des neuen Maßes](doc/rhythm-generator/README.md#neues-beschreibungsmaß-ausprobieren).
+Neue Werte werden weder in bestehende Katalogspalten geschrieben noch
+automatisch an Playback übergeben.
 
 ## RDL-0
 

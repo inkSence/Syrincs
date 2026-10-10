@@ -35,6 +35,10 @@ class RootCmdCompletionCliTest {
         assertTrue(rootCommands.contains("status"));
         assertTrue(rootCommands.contains("analyze"));
         assertTrue(rootCommands.contains("search"));
+        assertTrue(rootCommands.contains("rhythm-info"));
+        assertTrue(text.contains("--attempt-budget"));
+        assertTrue(text.contains("--window-slots"));
+        assertTrue(text.contains("--code"));
         assertTrue(text.contains("--info"));
         assertTrue(text.contains("--limit"));
         assertTrue(text.contains("syrincs_search_rhythms"));

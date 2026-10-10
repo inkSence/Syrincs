@@ -5,6 +5,13 @@ Spezifikationsvorschlag für einen anschließenden Implementierungsplan.
 Codebasis: `a22e024`, einschließlich der Literaturauswertung und der
 kapitelweisen Lektüre von *Hearing in Time*.
 
+Die folgende Darstellung dokumentiert den Entwurf vor seiner Umsetzung.
+Der [Implementierungsplan](04-implementierungsplan.md) ist inzwischen bis
+Lieferstufe L3 realisiert. Aktuelle Bedienbeispiele stehen in der
+[Feature-Präsentation](../README.md#neues-beschreibungsmaß-ausprobieren),
+Abnahme und technische Grenzen im
+[Umsetzungsnachweis](05-umsetzungsnachweis.md).
+
 Diese Spezifikationen führen Philipps Ziel, den bestehenden Code und den
 Stand der Literatur zusammen. **Information bezeichnet verbleibende
 Beschreibungslänge einschließlich neu benötigter zeitlicher Regeln.**
@@ -58,6 +65,7 @@ mathematische Definition, keinen solchen Wahrnehmungsnachweis.
 | [02 – Analyse und Generierung](02-analyse-und-generierung.md) | Analyseergebnisse, Taktvertrag, Parameter, Suchstatus, Reproduzierbarkeit, Architektur und Kompatibilität. |
 | [03 – Prüffälle und Abnahme](03-prueffaelle-und-abnahme.md) | Durchgerechnete Beispiele, Gegenproben, Invarianten und Anforderungen mit überprüfbarer Abnahme. |
 | [04 – Implementierungsplan](04-implementierungsplan.md) | Neue CLI-Endpunkte, Datenverträge, Arbeitspakete, Abhängigkeiten und überprüfbare Lieferstufen; bestehende Endpunkte bleiben erhalten. |
+| [05 – Umsetzungsnachweis](05-umsetzungsnachweis.md) | Realisierte Arbeitspakete, ausgeführte Abnahme, reproduzierbare Ergebnisse und Laufzeit-/Speicherbefunde. |
 | [Numerische Fixtures](fixtures-description-v1.json) | Maschinenlesbare Beispielwerte und kanonische Beschreibungen für spätere Vertragstests. |
 
 **MUSS** bezeichnet eine Anforderung innerhalb dieses Vorschlags.

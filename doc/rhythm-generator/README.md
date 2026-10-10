@@ -1,22 +1,27 @@
 # Rhythmusmodul und Rhythmus-Generator
 
-Der Rhythmus-Generator erzeugt und bewertet alle binären Rhythmen eines
+Das Rhythmusmodul bietet zwei Informationsmaße. Der bisherige
+Rhythmus-Generator erzeugt und bewertet alle binären Rhythmen eines
 4/4-Takts im 16tel-Raster und speichert sie in PostgreSQL. „Huffman“ bezeichnet
 hier das projektinterne Informationsmaß; der Generator baut keinen klassischen
-Huffman-Baum und komprimiert keine Audiodaten.
+Huffman-Baum und komprimiert keine Audiodaten. Der neue Bereich `rhythm-info`
+analysiert und erzeugt Folgen nach exakten Beschreibungskosten in Bits,
+auch mit mehreren Takten und ausdrücklich gewählten Bedingungen.
 
 Diese Dokumentation beschreibt den aktuellen Stand. Informationsprofile
 pro Beat sind öffentlich abrufbar und mit `analyze rhythm --details` sichtbar.
 Die Zufallsauswahl ist mit `--seed` reproduzierbar und mit `--dry-run` ohne
 Playback sichtbar. Die reine Suche unterstützt exakte Beat-Profile und
-Peak-Positionen; allgemeine Profilformen sind noch nicht implementiert.
+Peak-Positionen; allgemeine Profilformen sind dort noch nicht implementiert.
+Neue Fenster- und Taktprofile gehören zum zusätzlichen Beschreibungsmaß.
 
 Der weiterführende
 [Spezifikationsvorschlag zum Informationsmaß](specs-informationsmass/README.md)
 verbindet diesen Code mit dem angestrebten Beschreibungsmaß und der
 Literaturauswertung, insbesondere *Hearing in Time*. Er definiert einen
-zusätzlichen Analyse- und Generierungsmodus für einen späteren
-Implementierungsplan; dessen Befehle sind noch nicht implementiert.
+zusätzlichen Analyse- und Generierungsmodus. Dessen Umsetzung steht unter
+`syrincs rhythm-info analyze`, `generate` und `decode` bereit; die
+bestehenden Befehle verwenden weiterhin das bisherige Maß.
 
 ## Funktionsübersicht des Rhythmusmoduls
 
@@ -27,6 +32,9 @@ Huffman-Analyse.
 
 | Funktion | Einstieg | Aktuelles Verhalten |
 | --- | --- | --- |
+| Beschreibungsmaß analysieren | `rhythm-info analyze ONSETS` | Exaktes globales oder segmentiertes Minimum in Bits, Codec-Belege, Kontext, Mehrdeutigkeit und optionale Referenzprüfung; ohne DB/Audio. |
+| Nach neuen Bitzielen erzeugen | `rhythm-info generate` | Ereignis-/Profilbedingungen mit UND, vollständige Maskensuche N≤16 oder budgetierte Code-/Zufallssuche N≤128; keine Persistenz oder Wiedergabe. |
+| Neue Codes rekonstruieren | `rhythm-info decode` | Unabhängiger strikter Decoder für globale, isolierte und kausale Nachrichten; optional zusätzliche Minimierung. |
 | Onsets analysieren | `analyze rhythm "xooo xoxo xooo xoxo" [--details]` | Normalisierung, Gesamtinformation, Standardabweichung und Beat-Onset-Strings ausgeben; optional Beat-Informationswerte und Mittelwert, ohne DB oder Playback. |
 | Schema vorbereiten | `init` | Rhythmustabelle anlegen oder älteres Schema ergänzen. |
 | Rhythmen erzeugen | `calculate rhythms` | Alle 65.536 eintaktigen 4/4-Pattern bewerten und speichern. |
@@ -41,6 +49,180 @@ Huffman-Analyse.
 Bedienbeispiele und Formatdetails stehen im Haupt-README unter
 [Huffman-Rhythmik](../../README.md#huffman-rhythmik),
 [RDL-0](../../README.md#rdl-0) und [MIDI](../../README.md#midi).
+
+## Neues Beschreibungsmaß ausprobieren
+
+Die folgenden Beispiele verwenden das mit unterdrückter Completion-
+Installation gebaute App-Artefakt:
+
+```bash
+mvn package -Dsyrincs.skipCompletionInstall=true
+```
+
+Sie benötigen weder PostgreSQL noch MIDI oder SuperCollider. Hilfe und
+Completion zeigen die vollständigen Optionen der drei neuen Endpunkte.
+
+### 1. Eine einfache Regel erklären und rekonstruieren
+
+```bash
+target/app/bin/syrincs rhythm-info analyze "xooo xooo xooo xooo"
+target/app/bin/syrincs rhythm-info decode --slots 16 --code 0110110101000 --analyze
+target/app/bin/syrincs rhythm-info analyze "xoxoxox" --format json
+```
+
+Die Viertelfolge kostet **13 Bits**, mit dem Code `0110110101000`.
+Der Decoder rekonstruiert daraus dieselben Onsets, ohne den ursprünglichen
+Rhythmus zu kennen. Das Siebener-Beispiel kostet 10 Bits und besitzt drei
+optimale Codes; ein Anzeigelimit ändert ihre Zahl nicht. Diese Mehrdeutigkeit
+betrifft Beschreibungen, keine automatisch erkannten Metren.
+
+### 2. Aufbau und Fortführung auseinanderhalten
+
+```bash
+target/app/bin/syrincs rhythm-info analyze "xooo xooo xooo xooo" \
+  --scope causal --window-slots 4 --bar-slots 16 --include-global
+target/app/bin/syrincs rhythm-info analyze "xooo xooo xooo xooo xooo xooo xooo xooo" \
+  --scope causal --window-slots 4 --bar-slots 16 --include-global
+target/app/bin/syrincs rhythm-info analyze "xooo xooo xooo xooo xooo xooo xooo xooo" \
+  --scope isolated --window-slots 16 --bar-slots 16 --include-global
+```
+
+Ohne Vorlauf liefert der erste Takt `[8,8,3,3]`, Summe 22. Zwei Takte
+liefern kausale Taktbeiträge `[22,12]`, Summe 34. Separat beschriebene
+Takte ergeben `[13,13]`, Summe 26; das gemeinsame globale Minimum ist 14.
+Diese Werte beantworten unterschiedliche Fragen. `--history` fügt
+tatsächlich bekannten Vorlauf hinzu; der Kontext wird nicht pro Beat
+zurückgesetzt. Ohne explizite Referenz heißen die Segmente Fenster.
+
+### 3. Einen Rhythmus aus Bedingungen erzeugen
+
+```bash
+target/app/bin/syrincs rhythm-info generate --slots 16 --info 13 \
+  --onset-min 4 --onset-max 4 --required-positions 0,4,8,12 \
+  --strategy exhaustive --limit 8 --format json
+target/app/bin/syrincs rhythm-info generate --slots 16 --info 12 \
+  --onset-min 4 --onset-max 4 --required-positions 0,4,8,12 \
+  --strategy exhaustive --limit 8
+```
+
+Der erste Auftrag findet genau die Viertelfolge und meldet eine vollständige
+Suche mit sieben fehlenden Exemplaren zur gewünschten Zahl acht. Der zweite
+beweist `NO_SOLUTION`. Ohne die Ereignisbedingungen hat D=13 genau 42
+Treffer. Etwa 98,86 Prozent des gesamten N=16-Raums kosten hingegen 19 Bits;
+die Skala hat Lücken und ist kein stufenloser Ersatz alter Informationsgrade.
+
+Dichte, Einsatzanzahl, Pflicht-/Verbotspositionen, lineare Mindestabstände
+und größte Nullfolge werden mit UND verknüpft. Profil-/Peak-/Deviation-
+Optionen verlangen einen ausdrücklich lokalen Scope. Neue Deviation-
+Grenzen vergleichen exakte rationale Varianzen; Positionsbedingungen sind
+nullbasiert, Peaks einbasiert und lassen Gleichstände zu.
+
+### 4. Niedrige Ziele in längeren Folgen finden
+
+```bash
+target/app/bin/syrincs rhythm-info generate --slots 128 --info 16 \
+  --strategy code-length --attempt-budget 65536 --limit 5
+target/app/bin/syrincs rhythm-info generate --slots 16 --info 19 \
+  --strategy random --attempt-budget 100 --limit 4 --seed 42
+```
+
+Codesuche untersucht alle Nachrichten der Zielbitlänge in `shortlex-code-v1`
+und bewertet jede neu dekodierte Folge erneut. Die erste Suche deckt alle
+65.536 16-Bit-Nachrichten ab; ihre ausgegebenen Rhythmen sind tatsächlich
+minimal mit 16 Bits beschreibbar. Sie braucht keine Maskenvollsuche über
+`2^128` Folgen. Eine zusätzliche Beschränkung auf genau 32 Einsätze an
+0,4,…,124 lässt ausschließlich die Viertelfolge übrig.
+
+Die JSON-Felder `maskSpaceSize` und `codeSpaceSize` unterscheiden den
+gesamten Ereignisraum vom geprüften Nachrichtenraum; `attempts` zählt
+die tatsächlich besuchten Nachrichten einschließlich ungültiger Codes.
+
+Zufallssuche zieht mit `java.util.Random` je Versuch N binäre Positionen.
+Duplikate zählen zum Budget; ausreichend Treffer dürfen vorzeitig stoppen.
+`FIRST` sortiert diese gefundenen Treffer. Es verspricht keinen vollständigen
+Bestand und keine Gleichverteilung unter passenden Rhythmen. Reproduktion
+benötigt Anfrage, Seed sowie Maß-/Kontext-/Strategieversionen.
+
+`--selection random-without-replacement --seed 42` ist für vollständige
+systematische Trefferbestände verfügbar. Bricht eine Codesuche vorher ab,
+wird diese Zufallsauswahl nicht ausgeführt; das Ergebnis enthält die
+kanonische Teilmenge und `selectionPerformed=false`.
+
+### 5. Zeitrahmen und komplexe JSON-Anfragen
+
+```bash
+target/app/bin/syrincs rhythm-info analyze "xooo xooo xooo xooo" \
+  --tempo 108 --ticks-per-quarter 4 --time-signature 4/4 --compare-legacy
+target/app/bin/syrincs rhythm-info analyze --request data/rhythm-info/events.json --format json
+target/app/bin/syrincs rhythm-info generate --request data/rhythm-info/causal-phrase.json --format json
+```
+
+108 Viertel-BPM und vier Positionen pro Viertel ergeben exakt `1250/9` ms
+pro Position. Das globale Minimum bleibt 13 Bits; der ausdrücklich getrennte
+Legacy-Vergleich liefert einen Codesymbolwert von 1. Ohne Zeitparameter
+bleibt Zeit unbekannt. Es gibt keinen neuen 120-BPM- oder 4/4-Default.
+
+Die Beispieldateien zeigen exakte Ereigniszeiten sowie kausale Mehrtaktziele
+mit Einsatzbedingungen. Die kausale Beispielphrase verlangt 64
+Fortsetzungsbits und Taktbeiträge `[32,32]`. Sie nutzt Zufallssuche mit kleinem
+Budget; das Ziel wird durch Zufallssuche allgemein nicht garantiert erreicht.
+Für Eingabedateien gelten die
+[Anfrageschemas](../../src/main/resources/rhythm-information/request-v1.schema.json)
+und das [Referenzschema](../../src/main/resources/rhythm-information/references-v1.schema.json);
+Ausgaben entsprechen dem
+[Ergebnisschema](../../src/main/resources/rhythm-information/result-v1.schema.json).
+Die Schemas prüfen Struktur; die Anwendung prüft zusätzlich exakte Raster,
+Partitionen, Hierarchien und widersprüchliche Bedingungen. `--request`
+wird mit keinen weiteren fachlichen Flags vermischt; Ausgabeoptionen sind
+weiterhin zulässig.
+
+Referenzen geben Zyklus, Phase, aktive Ebenen und Herkunft explizit an:
+
+```bash
+target/app/bin/syrincs rhythm-info analyze "xooo xooo xooo xooo" \
+  --tempo 108 --ticks-per-quarter 4 --time-signature 4/4 \
+  --references data/rhythm-info/four-four-reference.json \
+  --reference-profile london-time-window-v1
+```
+
+Das Profil prüft nur zyklische aktive Mindestabstände, Beat-Abstände und
+Zyklusdauer unter den in M07 festgelegten Grenzen. Es meldet `PASS`,
+`FAIL` oder `NOT_EVALUABLE`; ohne Zeit/Referenz gibt es keinen bestandenen
+Nachweis. Das technische Raster ist keine automatisch aktive Ebene.
+Die Darstellung einer Referenz ändert den strukturellen Codewert nicht.
+
+JSON-Resultate stehen als ein Dokument auf stdout. Große Zähler und Seeds
+sind Dezimalstrings, rationale Größen Bruchstrings. Fachliche und I/O-Fehler
+werden bei `--format json` als Fehlerobjekt auf stderr ausgegeben;
+Picocli-Syntaxfehler bleiben dessen Fehlermeldungen. Exitcodes der neuen
+Endpunkte: 0 für erfolgreiche Verarbeitung einschließlich bewiesener
+Unerreichbarkeit, 2 für Eingabefehler, 3 für budget-/abbruchbedingte
+Teilresultate, 1 für I/O-/Berechnungsfehler.
+
+### Implementierung und Prüfbasis
+
+Domäne: [`rhythm/information`](../../src/main/java/syrincs/a_domain/rhythm/information).
+Use Cases: [`rhythm/information`](../../src/main/java/syrincs/b_application/rhythm/information).
+CLI: [`RhythmInfoCmd`](../../src/main/java/syrincs/c_adapters/cli/RhythmInfoCmd.java).
+Die neue Maßversion verwendet einen vollständigen Minimierer und einen
+unabhängigen Decoder. Optimale Codes sind als kompakter DAG mit exakter
+Anzahl und begrenzter Ansicht darstellbar. Kein Generator filtert bloße
+Zeugenlängen oder Näherungen als exakte Information.
+
+Der JSON-Adapter verwendet Gson 2.14.0, abgeglichen mit den
+[offiziellen Gson-Releases](https://github.com/google/gson/releases).
+Gson-, Picocli-, JDBC- und MIDI-Typen bleiben außerhalb des neuen fachlichen
+Kerns. Weder alte Datenbankspalten noch das alte Kick-/Snare-Mapping werden
+für neue Bitwerte umgedeutet. Neue Wiedergabe und Persistenz bleiben eigene
+Folgeaufträge.
+
+Die [Fixtures](specs-informationsmass/fixtures-description-v1.json),
+unabhängige kurze Codeenumerationen, das vollständige N=16-Histogramm und
+kleine Scope-Suchvergleiche sind ausführbare Testverträge. Prozessprüfungen
+mit absichtlich ungültiger DB-Konfiguration sichern den unabhängigen neuen
+Einstieg; Legacy-CLI-Tests sichern die bisherigen Endpunkte.
+Der [Umsetzungsnachweis](specs-informationsmass/05-umsetzungsnachweis.md)
+ordnet die Abnahme den Arbeitspaketen zu und dokumentiert gemessene Laufzeiten.
 
 ## Eigenständige Analyse
 
