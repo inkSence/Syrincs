@@ -6,6 +6,7 @@ import syrincs.b_application.*;
 import syrincs.b_application.ports.MidiOutputPort;
 import syrincs.c_adapters.midi.*;
 import syrincs.c_adapters.cli.RootCmd;
+import syrincs.b_application.rhythm.information.RhythmInformationFacade;
 import syrincs.c_adapters.osc.SuperColliderOscOutputAdapter;
 import syrincs.c_adapters.postgres.PostgresHindemithChordRepository;
 import syrincs.c_adapters.postgres.PostgresRhythmRepository;
@@ -16,6 +17,14 @@ import java.util.List;
 
 public class Main {
     public static void main(String[] args) throws Exception {
+        String[] filtered = filterDbArgs(args);
+        // Classify through Picocli metadata, not substring matching in filenames/onsets.
+        if (isRhythmInformationPath(filtered)) {
+            var pure = new CommandLine(new RootCmd(null, null, null, null, new RhythmInformationFacade()));
+            int exitCode = pure.execute(filtered);
+            if (exitCode != 0) System.exit(exitCode);
+            return;
+        }
         var midiAdapter = new JdkMidiOutputAdapter();
         var scAdapter = new SuperColliderOscOutputAdapter();
         var dbCfg = syrincs.d_frameworksAndDrivers.AppConfig.loadDbConfig(args);
@@ -26,9 +35,6 @@ public class Main {
 
         var defaultInteractor = buildInteractor(scAdapter, repo, rhythmRepo, rhythmPlayback);
         var midiInteractor = buildInteractor(midiAdapter, repo, rhythmRepo, rhythmPlayback);
-
-        // Filter out DB-related CLI flags before passing to PicoCli so they don't appear in help
-        String[] filtered = filterDbArgs(args);
 
         // If root-level help requested, print extended help including subcommand usages and exit
         if (isRootHelpRequest(filtered)) {
@@ -42,6 +48,22 @@ public class Main {
         if (exitCode != 0) {
             System.exit(exitCode);
         }
+    }
+
+    private static boolean isRhythmInformationPath(String[] args) {
+        CommandLine metadata = new CommandLine(new RootCmd(null, (syrincs.b_application.ports.MidiDeviceQueryPort) null));
+        try {
+            CommandLine.ParseResult result = metadata.parseArgs(args);
+            while (result != null) {
+                if ("rhythm-info".equals(result.commandSpec().name())) return true;
+                result = result.subcommand();
+            }
+        } catch (CommandLine.ParameterException e) {
+            for (CommandLine selected = e.getCommandLine(); selected != null; selected = selected.getParent()) {
+                if ("rhythm-info".equals(selected.getCommandName())) return true;
+            }
+        }
+        return false;
     }
 
     private static UseCaseInteractor buildInteractor(MidiOutputPort output,

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "rhythm-info-request-v1",
+  "kind": "analyze",
+  "measureId": "description-v1",
+  "scope": "GLOBAL_DESCRIPTION",
+  "frame": {
+    "slots": 16,
+    "time": {
+      "status": "KNOWN",
+      "slotDurationMs": "125/1"
+    }
+  },
+  "eventTimesMs": [
+    "0/1",
+    "500/1",
+    "1000/1",
+    "1500/1"
+  ]
+}

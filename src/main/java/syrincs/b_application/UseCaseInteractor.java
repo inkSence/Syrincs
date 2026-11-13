@@ -8,6 +8,8 @@ import syrincs.a_domain.rhythm.RhythmSpec;
 import syrincs.a_domain.rhythm.VoiceSpec;
 import syrincs.a_domain.rhythm.HuffmanRhythm;
 import syrincs.b_application.ports.RhythmRepository;
+import syrincs.b_application.ports.dto.BeatProfileCriteria;
+import syrincs.b_application.ports.dto.DeviationRange;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,7 +31,8 @@ public class UseCaseInteractor {
     private final AnalyseRhythmUseCase analyseRhythmUseCase;
     private final GenerateAndPersistRhythmUseCase generateAndPersistRhythmUseCase;
     private final PlayHuffmanRhythmsUseCase playHuffmanRhythmsUseCase; // optional
-    private final RhythmRepository huffmanRhythmRepository; // optional
+    private final SearchRhythmsUseCase searchRhythmsUseCase; // optional
+    private final SelectRhythmsUseCase selectRhythmsUseCase; // optional
 
 
     public UseCaseInteractor(SendToMidiUseCase send,
@@ -83,7 +86,8 @@ public class UseCaseInteractor {
         this.persistUseCase = Objects.requireNonNull(persistUseCase);
         this.generateAndPersistRhythmUseCase = generateAndPersistRhythmUseCase; // optional
         this.playHuffmanRhythmsUseCase = playHuffmanRhythmsUseCase; // optional
-        this.huffmanRhythmRepository = huffmanRhythmRepository; // optional
+        this.searchRhythmsUseCase = huffmanRhythmRepository == null ? null : new SearchRhythmsUseCase(huffmanRhythmRepository);
+        this.selectRhythmsUseCase = searchRhythmsUseCase == null ? null : new SelectRhythmsUseCase(searchRhythmsUseCase);
     }
 
     public List<HindemithChord> findChordsFor(List<Integer> numNotes, List<Integer> groups, Integer rootNote) {
@@ -191,6 +195,18 @@ public class UseCaseInteractor {
         return generateAndPersistRhythmUseCase.generateAllRhythmsOfFourQuarters();
     }
 
+    public SearchRhythmsUseCase.Result searchRhythms(int information, DeviationRange range, int limit) {
+        return searchRhythms(information, range, limit, new BeatProfileCriteria(null, null));
+    }
+
+    public SearchRhythmsUseCase.Result searchRhythms(int information, DeviationRange range, int limit,
+                                                  BeatProfileCriteria criteria) {
+        if (searchRhythmsUseCase == null) {
+            throw new IllegalStateException("RhythmRepository not wired in UseCaseInteractor");
+        }
+        return searchRhythmsUseCase.search(information, range, limit, criteria);
+    }
+
     public void playRhythms(List<HuffmanRhythm> rhythms) throws Exception {
         if (playHuffmanRhythmsUseCase == null) {
             throw new IllegalStateException("PlayHuffmanRhythmsUseCase not wired in UseCaseInteractor");
@@ -206,48 +222,32 @@ public class UseCaseInteractor {
     }
 
     /**
-     * Loads, for each requested information grade, matching rhythms with enough beat-to-beat
-     * variation and picks one at random.
-     * The selected rhythms are then played sequentially.
+     * Convenience playback for non-CLI callers. Selection fails atomically if a
+     * position has no candidate; presentation belongs to the calling adapter.
      */
     public void playRhythmsByInformationGrades(List<Integer> informationGrades) throws Exception {
         playRhythmsByInformationGrades(informationGrades, null);
     }
 
     public void playRhythmsByInformationGrades(List<Integer> informationGrades, String deviceNameSubstring) throws Exception {
-        if (huffmanRhythmRepository == null) {
+        playRhythmsByInformationGrades(informationGrades, deviceNameSubstring, null);
+    }
+
+    /**
+     * An explicit range replaces the legacy strict minimum completely.
+     * Null keeps that default; a range with both bounds absent is unfiltered.
+     */
+    public void playRhythmsByInformationGrades(List<Integer> informationGrades, String deviceNameSubstring,
+                                              DeviationRange range) throws Exception {
+        var selection = selectRhythmsByInformationGrades(informationGrades, range, null);
+        playRhythms(selection.rhythms(), deviceNameSubstring);
+    }
+
+    public SelectRhythmsUseCase.Selection selectRhythmsByInformationGrades(List<Integer> informationGrades,
+                                                                         DeviationRange range, Long seed) {
+        if (selectRhythmsUseCase == null) {
             throw new IllegalStateException("RhythmRepository not wired in UseCaseInteractor");
         }
-        if (informationGrades == null || informationGrades.isEmpty()) return;
-        java.util.List<HuffmanRhythm> selection = new java.util.ArrayList<>();
-        java.util.List<Integer> gradesWithoutCandidates = new java.util.ArrayList<>();
-        java.util.concurrent.ThreadLocalRandom rnd = java.util.concurrent.ThreadLocalRandom.current();
-        for (Integer info : informationGrades) {
-            if (info == null) continue;
-            List<HuffmanRhythm> candidates = huffmanRhythmRepository.getAllByInformationAndMinDeviation(
-                    info,
-                    AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION
-            );
-            if (candidates == null || candidates.isEmpty()) {
-                gradesWithoutCandidates.add(info);
-                continue;
-            }
-            int idx = (candidates.size() == 1) ? 0 : rnd.nextInt(candidates.size());
-            selection.add(candidates.get(idx));
-        }
-        if (selection.isEmpty()) {
-            throw new IllegalStateException(
-                    "No stored Huffman rhythms found for information grades " + gradesWithoutCandidates
-                            + " with deviation > " + AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION
-                            + ". Fill the rhythm database with `syrincs init` and `syrincs calculate rhythms`, "
-                            + "then retry `syrincs play rhythm info "
-                            + informationGrades.stream()
-                                    .filter(Objects::nonNull)
-                                    .map(String::valueOf)
-                                    .collect(java.util.stream.Collectors.joining(" "))
-                            + "`."
-            );
-        }
-        playRhythms(selection, deviceNameSubstring);
+        return selectRhythmsUseCase.select(informationGrades, range, seed);
     }
 }

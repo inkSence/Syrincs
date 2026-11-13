@@ -8,6 +8,10 @@ import picocli.CommandLine.Parameters;
 import picocli.CommandLine.ParentCommand;
 import syrincs.a_domain.Tone;
 import syrincs.b_application.UseCaseInteractor;
+import syrincs.b_application.rhythm.information.RhythmInformationFacade;
+import syrincs.b_application.AppDefaults;
+import syrincs.b_application.ports.dto.BeatProfileCriteria;
+import syrincs.b_application.ports.dto.DeviationRange;
 import syrincs.b_application.ports.MidiDeviceQueryPort;
 import syrincs.c_adapters.RhythmFileParser;
 import syrincs.c_adapters.osc.SuperColliderOscOutputAdapter;
@@ -32,7 +36,9 @@ import java.util.concurrent.Callable;
                 RootCmd.PlayCmd.class,
                 RootCmd.CalculateCmd.class,
                 RootCmd.AnalyzeCmd.class,
-                RootCmd.DeleteCmd.class
+                RootCmd.SearchCmd.class,
+                RootCmd.DeleteCmd.class,
+                RhythmInfoCmd.class
         }
 )
 public class RootCmd implements Runnable {
@@ -40,6 +46,7 @@ public class RootCmd implements Runnable {
     final UseCaseInteractor midiInteractor;
     final MidiDeviceQueryPort deviceQuery;
     final LocalRuntime runtime;
+    final RhythmInformationFacade informationFacade;
 
     public RootCmd(UseCaseInteractor interactor, MidiDeviceQueryPort deviceQuery) {
         this(interactor, interactor, deviceQuery, null);
@@ -53,10 +60,17 @@ public class RootCmd implements Runnable {
                    UseCaseInteractor midiInteractor,
                    MidiDeviceQueryPort deviceQuery,
                    LocalRuntime runtime) {
+        this(interactor, midiInteractor, deviceQuery, runtime, null);
+    }
+
+    public RootCmd(UseCaseInteractor interactor, UseCaseInteractor midiInteractor,
+                   MidiDeviceQueryPort deviceQuery, LocalRuntime runtime,
+                   RhythmInformationFacade informationFacade) {
         this.interactor = interactor;
         this.midiInteractor = midiInteractor;
         this.deviceQuery = deviceQuery;
         this.runtime = runtime;
+        this.informationFacade = informationFacade;
     }
 
     @Override
@@ -74,15 +88,38 @@ public class RootCmd implements Runnable {
             printSubcommandUsage(play, "note");
             printSubcommandUsage(play, "chords");
             printSubcommandUsage(play, "rhythm");
+            CommandLine rhythm = play.getSubcommands().get("rhythm");
+            if (rhythm != null) {
+                printSubcommandUsage(rhythm, "info", "play rhythm info");
+            }
             printSubcommandUsage(play, "sc");
+        }
+        CommandLine analyze = root.getSubcommands().get("analyze");
+        if (analyze != null) {
+            printSubcommandUsage(analyze, "rhythm");
+        }
+        CommandLine search = root.getSubcommands().get("search");
+        if (search != null) {
+            printSubcommandUsage(search, "rhythms");
+        }
+        CommandLine information = root.getSubcommands().get("rhythm-info");
+        if (information != null) {
+            printSubcommandUsage(root, "rhythm-info");
+            printSubcommandUsage(information, "analyze");
+            printSubcommandUsage(information, "generate");
+            printSubcommandUsage(information, "decode");
         }
     }
 
     private static void printSubcommandUsage(CommandLine parent, String name) {
+        printSubcommandUsage(parent, name, parent.getCommandName() + " " + name);
+    }
+
+    private static void printSubcommandUsage(CommandLine parent, String name, String displayName) {
         CommandLine subcommand = parent.getSubcommands().get(name);
         if (subcommand != null) {
             System.out.println();
-            System.out.println("Subcommand 'play " + name + "' usage:");
+            System.out.println("Subcommand '" + displayName + "' usage:");
             subcommand.usage(System.out);
         }
     }
@@ -265,9 +302,11 @@ public class RootCmd implements Runnable {
                 }
             }
 
-            @Command(name = "info", description = "Play stored rhythms by information grades (one random per grade)")
+            @Command(name = "info", mixinStandardHelpOptions = true,
+                    description = "Show one random stored rhythm per requested position, then play the complete selection")
             public static class InfoCmd implements Callable<Integer> {
                 @ParentCommand RhythmCmd parent;
+                @CommandLine.Spec CommandLine.Model.CommandSpec spec;
 
                 @Parameters(arity = "1..*", description = "Information grades to play (e.g. 1 2 3 4)")
                 int[] infoGrades;
@@ -275,14 +314,44 @@ public class RootCmd implements Runnable {
                 @Option(names = "--device", description = "MIDI output device name substring. Overrides parent --device when set after info")
                 String device;
 
+                @Option(names = "--deviation-min", description = "Inclusive minimum deviation; either explicit bound replaces the default strict > "
+                        + AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION + " filter")
+                Double deviationMin;
+
+                @Option(names = "--deviation-max", description = "Inclusive maximum deviation; no implicit minimum when used alone")
+                Double deviationMax;
+
+                @Option(names = "--seed", description = "Seed for java.util.Random; same catalog, criteria and version reproduce the selection")
+                Long seed;
+
+                @Option(names = "--dry-run", description = "Show the same selection without opening MIDI or starting playback")
+                boolean dryRun;
+
                 @Override
                 public Integer call() {
                     try {
                         List<Integer> infos = Arrays.stream(infoGrades).boxed().toList();
-                        parent.parentPlay.parent.midiInteractor.playRhythmsByInformationGrades(infos, effectiveDevice());
+                        var range = deviationMin == null && deviationMax == null ? null : new DeviationRange(deviationMin, deviationMax);
+                        var interactor = parent.parentPlay.parent.midiInteractor;
+                        var selection = interactor.selectRhythmsByInformationGrades(infos, range, seed);
+                        var out = spec.commandLine().getOut();
+                        out.printf(Locale.ROOT, "[SELECTION] Seed=%d | Algorithm=java.util.Random | DeviationFilter=%s | Count=%d%n",
+                                selection.seed(), range == null ? "> " + AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION : range,
+                                selection.positions().size());
+                        for (var position : selection.positions()) {
+                            var rhythm = position.rhythm();
+                            out.printf(Locale.ROOT,
+                                    "[SELECTED] Position=%d | RequestedInfo=%d | Time=%d/%d | Rhythm=%s | BeatInformation=%s | Info=%d | Deviation=%.6f%n",
+                                    position.position(), position.requestedInformation(), rhythm.getNumerator(), rhythm.getDenominator(),
+                                    rhythm.getOnsetList(), rhythm.getBeatInformation(), rhythm.getInformation(), rhythm.getStandardDeviation());
+                        }
+                        out.flush();
+                        if (!dryRun) {
+                            interactor.playRhythms(selection.rhythms(), effectiveDevice());
+                        }
                         return 0;
                     } catch (Exception e) {
-                        System.err.println("[ERROR] " + e.getMessage());
+                        spec.commandLine().getErr().println("[ERROR] " + e.getMessage());
                         return 1;
                     }
                 }
@@ -742,6 +811,85 @@ public class RootCmd implements Runnable {
         }
     }
 
+    @Command(name = "search", mixinStandardHelpOptions = true,
+            description = "Search the catalog without random selection or playback",
+            subcommands = {SearchCmd.RhythmsCmd.class})
+    public static class SearchCmd implements Callable<Integer> {
+        @ParentCommand RootCmd parent;
+        @CommandLine.Spec CommandLine.Model.CommandSpec spec;
+
+        @Override
+        public Integer call() {
+            spec.commandLine().usage(spec.commandLine().getOut());
+            return 0;
+        }
+
+        @Command(name = "rhythms", mixinStandardHelpOptions = true,
+                description = "List unique stored rhythms by information, optional deviation bounds and beat-profile criteria (AND)")
+        public static class RhythmsCmd implements Callable<Integer> {
+            @ParentCommand SearchCmd parent;
+            @CommandLine.Spec CommandLine.Model.CommandSpec spec;
+
+            @Option(names = "--info", required = true, description = "Exact non-negative stored information grade")
+            int information;
+
+            @Option(names = "--deviation-min", description = "Inclusive minimum stored deviation; absent by default")
+            Double deviationMin;
+
+            @Option(names = "--deviation-max", description = "Inclusive maximum stored deviation; absent by default")
+            Double deviationMax;
+
+            @Option(names = "--beat-profile", paramLabel = "A,B,C,D",
+                    description = "Exact four non-negative beat-information values for one 4/4 bar; sum must equal --info")
+            String beatProfile;
+
+            @Option(names = "--peak-beat", paramLabel = "N",
+                    description = "Beat 1..4 must carry a global information maximum in one 4/4 bar; ties count")
+            Integer peakBeat;
+
+            @Option(names = "--limit", description = "Positive output limit (default: ${DEFAULT-VALUE}); total count is not limited")
+            int limit = AppDefaults.DEFAULT_RHYTHM_SEARCH_LIMIT;
+
+            @Override
+            public Integer call() {
+                try {
+                    var range = new DeviationRange(deviationMin, deviationMax);
+                    var criteria = new BeatProfileCriteria(parseBeatProfile(), peakBeat);
+                    var result = parent.parent.interactor.searchRhythms(information, range, limit, criteria);
+                    var out = spec.commandLine().getOut();
+                    out.printf(Locale.ROOT,
+                            "[SEARCH] Info=%d | DeviationMin=%s | DeviationMax=%s | Limit=%d | Total=%d | Shown=%d%s%n",
+                            result.information(), range.min() == null ? "none" : range.min(),
+                            range.max() == null ? "none" : range.max(), result.limit(),
+                            result.totalMatches(), result.candidates().size(), criteria.active()
+                                    ? " | BeatProfile=" + (criteria.profile() == null ? "none" : criteria.profile())
+                                        + " | PeakBeat=" + (criteria.peakBeat() == null ? "none" : criteria.peakBeat())
+                                    : "");
+                    for (var candidate : result.candidates()) {
+                        out.printf(Locale.ROOT,
+                                "[CANDIDATE] Time=%d/%d | Rhythm=%s | BeatInformation=%s | Info=%d | Deviation=%.6f%n",
+                                candidate.numerator(), candidate.denominator(), candidate.onsets(),
+                                candidate.beatInformation(), candidate.information(), candidate.deviation());
+                    }
+                    return 0;
+                } catch (Exception e) {
+                    spec.commandLine().getErr().println("[ERROR] " + e.getMessage());
+                    return 1;
+                }
+            }
+
+            private List<Integer> parseBeatProfile() {
+                if (beatProfile == null) return null;
+                try {
+                    return Arrays.stream(beatProfile.split(",", -1)).map(String::trim)
+                            .map(Integer::parseInt).toList();
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("--beat-profile requires four comma-separated non-negative integers");
+                }
+            }
+        }
+    }
+
     @Command(name = "calculate", description = "Generate chords or rhythms", subcommands = {
             CalculateCmd.ChordsCmd.class,
             CalculateCmd.RhythmsCmd.class
@@ -843,12 +991,16 @@ public class RootCmd implements Runnable {
             }
         }
 
-        @Command(name = "rhythm", description = "Analyze simple onset rhythm by Huffman complexity")
+        @Command(name = "rhythm", mixinStandardHelpOptions = true,
+                description = "Analyze simple onset rhythm by Huffman complexity")
         public static class RhythmCmd implements Callable<Integer> {
             @ParentCommand AnalyzeCmd parent;
 
             @Parameters(index = "0", description = "Rhythm in simple onset format")
             String rhythm;
+
+            @Option(names = "--details", description = "Also show BeatInformation and its arithmetic mean")
+            boolean details;
 
             @Override
             public Integer call() {
@@ -860,6 +1012,12 @@ public class RootCmd implements Runnable {
                         result.getStandardDeviation(),
                         result.getOnsetListPerBeat()
                 );
+                if (details) {
+                    System.out.printf(Locale.ROOT,
+                            "[DETAILS] BeatInformation=%s | Mean=%.6f%n",
+                            result.getBeatInformation(),
+                            result.getMeanBeatInformation());
+                }
                 return 0;
             }
         }

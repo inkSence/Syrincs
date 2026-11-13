@@ -39,6 +39,12 @@
             <artifactId>picocli</artifactId>
             <version>4.7.6</version>
         </dependency>
+        <!-- JSON is confined to rhythm-information input/output adapters. -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.14.0</version>
+        </dependency>
     </dependencies>
 
     <build>

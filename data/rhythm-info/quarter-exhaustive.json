@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "rhythm-info-request-v1",
+  "kind": "generate",
+  "measureId": "description-v1",
+  "scope": "GLOBAL_DESCRIPTION",
+  "frame": {
+    "slots": 16,
+    "time": {
+      "status": "UNKNOWN"
+    }
+  },
+  "target": {
+    "information": 13
+  },
+  "constraints": {
+    "onsetCount": {
+      "min": 4,
+      "max": 4
+    },
+    "requiredPositions": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  "search": {
+    "strategy": "EXHAUSTIVE",
+    "resultLimit": 8
+  }
+}

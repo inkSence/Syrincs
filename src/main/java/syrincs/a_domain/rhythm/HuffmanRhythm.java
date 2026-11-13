@@ -8,14 +8,17 @@ import java.util.List;
 public class HuffmanRhythm extends Rhythm {
 
 
-    int information;
-    double standardDeviation;
+    private final List<Integer> beatInformation;
+    private final int information;
+    private final double meanBeatInformation;
+    private final double standardDeviation;
 
     public HuffmanRhythm(int numerator, int denominator, int tempo, String onsetList) {
         super(numerator, denominator, tempo, onsetList);
-        List<Integer> informationOfEachBeat = calculateInformationForEachBeat();
-        this.information = informationOfEachBeat.stream().mapToInt(Integer::intValue).sum();
-        this.standardDeviation = StandardDeviation.calc(informationOfEachBeat);
+        this.beatInformation = List.copyOf(calculateInformationForEachBeat());
+        this.information = beatInformation.stream().mapToInt(Integer::intValue).sum();
+        this.meanBeatInformation = StandardDeviation.mean(beatInformation);
+        this.standardDeviation = StandardDeviation.calc(beatInformation);
     }
 
     private List<Integer> calculateInformationForEachBeat() {
@@ -189,6 +192,20 @@ public class HuffmanRhythm extends Rhythm {
             ctx.splitOnce();
             ctx.setState(PlayingAndEighth.INSTANCE);
         }
+    }
+
+    /**
+     * Returns the immutable information values in onset/beat order, flat across all bars.
+     * Analysis starts at rest and carries the playing state across beat and bar boundaries.
+     * Each value counts the state machine's code symbols for that beat's four positions.
+     */
+    public List<Integer> getBeatInformation() {
+        return beatInformation;
+    }
+
+    /** Returns the arithmetic mean of {@link #getBeatInformation()}. */
+    public double getMeanBeatInformation() {
+        return meanBeatInformation;
     }
 
     public int getInformation() {

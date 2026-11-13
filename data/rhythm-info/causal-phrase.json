@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "rhythm-info-request-v1",
+  "kind": "generate",
+  "measureId": "description-v1",
+  "scope": "CAUSAL_WINDOWS",
+  "frame": {
+    "slots": 32,
+    "time": {
+      "status": "UNKNOWN"
+    }
+  },
+  "segmentation": {
+    "boundaries": [
+      0,
+      4,
+      8,
+      12,
+      16,
+      20,
+      24,
+      28,
+      32
+    ],
+    "barBoundaries": [
+      0,
+      16,
+      32
+    ]
+  },
+  "initialHistory": "",
+  "target": {
+    "information": 64,
+    "barProfile": [
+      32,
+      32
+    ]
+  },
+  "constraints": {
+    "density": {
+      "min": "1/4",
+      "max": "3/4"
+    }
+  },
+  "search": {
+    "strategy": "BOUNDED_RANDOM",
+    "attemptBudget": "1000",
+    "selection": "FIRST",
+    "seed": "42",
+    "resultLimit": 3
+  }
+}

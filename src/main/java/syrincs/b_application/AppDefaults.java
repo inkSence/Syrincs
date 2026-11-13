@@ -14,4 +14,7 @@ public final class AppDefaults {
 
     /** Minimum beat-information deviation for DB rhythm playback candidates. */
     public static final double MIN_HUFFMAN_RHYTHM_DEVIATION = 0.7;
+
+    /** Maximum number of candidates displayed by a search without an explicit limit. */
+    public static final int DEFAULT_RHYTHM_SEARCH_LIMIT = 20;
 }

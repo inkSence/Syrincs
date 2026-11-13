@@ -6,6 +6,12 @@ Anwendung analysiert und erzeugt Akkorde nach Paul Hindemith, bewertet binäre
 musikalisches Material über SuperCollider/OSC oder `javax.sound.midi` aus.
 PostgreSQL speichert erzeugte Akkorde und Rhythmen.
 
+Der zusätzliche Bereich `rhythm-info` analysiert und erzeugt Rhythmen nach
+dem exakten Beschreibungsmaß `description-v1` in Bits. Er rekonstruiert
+Codewörter und unterstützt globale, isolierte und kausale Werte für
+1..128 Positionen, ohne DB oder Audiozugriff. Die bisherigen Endpunkte
+behalten ihre Bedeutung und ihr Informationsmaß.
+
 Der aktuelle Schwerpunkt liegt auf vier durchgängigen Wegen:
 
 - Hindemith-Akkorde ohne externe Dienste analysieren;
@@ -43,6 +49,7 @@ Externe Komponenten werden erst für Persistenz oder Playback gebraucht:
 | Noten und Akkorde standardmäßig hören | SuperCollider mit `sclang` |
 | RDL- oder Huffman-Rhythmen hören | MIDI-Ausgang |
 | Akkorde oder Rhythmen erzeugen und speichern | PostgreSQL |
+| Gespeicherte Rhythmen ohne Playback suchen | PostgreSQL, kein MIDI-Ausgang |
 | Gespeicherte Akkorde hören | PostgreSQL plus SuperCollider oder MIDI |
 | Gespeicherte Rhythmen hören | PostgreSQL plus MIDI |
 
@@ -56,7 +63,8 @@ Externe Komponenten werden erst für Persistenz oder Playback gebraucht:
 - optional SuperCollider mit `sclang`
 - optional ein MIDI-Ausgang
 
-Die Laufzeitabhängigkeiten sind Picocli und der PostgreSQL-JDBC-Treiber. Die
+Die Laufzeitabhängigkeiten sind Picocli, der PostgreSQL-JDBC-Treiber und Gson
+für die neuen JSON-Ein-/Ausgabeadapter. Die
 Tests verwenden JUnit 5; konkrete Versionen stehen in [`pom.xml`](pom.xml).
 
 Während der Entwicklung können Befehle direkt über Maven ausgeführt werden:
@@ -103,10 +111,16 @@ syrincs
 ├── status                     DB- und SC-Prozessstatus anzeigen
 ├── analyze
 │   ├── chord NOTES...         Hindemith-Analyse
-│   └── rhythm ONSETS          Huffman-Analyse
+│   └── rhythm ONSETS [--details] Huffman-Analyse, optional mit Beat-Werten
 ├── calculate
 │   ├── chords MIN MAX         Akkorde erzeugen und speichern
 │   └── rhythms                alle 2^16 Onset-Pattern speichern
+├── search
+│   └── rhythms --info N       eindeutige DB-Kandidaten ohne Playback suchen
+├── rhythm-info                neues Beschreibungsmaß in Bits, ohne DB/Audio
+│   ├── analyze ONSETS         exakte Analyse mit explizitem Scope und Kontext
+│   ├── generate               Ziele und AND-Parameter, drei Suchstrategien
+│   └── decode                 unabhängige Rekonstruktion eines Codeworts
 └── play
     ├── note                   einzelne Note; Default: OSC
     ├── chords                 DB-Akkorde; Default: OSC
@@ -130,6 +144,7 @@ Die verbindliche Syntax liefert Picocli:
 syrincs --help
 syrincs play chords --help
 syrincs play rhythm --help
+syrincs search rhythms --help
 syrincs play sc --help
 ```
 
@@ -234,6 +249,11 @@ endet der Befehl ohne Playback.
 
 ## Huffman-Rhythmik
 
+Die [Dokumentation des Rhythmusmoduls](doc/rhythm-generator/README.md)
+enthält eine Funktionsübersicht und technische Details zu Analyse, Generator,
+Informationsmaß, Persistenz, Kick-/Snare-Mapping, RDL und MIDI-Playback.
+Die folgenden Abschnitte beschreiben die Bedienung.
+
 ### Onset-Format und Analyse
 
 ```bash
@@ -244,10 +264,35 @@ Im einfachen Onset-Format bedeutet `x` Einsatz und `o` kein neuer Einsatz.
 Groß-/Kleinschreibung spielt keine Rolle, Whitespace wird entfernt. Der
 Analysepfad verwendet 4/4, 120 BPM und vier Positionen pro Beat. Die
 normalisierte Länge muss deshalb ein positives Vielfaches von 16 sein.
+Mehrere vollständige Takte werden gemeinsam ausgewertet. Die Analyse braucht
+weder Datenbank noch MIDI-Gerät und speichert keine Daten. Die allgemeine
+Domänenklasse prüft ein Vielfaches von `4 × Taktzähler`; die CLI verwendet
+hier fest den Zähler 4.
 
 `Info` ist die Anzahl der Codesymbole, welche die interne Zustandsmaschine
 erzeugt. Ihr Spielzustand wird über Beatgrenzen fortgeführt. `Deviation` ist
 die Populationsstandardabweichung der Informationswerte der einzelnen Beats.
+Beide Werte beziehen sich auf die gesamte Eingabe; der Spielzustand läuft
+auch über Taktgrenzen weiter. `Beats=[...]` zeigt die Onset-Strings der Beats,
+keine numerischen Beat-Informationswerte.
+
+Mit `--details` ergänzt die CLI die unveränderte Analysezeile um die
+Beat-Informationswerte und deren arithmetischen Mittelwert:
+
+```bash
+syrincs analyze rhythm "xooo xoxo xooo xoxo" --details
+```
+
+```text
+[ANALYZE] Rhythm=xoooxoxoxoooxoxo | Info=3 | Deviation=0.433013 | Beats=[xooo, xoxo, xooo, xoxo]
+[DETAILS] BeatInformation=[1, 1, 0, 1] | Mean=0.750000
+```
+
+Die Domäne stellt die geordneten Werte über `getBeatInformation()` als
+unveränderliche Liste und den Mittelwert über `getMeanBeatInformation()`
+bereit. Gesamtinformation, Mittelwert und Deviation stammen aus derselben
+einmal berechneten Liste. Bei mehreren Takten enthält sie alle Beats flach
+in Eingabereihenfolge; eine eigene Taktinformation wird nicht ausgewiesen.
 
 Kodifizierte Beispiele:
 
@@ -269,23 +314,143 @@ Der Befehl erzeugt alle `2^16 = 65.536` binären Pattern eines 4/4-Takts im
 16tel-Raster, berechnet Information und Deviation und speichert sie mit
 Batch-Inserts. Auch hier hängen Wiederholungen weitere Zeilen an.
 
+### Nach Informationsgrad suchen
+
+```bash
+syrincs search rhythms --info 3
+syrincs search rhythms --info 3 --deviation-min 0.2 --deviation-max 0.8 --limit 5
+syrincs search rhythms --info 3 --beat-profile 1,1,0,1
+syrincs search rhythms --info 3 --peak-beat 2 --deviation-max 0.5
+```
+
+Die reine Suche liest den Katalog, ohne Zufallsauswahl oder MIDI-Zugriff.
+`--info` ist ein einzelner exakter, nichtnegativer Ganzzahlwert. Ohne
+Deviation-Option gelten keine Deviation-Grenzen; explizite Grenzen sind
+inklusiv, endlich und nichtnegativ, mit `MIN <= MAX`.
+
+`--beat-profile A,B,C,D` verlangt exakt vier nichtnegative Ganzzahlen in
+Beat-Reihenfolge; ihre Summe muss `--info` entsprechen. `--peak-beat N`
+verlangt ein globales Informationsmaximum auf Beat 1 bis 4. Bei Gleichstand
+zählt jede maximale Position: `[1,1,0,1]` trifft auf 1, 2 und 4; `[2,0,1,0]`
+nur auf 1; das Nullprofil auf alle vier Beats. Beide Optionen sind unabhängig
+optional und gelten nur für einen einzelnen 4/4-Takt. Andere Taktarten und
+mehrtaktige Kandidaten werden bei gesetzten Profilkriterien ausgeschlossen.
+
+Alle gesetzten Kriterien werden mit UND verknüpft. Ein Profil mit falscher
+Summe oder ein dazu widersprüchlicher Peak wird vor der DB-Abfrage abgelehnt.
+Die Profilkriterien prüfen die aus den Onsets berechneten Beat-Werte nach
+der skalaren DB-Abfrage, aber vor Deduplizierung, Sortierung, Trefferzählung
+und Ausgabe-Limit. Ein gültiges, nicht vorhandenes Profil ergibt null Treffer.
+
+Identische normalisierte Onsets mit gleichem Zähler und Nenner erscheinen
+nur einmal. Die eindeutigen Treffer werden nach Zähler, Nenner und Onsets
+sortiert. `--limit` ist positiv und begrenzt erst danach die Ausgabe
+(Default 20), nicht die gesamte Trefferzahl.
+
+Eine Kopfzeile nennt Filter, Limit, `Total` (eindeutige Treffer) und `Shown`
+(ausgegebene Treffer). Jede Kandidatenzeile enthält Taktart, normalisierte
+Onsets, `BeatInformation`, Gesamtinformation und Deviation. Die DB filtert
+gespeicherte Werte; die Ausgabe berechnet Analysewerte aus den Onsets neu.
+Bei alten Katalogdaten können diese Werte von den Suchfiltern abweichen.
+Die Suche verändert keine Katalogdaten. Keine Treffer ergeben `Total=0`,
+`Shown=0` und Exit-Code 0; ungültige Eingaben oder DB-Fehler schlagen fehl.
+
 ### Nach Informationsgrad spielen
 
 ```bash
 syrincs play rhythm info 3 5 7
 syrincs play rhythm info --device "Virtual Out" 3 5 7
+syrincs play rhythm info 3 5 --deviation-min 0.2 --deviation-max 0.8
+syrincs play rhythm info 0 --deviation-min 0
+syrincs play rhythm info 3 5 3 --seed 42 --dry-run
 ```
 
-Für jeden Informationsgrad lädt Syrincs Kandidaten mit `deviation > 0.7` und
-wählt zufällig einen aus. Grade ohne Kandidaten werden übersprungen; nur wenn
-für keinen angefragten Grad ein Kandidat existiert, endet der Befehl mit
-Fehler und einem Hinweis auf `init` und `calculate rhythms`.
+Für jede angefragte Position lädt Syrincs passende Kandidaten und wählt
+zufällig einen aus. Wiederholte Grade bleiben getrennte Positionen; dasselbe
+Pattern darf mehrfach gewählt werden. Ohne Deviation-Optionen bleibt der
+bisherige strikte Filter `deviation > 0.7` erhalten. Explizite Grenzen ersetzen
+ihn vollständig:
+
+| Optionen | Deviation-Filter |
+| --- | --- |
+| keine | `> 0.7` |
+| nur `--deviation-min MIN` | `>= MIN`, ohne Maximum |
+| nur `--deviation-max MAX` | `<= MAX`, ohne implizites Minimum |
+| beide | `>= MIN` und `<= MAX` |
+
+Explizite Grenzen sind inklusiv; auch 0 ist zulässig. Negative, nichtendliche
+Werte (`NaN`, Unendlichkeit) und `MIN > MAX` werden vor der DB-Abfrage
+abgelehnt. Die DB filtert gespeicherte Informations- und Deviation-Werte;
+beim Laden werden die Aggregate aus den Onsets neu berechnet. Bei älteren
+Katalogdaten können beide Bewertungen abweichen. Gespeichertes `NULL` in
+Deviation erfüllt keine gesetzte Grenze; es wird hier nicht migriert.
+
+Fehlt für eine Position ein Kandidat, werden alle fehlenden Positionen mit
+ihrem Grad gemeldet und der gesamte Aufruf schlägt vor dem Playback fehl.
+Es gibt keine stille Verkürzung mehr. Die Fehlermeldung nennt auch `init`
+und `calculate rhythms` zur Vorbereitung des Katalogs.
+
+Vor dem Playback zeigt die CLI den verwendeten Seed und jede ausgewählte
+Position mit normalisierten Onsets, Beat-Profil, Gesamtinformation und
+Deviation. `--dry-run` führt dieselbe Auswahl und Ausgabe durch, ohne MIDI
+zu öffnen oder die Wiedergabe aufzurufen.
+
+`--seed LONG` verwendet einmal pro Aufruf `java.util.Random`. Vor jeder
+Ziehung sind die Kandidaten wie bei der Suche dedupliziert und nach Zähler,
+Nenner und Onsets sortiert. Aus der vollständigen Liste wird in
+Anfragereihenfolge genau einmal mit `nextInt(Kandidatenzahl)` gezogen,
+auch bei nur einem Kandidaten. Das Ausgabe-Limit von `search rhythms`
+begrenzt diese Auswahl nicht. Ohne `--seed` wird ein nichtdeterministischer
+Seed erzeugt und ebenfalls angezeigt.
+
+Gleicher Seed, unveränderte normalisierte Kandidateninhalte, gleiche
+Kriterienfolge und gleiche Programmversion ergeben dieselbe Auswahl.
+Ein Seed ist nach Katalog- oder Algorithmusänderungen keine dauerhafte
+Pattern-Adresse. Seed und Auswahl werden nicht gespeichert.
 
 Die ausgewählten Takte werden in der angefragten Reihenfolge zu einem
 durchgehenden MIDI-Pattern verbunden. Eine regelbasierte Gewichtung verteilt
 jeden Onset auf Kick oder Snare: Backbeats bevorzugen die Snare, Downbeats und
-Antizipationen eher die Kick. Gespeicherte Rhythmen enthalten kein Tempo;
+Antizipationen eher die Kick. Der Mapper verarbeitet jeweils genau einen
+16-Schritt-Takt; erst danach werden die Takte verbunden. Standard sind
+Kick-Note 36 und Snare-Note 38 auf Kanal 9, Velocity 90 und Gate 50 Prozent.
+Gespeicherte Rhythmen enthalten kein Tempo;
 DB-Playback verwendet daher aktuell 120 BPM.
+
+Ohne `--dry-run` folgt auf die Ausgabe das Playback. `search rhythms`
+zeigt stattdessen die Kandidatenliste ohne Zufallsauswahl und unterstützt
+exakte Beat-Profile und Peak-Positionen. Diese Filter sind nicht Teil des
+Playbacks; Profilähnlichkeit und mehrtaktige Informationsverläufe bleiben offen.
+
+## Neues Beschreibungsmaß und gezielte Generierung
+
+```bash
+syrincs rhythm-info analyze "xooo xooo xooo xooo"
+syrincs rhythm-info analyze "xooo xooo xooo xooo" --scope causal --window-slots 4 --bar-slots 16 --include-global
+syrincs rhythm-info decode --slots 16 --code 0110110101000 --analyze
+syrincs rhythm-info generate --slots 16 --info 13 --onset-min 4 --onset-max 4 --required-positions 0,4,8,12 --strategy exhaustive --limit 8
+```
+
+Das erste Beispiel liefert global 13 Bits. Die kausale Analyse liefert
+`[8,8,3,3]` und Summe 22 unter tatsächlichem Vorlauf; diese Summe ist keine
+Zerlegung der globalen 13 Bits. Jedes Ergebnis nennt Maß, Scope, Einheit,
+Kostenzerlegung, Code und Zahl optimaler Beschreibungen. Das Maß beschreibt
+die kürzeste Nachricht innerhalb der versionierten Sprache, nicht
+automatisch gehörte Schwierigkeit oder Überraschung.
+
+Die Vollsuche unterstützt N≤16. `--limit` begrenzt ihre Ausgabe, nicht
+die Trefferzählung. Längere Aufträge wählen ausdrücklich `code-length`
+oder `random` mit positivem `--attempt-budget`; Zufall benötigt `--seed`.
+Status und unbekannte Vollständigkeit werden auch bei null Treffern
+ausgegeben. Ein Budgetabbruch liefert korrekte Teilresultate und Exitcode 3.
+`NO_SOLUTION` ist nur nach vollständiger Abdeckung zulässig.
+
+`--format json` erzeugt ein versioniertes Ergebnisdokument. Für komplexe
+Profile, Referenzen und exakte Ereigniszeitpunkte gibt es `--request FILE`.
+Ausprobierbeispiele, JSON-Dateien, Zeitbedingungen und die vollständigen
+Grenzen stehen in der [Präsentation des neuen Maßes](doc/rhythm-generator/README.md#neues-beschreibungsmaß-ausprobieren).
+Neue Werte werden weder in bestehende Katalogspalten geschrieben noch
+automatisch an Playback übergeben.
 
 ## RDL-0
 
@@ -327,7 +492,10 @@ Ohne `--in` wird `data/beat.rdl` verwendet. Für RDL-0 gelten folgende Regeln:
   eine zum Header passende Patternlänge.
 
 RDL-0 (`x`/`-`) und das Huffman-Onset-Format (`x`/`o`) sind zwei verschiedene
-Formate. RDL- und Huffman-Playback laufen immer über MIDI. Der erzeugten
+Formate. RDL-Pattern sind bereits auf Stimmen verteilt; sie durchlaufen weder
+Huffman-Bewertung noch automatische Kick-/Snare-Zuordnung. Tempo, Raster,
+Taktanzahl und Voice-Parameter werden in der Datei festgelegt.
+RDL- und Huffman-Playback laufen immer über MIDI. Der erzeugten
 MIDI-Sequenz werden standardmäßig zwei Sekunden Nachlauf angefügt, damit
 Synth- und Effektfahnen ausklingen können.
 

@@ -128,7 +128,7 @@ lokal grüne Tests zu erhalten.
 ## CLI-Konventionen
 
 Die sichtbaren Hauptbefehle sind `devices`, `init`, `start`, `status`, `play`,
-`calculate` und `analyze`. Zusätzlich existieren die versteckten
+`calculate`, `analyze` und `search`. Zusätzlich existieren die versteckten
 Kompatibilitäts-/Wartungsbefehle `list` (Alias für `devices`) und `delete`
 (TRUNCATE der Akkordtabelle). Veröffentliche, entferne oder ändere sie nicht
 beiläufig.
@@ -141,6 +141,7 @@ mvn exec:java -Dexec.args='analyze rhythm "xooo xoxo xooo xoxo"'
 mvn exec:java -Dexec.args="calculate chords 48 84"
 mvn exec:java -Dexec.args="play rhythm --in data/beat.rdl"
 mvn exec:java -Dexec.args="play rhythm info 3 5 7"
+mvn exec:java -Dexec.args="search rhythms --info 3 --limit 5"
 ```
 
 `analyze 60 64 67` und `calculate 48 84` sind unterstützte Kurzformen.
@@ -261,10 +262,30 @@ Huffman-Regeln:
   1024. Wiederholte Aufrufe deduplizieren nicht.
 - `play rhythm info ...` fragt je Grad Kandidaten mit strikt
   `deviation > AppDefaults.MIN_HUFFMAN_RHYTHM_DEVIATION` (`0.7`) ab und wählt
-  zufällig einen. Fehlende einzelne Grade werden übersprungen; nur wenn für
-  keinen Grad ein Kandidat existiert, schlägt der Aufruf fehl.
+  zufällig einen je angefragter Position. Explizite Deviation-Grenzen ersetzen
+  diesen Default inklusive. Die Auswahl dedupliziert und sortiert wie die
+  Suche, verwendet aber alle Kandidaten ohne Ausgabe-Limit. `--seed LONG`
+  initialisiert einmal `java.util.Random`; je Position wird genau einmal
+  `nextInt(Kandidatenzahl)` gezogen, auch bei nur einem Kandidaten.
+  Wiederholte Grade bleiben getrennte Positionen. Die CLI zeigt Seed und
+  Auswahl vor dem gemeinsamen Playback; `--dry-run` zeigt dieselbe Auswahl
+  ohne Playback-Port oder MIDI-Zugriff. Fehlende Grade werden mit allen
+  betroffenen Positionen gemeldet und führen vor dem Playback zum Fehler.
 - Die DB speichert kein Tempo. Geladene Rhythmen erhalten deshalb
   `AppDefaults.DEFAULT_TEMPO_BPM` (`120`).
+- `search rhythms --info N` liest ohne Zufallsauswahl oder Playback. Ohne
+  Deviation-Optionen gilt kein Deviation-Filter; gesetzte Grenzen sind
+  inklusiv. Die Kandidatenidentität besteht aus normalisierten Onsets,
+  Zähler und Nenner. Nach Deduplizierung wird nach Zähler, Nenner und Onsets
+  sortiert; das positive Ausgabe-Limit (Default 20) ändert die Gesamtzahl
+  nicht. Information und Deviation filtern gespeicherte Aggregate; die
+  Ausgabe zeigt aus den Onsets neu berechnete Analysewerte. Die optionalen
+  Suchfilter `--beat-profile A,B,C,D` und `--peak-beat N` prüfen diese
+  rekonstruierten Beat-Werte nach der DB-Abfrage, aber vor Deduplizierung,
+  Sortierung, Zählung und Limit. Sie gelten nur für einen einzelnen 4/4-Takt.
+  Alle Kriterien werden mit UND verknüpft; die Profilsumme muss `--info`
+  entsprechen. Peaks sind einbasiert (1..4), Gleichstände zählen mit.
+  Ungültige oder widersprüchliche Kriterien scheitern vor der DB-Abfrage.
 - Der Kick-/Snare-Mapper akzeptiert exakt einen 16-Schritt-Takt. Mehrere
   ausgewählte DB-Rhythmen werden erst einzeln gemappt und danach in
   Anfragereihenfolge zu einem MIDI-Pattern verbunden.

@@ -1,0 +1,481 @@
+{
+  "fixtureVersion": 1,
+  "measure": "metric-state-v1",
+  "description": "Prüffälle für den metrischen Spielzustand. Alle Werte sind Handrechnungen nach der Übergangstabelle im fachlichen Vertrag und noch nicht maschinell bestätigt.",
+  "notation": {
+    "x": "Einsatz",
+    "=": "Ton hält (nur SUSTAINED)",
+    "o": "kein Einsatz bzw. Stille",
+    "whitespace": "wird ignoriert"
+  },
+  "dictionary": {
+    "00": "Teilung verstärken",
+    "01": "Teilung verringern",
+    "10": "Noten spielen",
+    "11": "Pausen spielen"
+  },
+  "bitsPerInstruction": 2,
+  "cases": [
+    {
+      "id": "F05.1.I",
+      "title": "Vier Viertel",
+      "sound": "IMPULSE",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "xooo xooo xooo xooo",
+      "valueBits": 2,
+      "minimalSequences": [
+        [
+          "10"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.2",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "F05.1.G",
+      "title": "Vier Viertel",
+      "sound": "SUSTAINED",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "x=== x=== x=== x===",
+      "valueBits": 2,
+      "minimalSequences": [
+        [
+          "10"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.2",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "F05.2.I",
+      "title": "Halbe, halbe Pause",
+      "sound": "IMPULSE",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "xooo oooo oooo oooo",
+      "valueBits": 4,
+      "minimalSequences": [
+        [
+          "10",
+          "11"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.3",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "F05.2.G",
+      "title": "Halbe, halbe Pause",
+      "sound": "SUSTAINED",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "x=== ==== oooo oooo",
+      "valueBits": 6,
+      "minimalSequences": [
+        [
+          "10",
+          "01",
+          "11"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.3",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "F05.3.I",
+      "title": "Halbe, zwei Viertel",
+      "sound": "IMPULSE",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "xooo oooo xooo xooo",
+      "valueBits": 6,
+      "minimalSequences": [
+        [
+          "10",
+          "01",
+          "00"
+        ],
+        [
+          "10",
+          "11",
+          "10"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.4",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "F05.3.G",
+      "title": "Halbe, zwei Viertel",
+      "sound": "SUSTAINED",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "x=== ==== x=== x===",
+      "valueBits": 6,
+      "minimalSequences": [
+        [
+          "10",
+          "01",
+          "00"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.4",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "F05.4.I",
+      "title": "Zwei Viertel, Halbe",
+      "sound": "IMPULSE",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "xooo xooo xooo oooo",
+      "valueBits": 4,
+      "minimalSequences": [
+        [
+          "10",
+          "01"
+        ],
+        [
+          "10",
+          "11"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.5",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "F05.4.G",
+      "title": "Zwei Viertel, Halbe",
+      "sound": "SUSTAINED",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "x=== x=== x=== ====",
+      "valueBits": 4,
+      "minimalSequences": [
+        [
+          "10",
+          "01"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.5",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "F05.5.I",
+      "title": "Halbe Pause, Halbe",
+      "sound": "IMPULSE",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "oooo oooo xooo oooo",
+      "valueBits": 6,
+      "minimalSequences": [
+        [
+          "11",
+          "10",
+          "01"
+        ],
+        [
+          "11",
+          "10",
+          "11"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.6",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "F05.5.G",
+      "title": "Halbe Pause, Halbe",
+      "sound": "SUSTAINED",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "oooo oooo x=== ====",
+      "valueBits": 6,
+      "minimalSequences": [
+        [
+          "11",
+          "10",
+          "01"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.6",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "F05.6.I",
+      "title": "Zwei Viertel, halbe Pause",
+      "sound": "IMPULSE",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "xooo xooo oooo oooo",
+      "valueBits": 4,
+      "minimalSequences": [
+        [
+          "10",
+          "11"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.7",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "F05.6.G",
+      "title": "Zwei Viertel, halbe Pause",
+      "sound": "SUSTAINED",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "x=== x=== oooo oooo",
+      "valueBits": 4,
+      "minimalSequences": [
+        [
+          "10",
+          "11"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.7",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "F05.7.I",
+      "title": "Halbe Pause, zwei Viertel",
+      "sound": "IMPULSE",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "oooo oooo xooo xooo",
+      "valueBits": 4,
+      "minimalSequences": [
+        [
+          "11",
+          "10"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.8",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "F05.7.G",
+      "title": "Halbe Pause, zwei Viertel",
+      "sound": "SUSTAINED",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "oooo oooo x=== x===",
+      "valueBits": 4,
+      "minimalSequences": [
+        [
+          "11",
+          "10"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 3.8",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "H-QP.I",
+      "title": "Halbe bzw. Viertel plus Viertelpause, gleiche Impulse",
+      "sound": "IMPULSE",
+      "beatSlots": 4,
+      "barSlots": 8,
+      "events": "xooo oooo",
+      "valueBits": 4,
+      "minimalSequences": [
+        [
+          "10",
+          "01"
+        ],
+        [
+          "10",
+          "11"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 7.2",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "H.G",
+      "title": "Halbe",
+      "sound": "SUSTAINED",
+      "beatSlots": 4,
+      "barSlots": 8,
+      "events": "x=== ====",
+      "valueBits": 4,
+      "minimalSequences": [
+        [
+          "10",
+          "01"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 7.2",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "QP.G",
+      "title": "Viertel plus Viertelpause",
+      "sound": "SUSTAINED",
+      "beatSlots": 4,
+      "barSlots": 8,
+      "events": "x=== oooo",
+      "valueBits": 4,
+      "minimalSequences": [
+        [
+          "10",
+          "11"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 7.2",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "PUNKT.I",
+      "title": "Punktierte Viertel plus Achtel, bis zum zweiten Einsatz",
+      "sound": "IMPULSE",
+      "beatSlots": 4,
+      "barSlots": 8,
+      "events": "xooo ooxo",
+      "valueBits": 8,
+      "minimalSequences": [
+        [
+          "10",
+          "01",
+          "00",
+          "00"
+        ],
+        [
+          "10",
+          "11",
+          "00",
+          "10"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 8.1",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "PUNKT.G",
+      "title": "Punktierte Viertel plus Achtel, bis zum zweiten Einsatz",
+      "sound": "SUSTAINED",
+      "beatSlots": 4,
+      "barSlots": 8,
+      "events": "x=== ==x=",
+      "valueBits": 8,
+      "minimalSequences": [
+        [
+          "10",
+          "01",
+          "00",
+          "00"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 4",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "ZWEI-HALBE.I",
+      "title": "Zwei Halbe",
+      "sound": "IMPULSE",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "xooo oooo xooo oooo",
+      "valueBits": 4,
+      "minimalSequences": [
+        [
+          "10",
+          "01"
+        ]
+      ],
+      "source": "Kritikdurchgang vom 13. November 2026",
+      "status": "HAND_CALCULATED"
+    },
+    {
+      "id": "FOTO1-R1.I",
+      "title": "Foto 1, Rhythmus 1",
+      "sound": "IMPULSE",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "xooo xoxo xoxx xxxo",
+      "valueBits": 8,
+      "minimalSequences": [
+        [
+          "10",
+          "00",
+          "00",
+          "01"
+        ],
+        [
+          "10",
+          "00",
+          "00",
+          "11"
+        ]
+      ],
+      "source": "02-bildpruefung-und-ereignisablaeufe.md 5",
+      "status": "HAND_CALCULATED",
+      "note": "Die korrigierte Fotofolge ist 10 00 00 01; die zweite Folge ist nach Zeile 5a gleich günstig."
+    },
+    {
+      "id": "FOTO1-R2.G",
+      "title": "Foto 1, Rhythmus 2",
+      "sound": "SUSTAINED",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "x=== oox= x=xx xxx=",
+      "valueBits": 12,
+      "minimalSequences": [
+        [
+          "10",
+          "11",
+          "00",
+          "10",
+          "00",
+          "01"
+        ]
+      ],
+      "source": "01-fachlicher-vertrag.md Abschnitt 2, gehaltener Klang",
+      "status": "HAND_CALCULATED",
+      "note": "Gleiche Anweisungen und Summe wie die korrigierte Fotofolge 10 00 11 10 00 01, andere Reihenfolge. Annahme: letzter Ton als Achtel gehalten."
+    },
+    {
+      "id": "F05.2-FOLGETAKT.I",
+      "title": "Halbe, halbe Pause, danach ein Einsatz auf der Eins",
+      "sound": "IMPULSE",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "xooo oooo oooo oooo xooo oooo oooo oooo",
+      "valueBits": 6,
+      "minimalSequences": [
+        [
+          "10",
+          "01",
+          "01"
+        ]
+      ],
+      "source": "01-fachlicher-vertrag.md Leitsätze",
+      "status": "HAND_CALCULATED",
+      "valueAfterBars": [
+        4,
+        6
+      ]
+    },
+    {
+      "id": "F05.1-ZWEI-TAKTE.I",
+      "title": "Acht Viertel über zwei Takte",
+      "sound": "IMPULSE",
+      "beatSlots": 4,
+      "barSlots": 16,
+      "events": "xooo xooo xooo xooo xooo xooo xooo xooo",
+      "valueBits": 2,
+      "minimalSequences": [
+        [
+          "10"
+        ]
+      ],
+      "source": "01-fachlicher-vertrag.md Übergangstabelle, Zeilen 3 und 9",
+      "status": "HAND_CALCULATED",
+      "valueAfterBars": [
+        2,
+        2
+      ]
+    }
+  ]
+}

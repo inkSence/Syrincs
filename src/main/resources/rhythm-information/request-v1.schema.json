@@ -1,0 +1,686 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:syrincs:rhythm-info-request-v1",
+  "title": "Rhythm information request v1",
+  "description": "Structural wire schema. Domain validation additionally checks exact grids, nested references, partitions, compatible scopes and logical constraint consistency.",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "rhythm-info-request-v1"
+        },
+        "measureId": {
+          "const": "description-v1"
+        },
+        "scope": {
+          "enum": [
+            "GLOBAL_DESCRIPTION",
+            "ISOLATED_WINDOWS",
+            "CAUSAL_WINDOWS"
+          ]
+        },
+        "frame": {
+          "$ref": "#/$defs/frame"
+        },
+        "segmentation": {
+          "type": "object",
+          "properties": {
+            "boundaries": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 2
+            },
+            "barBoundaries": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 2
+            }
+          },
+          "required": [
+            "boundaries"
+          ],
+          "additionalProperties": false
+        },
+        "initialHistory": {
+          "type": "string"
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reference"
+          },
+          "minItems": 0
+        },
+        "referenceProfile": {
+          "const": "london-time-window-v1"
+        },
+        "kind": {
+          "const": "analyze"
+        },
+        "onsets": {
+          "type": "string"
+        },
+        "eventTimesMs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/rational"
+          },
+          "minItems": 0
+        },
+        "includeGlobal": {
+          "type": "boolean"
+        },
+        "compareLegacy": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "frame"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "onsets"
+          ],
+          "not": {
+            "required": [
+              "eventTimesMs"
+            ]
+          }
+        },
+        {
+          "required": [
+            "eventTimesMs"
+          ],
+          "not": {
+            "required": [
+              "onsets"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "rhythm-info-request-v1"
+        },
+        "measureId": {
+          "const": "description-v1"
+        },
+        "scope": {
+          "enum": [
+            "GLOBAL_DESCRIPTION",
+            "ISOLATED_WINDOWS",
+            "CAUSAL_WINDOWS"
+          ]
+        },
+        "frame": {
+          "$ref": "#/$defs/frame"
+        },
+        "segmentation": {
+          "type": "object",
+          "properties": {
+            "boundaries": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 2
+            },
+            "barBoundaries": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 2
+            }
+          },
+          "required": [
+            "boundaries"
+          ],
+          "additionalProperties": false
+        },
+        "initialHistory": {
+          "type": "string"
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reference"
+          },
+          "minItems": 0
+        },
+        "referenceProfile": {
+          "const": "london-time-window-v1"
+        },
+        "kind": {
+          "const": "decode"
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[01]+$"
+        },
+        "analyze": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "frame",
+        "code"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "rhythm-info-request-v1"
+        },
+        "measureId": {
+          "const": "description-v1"
+        },
+        "scope": {
+          "enum": [
+            "GLOBAL_DESCRIPTION",
+            "ISOLATED_WINDOWS",
+            "CAUSAL_WINDOWS"
+          ]
+        },
+        "frame": {
+          "$ref": "#/$defs/frame"
+        },
+        "segmentation": {
+          "type": "object",
+          "properties": {
+            "boundaries": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 2
+            },
+            "barBoundaries": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 2
+            }
+          },
+          "required": [
+            "boundaries"
+          ],
+          "additionalProperties": false
+        },
+        "initialHistory": {
+          "type": "string"
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reference"
+          },
+          "minItems": 0
+        },
+        "referenceProfile": {
+          "const": "london-time-window-v1"
+        },
+        "kind": {
+          "const": "generate"
+        },
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "constraints": {
+          "$ref": "#/$defs/constraints"
+        },
+        "search": {
+          "$ref": "#/$defs/search"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "frame",
+        "target",
+        "search"
+      ],
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "frame": {
+      "type": "object",
+      "properties": {
+        "slots": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        },
+        "time": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "const": "UNKNOWN"
+                }
+              },
+              "required": [
+                "status"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "const": "KNOWN"
+                },
+                "slotDurationMs": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^[+-]?(?:[0-9]+/[+-]?[0-9]+|(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)$"
+                    }
+                  ]
+                },
+                "quarterBpm": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^[+-]?(?:[0-9]+/[+-]?[0-9]+|(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)$"
+                    }
+                  ]
+                },
+                "ticksPerQuarter": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "status"
+              ],
+              "additionalProperties": false,
+              "oneOf": [
+                {
+                  "required": [
+                    "slotDurationMs"
+                  ],
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "quarterBpm"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "ticksPerQuarter"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "required": [
+                    "quarterBpm",
+                    "ticksPerQuarter"
+                  ],
+                  "not": {
+                    "required": [
+                      "slotDurationMs"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "notation": {
+          "type": "object",
+          "properties": {
+            "numerator": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "denominator": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "numerator",
+            "denominator"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "slots"
+      ],
+      "additionalProperties": false
+    },
+    "reference": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cycleSlots": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "phase": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "beatLevel": {
+          "type": "string"
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "SUBDIVISION",
+                  "BEAT",
+                  "GROUP",
+                  "CYCLE_MARKER"
+                ]
+              },
+              "positions": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "positions"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "provenance": {
+          "enum": [
+            "SUPPLIED",
+            "CANDIDATE"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "cycleSlots",
+        "phase",
+        "beatLevel",
+        "levels",
+        "provenance",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "rational": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string",
+          "pattern": "^[+-]?(?:[0-9]+/[+-]?[0-9]+|(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)$"
+        }
+      ]
+    },
+    "intRange": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "rationalRange": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string",
+              "pattern": "^[+-]?(?:[0-9]+/[+-]?[0-9]+|(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)$"
+            }
+          ]
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string",
+              "pattern": "^[+-]?(?:[0-9]+/[+-]?[0-9]+|(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)$"
+            }
+          ]
+        }
+      },
+      "required": [],
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "min"
+          ]
+        },
+        {
+          "required": [
+            "max"
+          ]
+        }
+      ]
+    },
+    "target": {
+      "type": "object",
+      "properties": {
+        "information": {
+          "$ref": "#/$defs/intRange"
+        },
+        "additionalGlobalInformation": {
+          "$ref": "#/$defs/intRange"
+        },
+        "windowProfile": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/intRange"
+          },
+          "minItems": 1
+        },
+        "barProfile": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/intRange"
+          },
+          "minItems": 1
+        },
+        "deviation": {
+          "$ref": "#/$defs/rationalRange"
+        },
+        "deviationBasis": {
+          "enum": [
+            "WINDOWS",
+            "BARS"
+          ]
+        },
+        "peakPositions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "peakBasis": {
+          "enum": [
+            "WINDOWS",
+            "BARS"
+          ]
+        }
+      },
+      "required": [
+        "information"
+      ],
+      "additionalProperties": false
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "onsetCount": {
+          "$ref": "#/$defs/intRange"
+        },
+        "density": {
+          "$ref": "#/$defs/rationalRange"
+        },
+        "requiredPositions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "forbiddenPositions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "minOnsetGap": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxZeroRun": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requireReferencePass": {
+          "type": "boolean"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "search": {
+      "type": "object",
+      "properties": {
+        "strategy": {
+          "enum": [
+            "EXHAUSTIVE",
+            "CODE_LENGTH_SEARCH",
+            "BOUNDED_RANDOM"
+          ]
+        },
+        "attemptBudget": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string",
+              "pattern": "^-?[0-9]+$"
+            }
+          ]
+        },
+        "resultLimit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selection": {
+          "enum": [
+            "FIRST",
+            "RANDOM_WITHOUT_REPLACEMENT"
+          ]
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string",
+              "pattern": "^-?[0-9]+$"
+            }
+          ]
+        }
+      },
+      "required": [
+        "strategy"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
